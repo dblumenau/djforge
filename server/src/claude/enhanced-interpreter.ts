@@ -12,6 +12,8 @@ export const enhancedClaudeRouter = Router();
 interface InterpretationResult {
   intent: string;
   query?: string;
+  artist?: string;
+  track?: string;
   value?: number;
   modifiers?: {
     obscurity?: 'obscure' | 'rare' | 'deep_cut' | 'popular' | 'mainstream';
@@ -38,8 +40,9 @@ async function interpretCommand(command: string): Promise<InterpretationResult> 
   use your knowledge to suggest SPECIFIC songs that match their request. Don't just parse - INTERPRET and RECOMMEND.
   
   Examples:
-  - "most obscure Taylor Swift song" → suggest "It's Time To Go" from evermore deluxe
-  - "song from desert driving scene" → suggest "Riders on the Storm" by The Doors
+  - "most obscure Taylor Swift song" → artist: "Taylor Swift", track: "It's Time To Go"
+  - "play a lesser known Enya song" → artist: "Enya", track: "Lazy Days"
+  - "song from desert driving scene" → artist: "The Doors", track: "Riders on the Storm"
   - "something that sounds like rain" → suggest specific ambient/peaceful tracks
   
   GUIDELINES:
@@ -51,7 +54,9 @@ async function interpretCommand(command: string): Promise<InterpretationResult> 
   Return JSON with:
   {
     "intent": "play|pause|skip|previous|volume|search_and_play|get_current_track|queue_add",
-    "query": "SPECIFIC search query - include artist and song name when possible",
+    "query": "full search query for backwards compatibility",
+    "artist": "artist name for precise search (if search_and_play/queue_add)",
+    "track": "track name for precise search (if search_and_play/queue_add)",
     "value": "volume level if applicable",
     "modifiers": {
       "obscurity": "obscure|rare|deep_cut|popular|mainstream",
@@ -170,10 +175,16 @@ enhancedClaudeRouter.post('/command', ensureValidToken, async (req, res) => {
 
     switch (interpretation.intent) {
       case 'search_and_play':
-        if (interpretation.query) {
-          // Claude already provides specific songs in the query!
-          const searchQuery = interpretation.query;
-          console.log(`Claude interpreted: "${command}" → "${searchQuery}"`);
+        if (interpretation.query || (interpretation.artist && interpretation.track)) {
+          // Use precise Spotify search syntax if we have artist and track
+          let searchQuery = interpretation.query || '';
+          if (interpretation.artist && interpretation.track) {
+            searchQuery = `artist:"${interpretation.artist}" track:"${interpretation.track}"`;
+            console.log(`Claude interpreted: "${command}" → artist:"${interpretation.artist}" track:"${interpretation.track}"`);
+          } else {
+            console.log(`Claude interpreted: "${command}" → "${searchQuery}"`);
+          }
+          
           if (interpretation.reasoning) {
             console.log(`Reasoning: ${interpretation.reasoning}`);
           }
@@ -210,10 +221,15 @@ enhancedClaudeRouter.post('/command', ensureValidToken, async (req, res) => {
         break;
         
       case 'queue_add':
-        if (interpretation.query) {
-          // Claude already provides specific songs in the query!
-          const searchQuery = interpretation.query;
-          console.log(`Claude interpreted for queue: "${command}" → "${searchQuery}"`);
+        if (interpretation.query || (interpretation.artist && interpretation.track)) {
+          // Use precise Spotify search syntax if we have artist and track
+          let searchQuery = interpretation.query || '';
+          if (interpretation.artist && interpretation.track) {
+            searchQuery = `artist:"${interpretation.artist}" track:"${interpretation.track}"`;
+            console.log(`Claude interpreted for queue: "${command}" → artist:"${interpretation.artist}" track:"${interpretation.track}"`);
+          } else {
+            console.log(`Claude interpreted for queue: "${command}" → "${searchQuery}"`);
+          }
 
           const searchResults = await spotifyControl.search(searchQuery);
           const rankedTracks = applySearchModifiers(searchResults, interpretation.modifiers);
