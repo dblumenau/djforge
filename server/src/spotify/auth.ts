@@ -129,8 +129,27 @@ export async function ensureValidToken(req: any, res: any, next: any) {
 authRouter.get('/status', (req, res) => {
   console.log('Auth status check - Session ID:', req.sessionID);
   console.log('Has tokens:', !!req.session.spotifyTokens);
-  const isAuthenticated = !!req.session.spotifyTokens;
-  res.json({ authenticated: isAuthenticated });
+  
+  const tokens = req.session.spotifyTokens;
+  const isAuthenticated = !!tokens?.access_token;
+  
+  if (isAuthenticated && req.session.tokenTimestamp) {
+    // Calculate if token is expired (Spotify tokens last 1 hour)
+    const tokenAge = Date.now() - req.session.tokenTimestamp;
+    const expiresIn = (tokens.expires_in || 3600) * 1000; // Convert to ms
+    const isExpired = tokenAge >= expiresIn;
+    
+    // If expired but we have a refresh token, we can still consider it authenticated
+    const effectivelyAuthenticated = isAuthenticated && (!isExpired || !!tokens.refresh_token);
+    
+    res.json({ 
+      authenticated: effectivelyAuthenticated,
+      tokenExpired: isExpired,
+      hasRefreshToken: !!tokens.refresh_token
+    });
+  } else {
+    res.json({ authenticated: false });
+  }
 });
 
 // Logout

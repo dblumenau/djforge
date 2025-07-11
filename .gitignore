@@ -40,3 +40,4 @@ coverage/
 
 # Session store
 sessions/
+!sessions/.gitkeep

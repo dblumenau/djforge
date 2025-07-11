@@ -8,6 +8,8 @@ import { controlRouter } from './spotify/control';
 import { claudeRouter } from './claude/interpreter';
 import { enhancedClaudeRouter } from './claude/enhanced-interpreter';
 
+const FileStore = require('session-file-store')(session);
+
 dotenv.config({ path: '../.env' });
 
 const app = express();
@@ -26,12 +28,18 @@ app.use(express.json());
 
 app.use(session({
   secret: process.env.SESSION_SECRET || 'spotify-claude-secret',
-  resave: true,
-  saveUninitialized: true,
+  resave: false,
+  saveUninitialized: false,
+  store: new FileStore({
+    path: '../sessions', // Store sessions in root directory
+    ttl: 86400 * 30, // 30 days
+    retries: 5,
+    reapInterval: 3600 // Clean up expired sessions every hour
+  }),
   cookie: {
     secure: false,
     httpOnly: true,
-    maxAge: 3600000, // 1 hour
+    maxAge: 86400000 * 30, // 30 days
     sameSite: 'lax',
     path: '/'
   },

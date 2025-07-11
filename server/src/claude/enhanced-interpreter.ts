@@ -211,7 +211,8 @@ enhancedClaudeRouter.post('/command', ensureValidToken, async (req, res) => {
               interpretation: {
                 confidence: interpretation.confidence,
                 modifiers: interpretation.modifiers,
-                enhancedQuery: searchQuery !== interpretation.query ? searchQuery : undefined
+                enhancedQuery: searchQuery !== interpretation.query ? searchQuery : undefined,
+                reasoning: interpretation.reasoning
               }
             };
           }
