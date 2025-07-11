@@ -8,7 +8,12 @@ function App() {
   const [authChecking, setAuthChecking] = useState(true);
   const [command, setCommand] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [commandHistory, setCommandHistory] = useState<Array<{command: string, response: string}>>([]);
+  const [commandHistory, setCommandHistory] = useState<Array<{
+    command: string;
+    response: string;
+    confidence?: number;
+    isEnhanced?: boolean;
+  }>>([]);
 
   useEffect(() => {
     checkConnection();
@@ -71,25 +76,44 @@ function App() {
 
       const data = await response.json();
       
-      // Format response with alternatives if available
+      // Format response with enhanced interpreter info
       let responseMessage = data.message || 'Command processed';
+      
+      // Add confidence and reasoning if available
+      if (data.interpretation?.confidence !== undefined) {
+        responseMessage += `\n🎯 Confidence: ${Math.round(data.interpretation.confidence * 100)}%`;
+      }
+      if (data.interpretation?.reasoning) {
+        responseMessage += `\n💭 ${data.interpretation.reasoning}`;
+      }
+      if (data.interpretation?.enhancedQuery) {
+        responseMessage += `\n🔍 Searched for: "${data.interpretation.enhancedQuery}"`;
+      }
+      
+      // Add alternatives with popularity scores
       if (data.result?.alternatives && data.result.alternatives.length > 0) {
         responseMessage += '\n\nOther options:';
         data.result.alternatives.forEach((track: any, index: number) => {
-          responseMessage += `\n${index + 1}. ${track.name} by ${track.artists.map((a: any) => a.name).join(', ')}`;
+          responseMessage += `\n${index + 1}. ${track.name} by ${track.artists}`;
+          if (track.popularity !== undefined) {
+            responseMessage += ` (popularity: ${track.popularity})`;
+          }
         });
       }
       
       setCommandHistory(prev => [...prev, { 
         command: command.trim(), 
-        response: responseMessage
+        response: responseMessage,
+        confidence: data.interpretation?.confidence,
+        isEnhanced: true
       }]);
       setCommand('');
     } catch (error) {
       console.error('Command failed:', error);
       setCommandHistory(prev => [...prev, { 
         command: command.trim(), 
-        response: 'Error processing command' 
+        response: 'Error processing command',
+        isEnhanced: false
       }]);
     } finally {
       setIsProcessing(false);
@@ -202,9 +226,18 @@ function App() {
                   <p className="text-gray-400 text-sm">Your commands will appear here...</p>
                 ) : (
                   commandHistory.slice().reverse().map((item, index) => (
-                    <div key={index} className="border-b border-zinc-800 pb-4 last:border-0">
-                      <div className="text-green-500 text-sm font-medium mb-1">
+                    <div key={index} className={`border-b border-zinc-800 pb-4 last:border-0 ${
+                      item.isEnhanced && item.confidence && item.confidence > 0.8 
+                        ? 'bg-zinc-800/30 rounded-lg p-3 mb-2' 
+                        : ''
+                    }`}>
+                      <div className="text-green-500 text-sm font-medium mb-1 flex items-center gap-2">
                         ▶ {item.command}
+                        {item.isEnhanced && (
+                          <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">
+                            Enhanced
+                          </span>
+                        )}
                       </div>
                       <div className="text-gray-400 text-sm whitespace-pre-line pl-4">
                         {item.response}
