@@ -131,9 +131,9 @@ function App() {
   if (isAuthenticated) {
     return (
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-8">
-        <div className="max-w-7xl w-full flex gap-6">
+        <div className="max-w-7xl w-full flex flex-col md:flex-row gap-6">
           {/* Left Column - Command Area */}
-          <div className="w-96">
+          <div className="w-full md:w-5/12">
             <div className="bg-zinc-900 rounded-xl shadow-xl p-8">
               <div className="mb-8 text-center">
                 <h1 className="text-3xl font-bold text-green-500 mb-2">🎵 Spotify Claude Controller</h1>
@@ -194,7 +194,7 @@ function App() {
           </div>
 
           {/* Right Column - Command History */}
-          <div className="flex-1">
+          <div className="w-full md:w-7/12">
             <div className="bg-zinc-900 rounded-xl shadow-xl p-6 h-full flex flex-col">
               <h3 className="text-xl font-semibold text-green-500 mb-4">Command History</h3>
               <div className="flex-1 overflow-y-auto space-y-4">
