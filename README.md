@@ -82,18 +82,29 @@ This will start:
 
 Type natural language commands like:
 
+**Basic Commands:**
 - "Play Shake It Off"
-- "Play that upbeat Beatles song"
-- "Queue some relaxing jazz"
 - "Skip this song"
-- "Volume up"
-- "Pause for 2 minutes"
+- "Volume to 70"
 - "What's playing?"
+
+**Smart Search (NEW!):**
+- "Play the most obscure Taylor Swift song"
+- "Play Long Live original version not Taylor's Version"
+- "Queue the least popular Beatles track"
+- "Play that song from the desert driving scene"
+
+**Mood & Vibe Queries:**
+- "Play something that sounds like rain"
+- "Queue some chill Sunday morning music"
+- "Play upbeat workout tracks"
 
 ## 🏗️ Architecture
 
 ```
-User → React UI → Express Server → Claude CLI (~10s)
+User → React UI → Express Server → Enhanced Claude Interpreter
+                                 ↓
+                    Claude's Music Knowledge + Smart Filtering
                                  ↓
                     AppleScript + Spotify Web API
                                  ↓
@@ -104,30 +115,33 @@ User → React UI → Express Server → Claude CLI (~10s)
 - **Backend**: Node.js + Express + TypeScript
 - **Auth**: Spotify OAuth 2.0 with PKCE flow
 - **Control**: AppleScript for instant control (<50ms)
-- **Search**: Spotify Web API for finding tracks
-- **AI**: Claude CLI for natural language understanding
+- **Search**: Spotify Web API with popularity-based ranking
+- **AI**: Enhanced Claude interpreter with:
+  - Deep music knowledge for obscure/rare tracks
+  - Cultural reference understanding
+  - Version disambiguation (original vs remix)
+  - Confidence scoring
 
-## 🔍 Search Tips & Troubleshooting
+## 🔍 How It Works
 
-### Getting Better Search Results
+### Enhanced Claude Interpreter
 
-**Finding obscure/rare tracks:**
-- Spotify's API tends to return popular tracks first
-- Try being explicit: "play the least popular song by [artist]"
-- Add modifiers: "play [artist] B-sides/demos/deep cuts"
-- Reference specific albums: "play bonus tracks from [album]"
+The app now uses Claude's deep music knowledge to understand complex requests:
 
-**Specifying versions:**
-- Be explicit about versions: "play [song] original version"
-- Use exclusions: "play [song] NOT remix"
-- Add year: "play [song] 2010 version"
-- Specify type: "play [song] acoustic/live/demo version"
+1. **Obscure Track Detection**: When you ask for "obscure" or "rare" songs, Claude suggests specific deep cuts and B-sides, then uses Spotify's popularity scores to verify and rank them.
 
-**Advanced search tips:**
-- Exclude unwanted results: "play [song] -live -remix"
-- Include featured artists: "play [song] featuring [artist]"
-- Be specific with titles: "play [song] extended version"
-- Combine criteria: "play rare [artist] live recordings"
+2. **Cultural References**: Claude recognizes movie/TV references and suggests the actual songs (e.g., "desert driving scene" → "Riders on the Storm").
+
+3. **Version Intelligence**: Automatically handles version requests like "original not Taylor's Version" by filtering search results.
+
+4. **Mood Understanding**: Claude translates mood descriptions into specific song suggestions.
+
+### Tips for Best Results
+
+- **Be conversational**: "Play that song from the movie where they're dancing in the diner"
+- **Use descriptive language**: "Play something melancholy for a rainy afternoon"
+- **Specify preferences**: "Play the least mainstream Radiohead song"
+- **Combine criteria**: "Play an upbeat Beatles deep cut from the 60s"
 
 ### Common Issues
 
@@ -135,15 +149,10 @@ User → React UI → Express Server → Claude CLI (~10s)
 - Make sure Spotify desktop app is open
 - The web player won't work with this controller
 
-**Wrong version playing**
-- Spotify search can be tricky with re-recordings
-- Try being more specific with exclusions
-- Check the year or album in your command
-
-**"Most popular" songs returned for "obscure" requests**
-- This is a Spotify API limitation
-- Try searching for specific albums or EPs
-- Look for "deluxe", "bonus tracks", or "B-sides"
+**Claude takes ~10 seconds to respond**
+- This is normal - Claude CLI processes natural language deeply
+- Basic commands (play/pause) are instant via AppleScript
+- Complex searches require Claude's analysis time
 
 **Authentication Issues**
 - Clear your browser cookies

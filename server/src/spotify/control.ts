@@ -131,6 +131,25 @@ export class SpotifyControl {
       return { success: false, message: `Queue failed: ${error.message}` };
     }
   }
+
+  async search(query: string) {
+    if (!this.webAPI) {
+      throw new Error('Not authenticated with Spotify Web API');
+    }
+    return this.webAPI.search(query);
+  }
+
+  async playTrack(uri: string) {
+    return this.appleScript.playTrack(uri);
+  }
+
+  async queueTrackByUri(uri: string) {
+    if (!this.webAPI) {
+      throw new Error('Not authenticated with Spotify Web API');
+    }
+    await this.webAPI.addToQueue(uri);
+    return { success: true };
+  }
 }
 
 // Middleware to check authentication

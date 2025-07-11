@@ -24,6 +24,7 @@ export interface SpotifyTrack {
   };
   duration_ms: number;
   uri: string;
+  popularity?: number;
 }
 
 export interface CurrentPlayback {

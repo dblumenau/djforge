@@ -6,6 +6,7 @@ import axios from 'axios';
 import { authRouter } from './spotify/auth';
 import { controlRouter } from './spotify/control';
 import { claudeRouter } from './claude/interpreter';
+import { enhancedClaudeRouter } from './claude/enhanced-interpreter';
 
 dotenv.config({ path: '../.env' });
 
@@ -40,7 +41,11 @@ app.use(session({
 // Routes
 app.use('/api/auth', authRouter);
 app.use('/api/control', controlRouter);
-app.use('/api/claude', claudeRouter);
+
+// Use enhanced interpreter by default
+app.use('/api/claude', enhancedClaudeRouter);
+// Keep original interpreter available at /api/claude-basic
+app.use('/api/claude-basic', claudeRouter);
 
 // Handle callback at root level (Spotify redirects here)
 app.get('/callback', async (req, res) => {
