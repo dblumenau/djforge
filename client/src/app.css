@@ -1,0 +1,9 @@
+@import "tailwindcss";
+
+/* Define custom theme variables for Tailwind v4 */
+@theme {
+  --color-spotify-green: #1db954;
+  --color-spotify-black: #191414;
+  --color-spotify-darkgray: #121212;
+  --color-spotify-lightgray: #b3b3b3;
+}

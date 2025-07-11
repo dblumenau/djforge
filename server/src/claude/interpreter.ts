@@ -20,7 +20,15 @@ claudeRouter.post('/command', ensureValidToken, async (req, res) => {
 
   try {
     // Use Claude CLI to interpret the command
-    const prompt = `You are a Spotify command interpreter. Analyze this command and return ONLY a JSON object with the intent and parameters. 
+    const prompt = `You are a Spotify command interpreter. Analyze this command and return ONLY a JSON object with the intent and parameters.
+    
+    IMPORTANT: Create search queries that match the user's EXACT intent:
+    - If they want "obscure" or "rare" tracks, add search terms like "deep cuts", "B-side", or sort by least popular
+    - If they specify versions (original, remix, acoustic, live), include those exact terms
+    - When they want to EXCLUDE something, use minus sign: "song name -unwanted term"
+    - Preserve modifiers: demo, alternate, extended, radio edit, explicit, clean
+    - Keep the artist and song names exactly as specified
+    
     Possible intents: play, pause, skip, previous, volume, search_and_play, get_current_track, queue_add
     For search_and_play or queue_add, include a "query" parameter.
     For volume, include a "value" parameter (0-100).
