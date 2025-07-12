@@ -49,6 +49,7 @@ const SpotifyPlayer: React.FC<SpotifyPlayerProps> = ({ token, onDeviceReady, onP
     isPlaying: false,
     timerId: null
   });
+  const lastTrackIdRef = useRef<string | null>(null);
 
   // Position tracking functions - Rate-limit safe!
   const startPositionTimer = () => {
@@ -197,6 +198,27 @@ const SpotifyPlayer: React.FC<SpotifyPlayerProps> = ({ token, onDeviceReady, onP
       }
 
       const currentTrack = state.track_window.current_track;
+      const currentTrackId = currentTrack?.id;
+      const lastTrackId = lastTrackIdRef.current;
+      
+      // Check if this is a new track
+      const isNewTrack = currentTrackId && currentTrackId !== lastTrackId;
+      
+      // Update the last track ID
+      if (currentTrackId) {
+        lastTrackIdRef.current = currentTrackId;
+      }
+      
+      // Auto-resume playback for new tracks (if paused and it's a new track)
+      if (isNewTrack && state.paused && currentTrack) {
+        console.log('New track detected, auto-resuming playback:', currentTrack.name);
+        // Small delay to ensure the track is fully loaded
+        setTimeout(() => {
+          spotifyPlayer.resume().catch((error) => {
+            console.log('Auto-resume failed (this is normal on first load):', error);
+          });
+        }, 100);
+      }
       
       // Sync position tracker with SDK event (rate-limit free!)
       syncPosition(state.position, state.timestamp || Date.now(), state.paused);

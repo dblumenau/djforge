@@ -153,6 +153,39 @@ export class SpotifyControl {
     return this.webAPI.playTrack(uri);
   }
 
+  async playPlaylist(uri: string) {
+    try {
+      await this.webAPI.playPlaylist(uri);
+      return { success: true, message: 'Playing playlist' };
+    } catch (error: any) {
+      return { success: false, message: error.message };
+    }
+  }
+
+  async searchAndPlayPlaylist(query: string) {
+    try {
+      // Search for playlists
+      const playlists = await this.webAPI.search(query, ['playlist']);
+      
+      if (playlists.length === 0) {
+        return { success: false, message: `No playlists found for: "${query}"` };
+      }
+
+      // Play the first result
+      const playlist = playlists[0];
+      await this.webAPI.playPlaylist(playlist.uri);
+      
+      return { 
+        success: true, 
+        message: `Playing playlist: ${playlist.name}`,
+        playlist,
+        alternatives: playlists.slice(1, 3) // Return other options
+      };
+    } catch (error: any) {
+      return { success: false, message: `Playlist search failed: ${error.message}` };
+    }
+  }
+
   async queueTrackByUri(uri: string) {
     await this.webAPI.addToQueue(uri);
     return { success: true };

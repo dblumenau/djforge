@@ -84,7 +84,7 @@ function normalizeResponse(raw: any): any {
 async function interpretCommand(command: string, retryCount = 0): Promise<any> {
   const prompt = `You are a music command interpreter for Spotify. 
 Analyze this command and respond with JSON containing whatever fields make sense:
-- intent (play, pause, skip, search_and_play, set_volume, get_current_track, set_shuffle, set_repeat, get_devices, search, queue_add, get_recommendations, get_playlists, get_playlist_tracks, get_recently_played, transfer_playback, seek, etc.)
+- intent (play, pause, skip, search_and_play, set_volume, get_current_track, set_shuffle, set_repeat, get_devices, search, queue_add, get_recommendations, get_playlists, get_playlist_tracks, play_playlist, get_recently_played, transfer_playback, seek, etc.)
 - artist (if mentioned)
 - track (if mentioned)  
 - query (search query)
@@ -115,6 +115,8 @@ Be smart about understanding vague requests. Examples:
 - "search for jazz" → intent: "search", query: "jazz"
 - "add this to queue" → intent: "queue_add", query: "..."
 - "show my playlists" → intent: "get_playlists"
+- "play my chill playlist" → intent: "play_playlist", query: "chill"
+- "play playlist discover weekly" → intent: "play_playlist", query: "discover weekly"
 - "what did I play recently" → intent: "get_recently_played"
 - "seek to 30 seconds" → intent: "seek", position: 30
 
@@ -396,6 +398,19 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
         result = { success: false, message: "I need a playlist ID to get tracks" };
       } else {
         result = await spotifyControl.getPlaylistTracks(playlistId);
+      }
+    } else if (intent === 'play_playlist' || intent?.includes('play_playlist')) {
+      const playlistUri = interpretation.playlist_uri || interpretation.playlistUri;
+      const searchQuery = interpretation.query || interpretation.search_query;
+      
+      if (playlistUri) {
+        // Play playlist by URI
+        result = await spotifyControl.playPlaylist(playlistUri);
+      } else if (searchQuery) {
+        // Search for playlist and play it
+        result = await spotifyControl.searchAndPlayPlaylist(searchQuery);
+      } else {
+        result = { success: false, message: "I need a playlist name or URI to play" };
       }
     } else if (intent === 'get_recently_played' || intent?.includes('recently') || intent?.includes('history')) {
       result = await spotifyControl.getRecentlyPlayed();

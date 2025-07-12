@@ -42,9 +42,11 @@ export const OPENROUTER_MODELS = {
   // Anthropic Claude Models
   CLAUDE_OPUS_4: 'anthropic/claude-opus-4',
   CLAUDE_SONNET_4: 'anthropic/claude-sonnet-4',
+  CLAUDE_HAIKU_4: 'anthropic/claude-4-haiku',
 
   // OpenAI Models
   O3_PRO: 'openai/o3-pro',
+  GPT_4O: 'openai/o4-mini',
   CODEX_MINI: 'openai/codex-mini',
   
   // Google Gemini Models

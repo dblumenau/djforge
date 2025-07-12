@@ -299,10 +299,10 @@ function App() {
           )}
           
           {/* Main Content - Two Columns */}
-          <div className="flex flex-col md:flex-row gap-6">
+          <div className="flex flex-col md:flex-row gap-6" style={{ height: 'calc(100vh - 250px)' }}>
             {/* Left Column - Command Area */}
             <div className="w-full md:w-5/12">
-              <div className="bg-zinc-900 rounded-xl shadow-xl p-8">
+              <div className="bg-zinc-900 rounded-xl shadow-xl p-8 h-full">
                 <div className="mb-8 text-center">
                   <h1 className="text-3xl font-bold text-green-500 mb-2">🎵 Spotify Claude Controller</h1>
                   <p className="text-gray-400">Control your music with natural language</p>
@@ -370,7 +370,7 @@ function App() {
 
             {/* Right Column - Command History */}
             <div className="w-full md:w-7/12">
-              <div className="bg-zinc-900 rounded-xl shadow-xl p-6 flex flex-col" style={{ height: 'calc(100vh - 350px)' }}>
+              <div className="bg-zinc-900 rounded-xl shadow-xl p-6 flex flex-col h-full">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xl font-semibold text-green-500">Command History</h3>
                 {commandHistory.length > 0 && (

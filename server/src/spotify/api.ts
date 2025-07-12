@@ -262,6 +262,22 @@ export class SpotifyWebAPI {
     }
   }
 
+  async playPlaylist(uri: string, deviceId?: string): Promise<void> {
+    const device = deviceId || await this.ensureDeviceId();
+    try {
+      await this.api.put('/me/player/play', {
+        context_uri: uri
+      }, {
+        params: { device_id: device }
+      });
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        throw new Error('No active device found. Please open Spotify on a device.');
+      }
+      throw error;
+    }
+  }
+
   async transferPlayback(deviceId: string, play: boolean = true): Promise<void> {
     await this.api.put('/me/player', {
       device_ids: [deviceId],
