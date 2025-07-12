@@ -66,7 +66,7 @@ export class SpotifyWebAPI {
     );
   }
 
-  async search(query: string, types: string[] = ['track']): Promise<SpotifyTrack[]> {
+  async search(query: string, types: string[] = ['track']): Promise<any[]> {
     const response = await this.api.get('/search', {
       params: {
         q: query,
@@ -75,7 +75,21 @@ export class SpotifyWebAPI {
       }
     });
 
-    return response.data.tracks?.items || [];
+    // Return the appropriate items based on search type
+    if (types.includes('playlist')) {
+      const playlists = response.data.playlists?.items || [];
+      console.log(`[DEBUG] Spotify API returned ${playlists.length} playlists`);
+      if (playlists.length > 0) {
+        console.log(`[DEBUG] First playlist structure:`, JSON.stringify(playlists[0], null, 2));
+      }
+      return playlists;
+    } else if (types.includes('album')) {
+      return response.data.albums?.items || [];
+    } else if (types.includes('artist')) {
+      return response.data.artists?.items || [];
+    } else {
+      return response.data.tracks?.items || [];
+    }
   }
 
   async getRecommendations(trackId: string): Promise<SpotifyTrack[]> {

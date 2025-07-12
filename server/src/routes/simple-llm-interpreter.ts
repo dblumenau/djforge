@@ -100,10 +100,22 @@ Analyze this command and respond with JSON containing whatever fields make sense
 - confidence (0-1)
 - reasoning (brief explanation)
 
-Be smart about understanding vague requests. Examples:
-- "play something mellow" → suggest specific mellow songs
-- "that song about friendship bracelets" → identify the actual song
-- "most obscure Taylor Swift" → suggest deep cuts
+Be smart about understanding vague requests. IMPORTANT: Distinguish between track vs playlist commands:
+
+TRACK COMMANDS (intent: "search_and_play"):
+- "play Bohemian Rhapsody" → intent: "search_and_play", query: "Bohemian Rhapsody"
+- "play Taylor Swift Anti-Hero" → intent: "search_and_play", query: "Taylor Swift Anti-Hero"
+- "play something mellow" → intent: "search_and_play", query: "mellow"
+- "play that song about friendship bracelets" → intent: "search_and_play", query: "friendship bracelets"
+- "play most obscure Taylor Swift" → intent: "search_and_play", query: "Taylor Swift obscure"
+
+PLAYLIST COMMANDS (intent: "play_playlist"):
+- "play my chill playlist" → intent: "play_playlist", query: "chill"
+- "play playlist discover weekly" → intent: "play_playlist", query: "discover weekly"
+- "play study music playlist" → intent: "play_playlist", query: "study music"
+- "play a random playlist" → intent: "play_playlist", query: "random"
+
+OTHER COMMANDS:
 - "volume to 100" → intent: "set_volume", volume_level: 100
 - "turn volume to full" → intent: "set_volume", volume_level: 100
 - "whats playing" → intent: "get_current_track"
@@ -115,8 +127,6 @@ Be smart about understanding vague requests. Examples:
 - "search for jazz" → intent: "search", query: "jazz"
 - "add this to queue" → intent: "queue_add", query: "..."
 - "show my playlists" → intent: "get_playlists"
-- "play my chill playlist" → intent: "play_playlist", query: "chill"
-- "play playlist discover weekly" → intent: "play_playlist", query: "discover weekly"
 - "what did I play recently" → intent: "get_recently_played"
 - "seek to 30 seconds" → intent: "seek", position: 30
 
@@ -130,7 +140,7 @@ Command: "${command}"`;
     
     const responsePromise = llmOrchestrator.complete({
       messages: [
-        { role: 'system', content: 'Respond with valid JSON. Be helpful and specific. Include confidence scores.' },
+        { role: 'system', content: 'Respond with valid JSON. Be helpful and specific. Include confidence scores. CRITICAL: Use "search_and_play" for individual songs/tracks, and "play_playlist" only when the word "playlist" is mentioned or when clearly referring to a collection of songs (like "my chill music" vs "chill songs").' },
         { role: 'user', content: prompt }
       ],
       model: OPENROUTER_MODELS.CLAUDE_SONNET_4,
@@ -270,7 +280,7 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
     // Handle different intents flexibly
     const intent = interpretation.intent || interpretation.action;
     
-    if (intent?.includes('play') || intent?.includes('search')) {
+    if ((intent?.includes('play') || intent?.includes('search')) && intent !== 'play_playlist') {
       const searchQuery = buildSearchQuery(interpretation);
       
       if (!searchQuery) {
@@ -403,13 +413,18 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
       const playlistUri = interpretation.playlist_uri || interpretation.playlistUri;
       const searchQuery = interpretation.query || interpretation.search_query;
       
+      console.log(`[DEBUG] play_playlist intent detected. URI: ${playlistUri}, Query: ${searchQuery}`);
+      
       if (playlistUri) {
         // Play playlist by URI
+        console.log(`[DEBUG] Playing playlist by URI: ${playlistUri}`);
         result = await spotifyControl.playPlaylist(playlistUri);
       } else if (searchQuery) {
         // Search for playlist and play it
+        console.log(`[DEBUG] Searching for playlist: ${searchQuery}`);
         result = await spotifyControl.searchAndPlayPlaylist(searchQuery);
       } else {
+        console.log(`[DEBUG] No playlist URI or query provided`);
         result = { success: false, message: "I need a playlist name or URI to play" };
       }
     } else if (intent === 'get_recently_played' || intent?.includes('recently') || intent?.includes('history')) {
@@ -439,10 +454,12 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
     res.json({
       ...result,
       interpretation: {
+        command: command,
         intent: interpretation.intent,
         confidence: interpretation.confidence,
         searchQuery: buildSearchQuery(interpretation),
-        ...(interpretation.reasoning && { reasoning: interpretation.reasoning })
+        ...(interpretation.reasoning && { reasoning: interpretation.reasoning }),
+        model: 'unknown' // Add model info
       },
       timestamp: new Date().toISOString()
     });
