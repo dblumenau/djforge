@@ -1,27 +1,32 @@
 import { Router } from 'express';
-import { AppleScriptController } from './applescript';
 import { SpotifyWebAPI } from './api';
 import { SpotifyAuthTokens } from '../types';
 
 export const controlRouter = Router();
 
-const appleScript = new AppleScriptController();
+// Helper to get WebAPI instance from session
+const getWebAPI = (req: any): SpotifyWebAPI => {
+  if (!req.session.spotifyTokens) {
+    throw new Error('Not authenticated with Spotify');
+  }
+  
+  return new SpotifyWebAPI(
+    req.session.spotifyTokens,
+    (tokens) => { req.session.spotifyTokens = tokens; }
+  );
+};
 
 // SpotifyControl class for use by interpreter
 export class SpotifyControl {
-  private appleScript: AppleScriptController;
-  private webAPI?: SpotifyWebAPI;
+  private webAPI: SpotifyWebAPI;
 
-  constructor(tokens?: SpotifyAuthTokens) {
-    this.appleScript = new AppleScriptController();
-    if (tokens) {
-      this.webAPI = new SpotifyWebAPI(tokens, () => {});
-    }
+  constructor(tokens: SpotifyAuthTokens, onTokenRefresh: (tokens: SpotifyAuthTokens) => void) {
+    this.webAPI = new SpotifyWebAPI(tokens, onTokenRefresh);
   }
 
   async play() {
     try {
-      await this.appleScript.play();
+      await this.webAPI.play();
       return { success: true, message: 'Playing' };
     } catch (error: any) {
       return { success: false, message: error.message };
@@ -30,7 +35,7 @@ export class SpotifyControl {
 
   async pause() {
     try {
-      await this.appleScript.pause();
+      await this.webAPI.pause();
       return { success: true, message: 'Paused' };
     } catch (error: any) {
       return { success: false, message: error.message };
@@ -39,7 +44,7 @@ export class SpotifyControl {
 
   async skip() {
     try {
-      await this.appleScript.nextTrack();
+      await this.webAPI.nextTrack();
       return { success: true, message: 'Skipped to next track' };
     } catch (error: any) {
       return { success: false, message: error.message };
@@ -48,7 +53,7 @@ export class SpotifyControl {
 
   async previous() {
     try {
-      await this.appleScript.previousTrack();
+      await this.webAPI.previousTrack();
       return { success: true, message: 'Went to previous track' };
     } catch (error: any) {
       return { success: false, message: error.message };
@@ -57,7 +62,7 @@ export class SpotifyControl {
 
   async setVolume(level: number) {
     try {
-      await this.appleScript.setVolume(level);
+      await this.webAPI.setVolume(level);
       return { success: true, message: `Volume set to ${level}` };
     } catch (error: any) {
       return { success: false, message: error.message };
@@ -66,11 +71,27 @@ export class SpotifyControl {
 
   async getCurrentTrack() {
     try {
-      const track = await this.appleScript.getCurrentTrack();
+      const playback = await this.webAPI.getCurrentPlayback();
+      if (!playback || !playback.item) {
+        return { 
+          success: true, 
+          message: 'No track playing',
+          track: null 
+        };
+      }
+      
+      const track = playback.item;
       return { 
         success: true, 
-        message: track ? `Now playing: ${track.name} by ${track.artist}` : 'No track playing',
-        track 
+        message: `Now playing: ${track.name} by ${track.artists.map((a: any) => a.name).join(', ')}`,
+        track: {
+          name: track.name,
+          artist: track.artists.map((a: any) => a.name).join(', '),
+          album: track.album.name,
+          duration: Math.floor(track.duration_ms / 1000),
+          position: Math.floor(playback.progress_ms / 1000),
+          id: track.id
+        }
       };
     } catch (error: any) {
       return { success: false, message: error.message };
@@ -78,10 +99,6 @@ export class SpotifyControl {
   }
 
   async searchAndPlay(query: string) {
-    if (!this.webAPI) {
-      return { success: false, message: 'Not authenticated with Spotify Web API' };
-    }
-
     try {
       // Search for tracks
       const tracks = await this.webAPI.search(query);
@@ -92,7 +109,7 @@ export class SpotifyControl {
 
       // Play the first result
       const track = tracks[0];
-      await this.appleScript.playTrack(track.uri);
+      await this.webAPI.playTrack(track.uri);
       
       return { 
         success: true, 
@@ -106,10 +123,6 @@ export class SpotifyControl {
   }
 
   async queueTrack(query: string) {
-    if (!this.webAPI) {
-      return { success: false, message: 'Not authenticated with Spotify Web API' };
-    }
-
     try {
       // Search for tracks
       const tracks = await this.webAPI.search(query);
@@ -133,22 +146,125 @@ export class SpotifyControl {
   }
 
   async search(query: string) {
-    if (!this.webAPI) {
-      throw new Error('Not authenticated with Spotify Web API');
-    }
     return this.webAPI.search(query);
   }
 
   async playTrack(uri: string) {
-    return this.appleScript.playTrack(uri);
+    return this.webAPI.playTrack(uri);
   }
 
   async queueTrackByUri(uri: string) {
-    if (!this.webAPI) {
-      throw new Error('Not authenticated with Spotify Web API');
-    }
     await this.webAPI.addToQueue(uri);
     return { success: true };
+  }
+
+  async setShuffle(enabled: boolean) {
+    try {
+      await this.webAPI.setShuffle(enabled);
+      return { success: true, message: `Shuffle ${enabled ? 'enabled' : 'disabled'}` };
+    } catch (error: any) {
+      return { success: false, message: error.message };
+    }
+  }
+
+  async setRepeat(enabled: boolean) {
+    try {
+      await this.webAPI.setRepeat(enabled ? 'context' : 'off');
+      return { success: true, message: `Repeat ${enabled ? 'enabled' : 'disabled'}` };
+    } catch (error: any) {
+      return { success: false, message: error.message };
+    }
+  }
+
+  async getDevices() {
+    try {
+      const devices = await this.webAPI.getDevices();
+      return { success: true, devices };
+    } catch (error: any) {
+      return { success: false, message: error.message };
+    }
+  }
+
+  async getRecommendations(trackId: string) {
+    try {
+      const tracks = await this.webAPI.getRecommendations(trackId);
+      return { 
+        success: true, 
+        message: `Found ${tracks.length} recommendations`,
+        tracks: tracks.slice(0, 10).map(t => ({
+          name: t.name,
+          artists: t.artists.map(a => a.name).join(', '),
+          album: t.album.name,
+          popularity: t.popularity,
+          uri: t.uri
+        }))
+      };
+    } catch (error: any) {
+      return { success: false, message: error.message };
+    }
+  }
+
+  async getPlaylists() {
+    try {
+      const playlists = await this.webAPI.getPlaylists();
+      return { success: true, playlists };
+    } catch (error: any) {
+      return { success: false, message: error.message };
+    }
+  }
+
+  async getPlaylistTracks(playlistId: string) {
+    try {
+      const tracks = await this.webAPI.getPlaylistTracks(playlistId);
+      return { 
+        success: true, 
+        message: `Found ${tracks.length} tracks in playlist`,
+        tracks: tracks.slice(0, 20).map(t => ({
+          name: t.name,
+          artists: t.artists.map(a => a.name).join(', '),
+          album: t.album.name,
+          uri: t.uri
+        }))
+      };
+    } catch (error: any) {
+      return { success: false, message: error.message };
+    }
+  }
+
+  async getRecentlyPlayed() {
+    try {
+      const tracks = await this.webAPI.getRecentlyPlayed();
+      return { 
+        success: true, 
+        message: `Found ${tracks.length} recently played tracks`,
+        tracks: tracks.slice(0, 20).map(t => ({
+          name: t.name,
+          artists: t.artists.map(a => a.name).join(', '),
+          album: t.album.name,
+          uri: t.uri
+        }))
+      };
+    } catch (error: any) {
+      return { success: false, message: error.message };
+    }
+  }
+
+  async transferPlayback(deviceId: string, play: boolean = true) {
+    try {
+      await this.webAPI.transferPlayback(deviceId, play);
+      return { success: true, message: `Playback transferred to device` };
+    } catch (error: any) {
+      return { success: false, message: error.message };
+    }
+  }
+
+  async seekToPosition(positionSeconds: number) {
+    try {
+      await this.webAPI.seekToPosition(positionSeconds * 1000); // Convert to milliseconds
+      return { success: true, message: `Seeked to ${positionSeconds} seconds` };
+    } catch (error: any) {
+      return { success: false, message: error.message };
+    }
   }
 }
 
@@ -160,37 +276,41 @@ const requireAuth = (req: any, res: any, next: any) => {
   next();
 };
 
-// Basic playback controls using AppleScript
-controlRouter.post('/play', async (req, res) => {
+// Basic playback controls using Web API
+controlRouter.post('/play', requireAuth, async (req, res) => {
   try {
-    await appleScript.play();
+    const webAPI = getWebAPI(req);
+    await webAPI.play(req.body.deviceId);
     res.json({ success: true });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 });
 
-controlRouter.post('/pause', async (req, res) => {
+controlRouter.post('/pause', requireAuth, async (req, res) => {
   try {
-    await appleScript.pause();
+    const webAPI = getWebAPI(req);
+    await webAPI.pause();
     res.json({ success: true });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 });
 
-controlRouter.post('/next', async (req, res) => {
+controlRouter.post('/next', requireAuth, async (req, res) => {
   try {
-    await appleScript.nextTrack();
+    const webAPI = getWebAPI(req);
+    await webAPI.nextTrack();
     res.json({ success: true });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 });
 
-controlRouter.post('/previous', async (req, res) => {
+controlRouter.post('/previous', requireAuth, async (req, res) => {
   try {
-    await appleScript.previousTrack();
+    const webAPI = getWebAPI(req);
+    await webAPI.previousTrack();
     res.json({ success: true });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -198,24 +318,26 @@ controlRouter.post('/previous', async (req, res) => {
 });
 
 // Volume control
-controlRouter.post('/volume', async (req, res) => {
-  const { volume } = req.body;
+controlRouter.post('/volume', requireAuth, async (req, res) => {
+  const { volume, deviceId } = req.body;
   
   if (typeof volume !== 'number' || volume < 0 || volume > 100) {
     return res.status(400).json({ error: 'Volume must be between 0 and 100' });
   }
   
   try {
-    await appleScript.setVolume(volume);
+    const webAPI = getWebAPI(req);
+    await webAPI.setVolume(volume, deviceId);
     res.json({ success: true, volume });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 });
 
-controlRouter.get('/volume', async (req, res) => {
+controlRouter.get('/volume', requireAuth, async (req, res) => {
   try {
-    const volume = await appleScript.getVolume();
+    const webAPI = getWebAPI(req);
+    const volume = await webAPI.getVolume();
     res.json({ volume });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -223,18 +345,33 @@ controlRouter.get('/volume', async (req, res) => {
 });
 
 // Get current playback state
-controlRouter.get('/current', async (req, res) => {
+controlRouter.get('/current', requireAuth, async (req, res) => {
   try {
-    const [track, state, isRunning] = await Promise.all([
-      appleScript.getCurrentTrack(),
-      appleScript.getPlayerState(),
-      appleScript.isSpotifyRunning()
-    ]);
+    const webAPI = getWebAPI(req);
+    const playback = await webAPI.getCurrentPlayback();
+    
+    if (!playback) {
+      return res.json({
+        isRunning: false,
+        state: 'stopped',
+        track: null
+      });
+    }
     
     res.json({
-      isRunning,
-      state,
-      track
+      isRunning: true,
+      state: playback.is_playing ? 'playing' : 'paused',
+      track: playback.item ? {
+        name: playback.item.name,
+        artist: playback.item.artists.map((a: any) => a.name).join(', '),
+        album: playback.item.album.name,
+        duration: Math.floor(playback.item.duration_ms / 1000),
+        position: Math.floor(playback.progress_ms / 1000),
+        id: playback.item.id
+      } : null,
+      device: playback.device,
+      shuffleState: playback.shuffle_state,
+      repeatState: playback.repeat_state
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -242,38 +379,55 @@ controlRouter.get('/current', async (req, res) => {
 });
 
 // Shuffle and repeat controls
-controlRouter.post('/shuffle', async (req, res) => {
+controlRouter.post('/shuffle', requireAuth, async (req, res) => {
   const { enabled } = req.body;
   
   try {
-    await appleScript.setShuffling(enabled);
+    const webAPI = getWebAPI(req);
+    await webAPI.setShuffle(enabled);
     res.json({ success: true, shuffling: enabled });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 });
 
-controlRouter.post('/repeat', async (req, res) => {
-  const { enabled } = req.body;
+controlRouter.post('/repeat', requireAuth, async (req, res) => {
+  const { enabled, mode } = req.body;
   
   try {
-    await appleScript.setRepeating(enabled);
-    res.json({ success: true, repeating: enabled });
+    const webAPI = getWebAPI(req);
+    // If mode is provided, use it directly. Otherwise, use boolean for backward compatibility
+    const repeatMode = mode || (enabled ? 'context' : 'off');
+    await webAPI.setRepeat(repeatMode);
+    res.json({ success: true, repeating: repeatMode });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Launch Spotify if not running
-controlRouter.post('/launch', async (req, res) => {
+// Get available devices
+controlRouter.get('/devices', requireAuth, async (req, res) => {
   try {
-    const isRunning = await appleScript.isSpotifyRunning();
-    if (!isRunning) {
-      await appleScript.launchSpotify();
-      res.json({ success: true, message: 'Spotify launched' });
-    } else {
-      res.json({ success: true, message: 'Spotify already running' });
-    }
+    const webAPI = getWebAPI(req);
+    const devices = await webAPI.getDevices();
+    res.json({ devices });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Transfer playback to a specific device
+controlRouter.post('/transfer', requireAuth, async (req, res) => {
+  const { deviceId, play } = req.body;
+  
+  if (!deviceId) {
+    return res.status(400).json({ error: 'Device ID required' });
+  }
+  
+  try {
+    const webAPI = getWebAPI(req);
+    await webAPI.transferPlayback(deviceId, play);
+    res.json({ success: true, message: 'Playback transferred' });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -281,14 +435,15 @@ controlRouter.post('/launch', async (req, res) => {
 
 // Play specific track (requires Web API search first)
 controlRouter.post('/play-uri', requireAuth, async (req, res) => {
-  const { uri } = req.body;
+  const { uri, deviceId } = req.body;
   
   if (!uri || typeof uri !== 'string') {
     return res.status(400).json({ error: 'Spotify URI required' });
   }
   
   try {
-    await appleScript.playTrack(uri);
+    const webAPI = getWebAPI(req);
+    await webAPI.playTrack(uri, deviceId);
     res.json({ success: true });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -304,17 +459,43 @@ controlRouter.get('/search', requireAuth, async (req, res) => {
   }
   
   try {
-    if (!req.session.spotifyTokens) {
-      return res.status(401).json({ error: 'Not authenticated' });
-    }
-    
-    const webAPI = new SpotifyWebAPI(
-      req.session.spotifyTokens,
-      (tokens) => { req.session.spotifyTokens = tokens; }
-    );
-    
+    const webAPI = getWebAPI(req);
     const tracks = await webAPI.search(q);
     res.json({ tracks });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Queue a track
+controlRouter.post('/queue', requireAuth, async (req, res) => {
+  const { uri } = req.body;
+  
+  if (!uri || typeof uri !== 'string') {
+    return res.status(400).json({ error: 'Spotify URI required' });
+  }
+  
+  try {
+    const webAPI = getWebAPI(req);
+    await webAPI.addToQueue(uri);
+    res.json({ success: true, message: 'Track added to queue' });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Seek to position
+controlRouter.post('/seek', requireAuth, async (req, res) => {
+  const { position } = req.body;
+  
+  if (typeof position !== 'number' || position < 0) {
+    return res.status(400).json({ error: 'Position must be a positive number (in seconds)' });
+  }
+  
+  try {
+    const webAPI = getWebAPI(req);
+    await webAPI.seekToPosition(position * 1000); // Convert to milliseconds
+    res.json({ success: true });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

@@ -2,10 +2,33 @@ import axios, { AxiosInstance } from 'axios';
 import { SpotifyAuthTokens, SpotifyTrack } from '../types';
 import { refreshAccessToken } from './auth';
 
+export interface SpotifyDevice {
+  id: string;
+  is_active: boolean;
+  is_private_session: boolean;
+  is_restricted: boolean;
+  name: string;
+  type: string;
+  volume_percent: number;
+}
+
+export interface PlaybackState {
+  device: SpotifyDevice;
+  shuffle_state: boolean;
+  repeat_state: 'off' | 'track' | 'context';
+  timestamp: number;
+  context: any;
+  progress_ms: number;
+  item: SpotifyTrack | null;
+  currently_playing_type: string;
+  is_playing: boolean;
+}
+
 export class SpotifyWebAPI {
   private api: AxiosInstance;
   private tokens: SpotifyAuthTokens;
   private onTokenRefresh: (tokens: SpotifyAuthTokens) => void;
+  private deviceId?: string;
 
   constructor(
     tokens: SpotifyAuthTokens,
@@ -66,10 +89,6 @@ export class SpotifyWebAPI {
     return response.data.tracks || [];
   }
 
-  async getCurrentPlayback() {
-    const response = await this.api.get('/me/player');
-    return response.data;
-  }
 
   async getDevices() {
     const response = await this.api.get('/me/player/devices');
@@ -101,5 +120,166 @@ export class SpotifyWebAPI {
       params: { limit: 50 }
     });
     return response.data.items || [];
+  }
+
+  // Playback control methods to replace AppleScript
+  async ensureDeviceId(): Promise<string> {
+    if (this.deviceId) return this.deviceId;
+    
+    const devices = await this.getDevices();
+    if (devices.length === 0) {
+      throw new Error('No active Spotify devices found. Please open Spotify on a device.');
+    }
+    
+    // Prefer active device, otherwise use first available
+    const activeDevice = devices.find((d: SpotifyDevice) => d.is_active);
+    const selectedDeviceId = activeDevice ? activeDevice.id : devices[0].id;
+    this.deviceId = selectedDeviceId;
+    
+    return selectedDeviceId;
+  }
+
+  async play(deviceId?: string): Promise<void> {
+    const device = deviceId || await this.ensureDeviceId();
+    try {
+      await this.api.put('/me/player/play', {}, {
+        params: { device_id: device }
+      });
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        throw new Error('No active device found. Please open Spotify on a device.');
+      }
+      throw error;
+    }
+  }
+
+  async pause(): Promise<void> {
+    try {
+      await this.api.put('/me/player/pause');
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        throw new Error('No active device found.');
+      }
+      throw error;
+    }
+  }
+
+  async nextTrack(): Promise<void> {
+    try {
+      await this.api.post('/me/player/next');
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        throw new Error('No active device found.');
+      }
+      throw error;
+    }
+  }
+
+  async previousTrack(): Promise<void> {
+    try {
+      await this.api.post('/me/player/previous');
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        throw new Error('No active device found.');
+      }
+      throw error;
+    }
+  }
+
+  async setVolume(volumePercent: number, deviceId?: string): Promise<void> {
+    const volume = Math.max(0, Math.min(100, Math.round(volumePercent)));
+    try {
+      await this.api.put('/me/player/volume', null, {
+        params: { 
+          volume_percent: volume,
+          device_id: deviceId
+        }
+      });
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        throw new Error('No active device found.');
+      }
+      throw error;
+    }
+  }
+
+  async getCurrentPlayback(): Promise<PlaybackState | null> {
+    try {
+      const response = await this.api.get('/me/player');
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.status === 204) {
+        return null; // No playback
+      }
+      throw error;
+    }
+  }
+
+  async getVolume(): Promise<number> {
+    const playback = await this.getCurrentPlayback();
+    return playback?.device?.volume_percent || 0;
+  }
+
+  async setShuffle(state: boolean): Promise<void> {
+    try {
+      await this.api.put('/me/player/shuffle', null, {
+        params: { state }
+      });
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        throw new Error('No active device found.');
+      }
+      throw error;
+    }
+  }
+
+  async setRepeat(state: 'off' | 'track' | 'context'): Promise<void> {
+    try {
+      await this.api.put('/me/player/repeat', null, {
+        params: { state }
+      });
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        throw new Error('No active device found.');
+      }
+      throw error;
+    }
+  }
+
+  async playTrack(uri: string, deviceId?: string): Promise<void> {
+    const device = deviceId || await this.ensureDeviceId();
+    try {
+      await this.api.put('/me/player/play', {
+        uris: [uri]
+      }, {
+        params: { device_id: device }
+      });
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        throw new Error('No active device found. Please open Spotify on a device.');
+      }
+      throw error;
+    }
+  }
+
+  async transferPlayback(deviceId: string, play: boolean = true): Promise<void> {
+    await this.api.put('/me/player', {
+      device_ids: [deviceId],
+      play
+    });
+    this.deviceId = deviceId;
+  }
+
+  async seekToPosition(positionMs: number): Promise<void> {
+    try {
+      await this.api.put('/me/player/seek', null, {
+        params: { position_ms: positionMs }
+      });
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        throw new Error('No active device found.');
+      }
+      throw error;
+    }
   }
 }

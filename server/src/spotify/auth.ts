@@ -22,6 +22,9 @@ function generateCodeChallenge(verifier: string): string {
 
 // Spotify scopes we need
 const SCOPES = [
+  'streaming',
+  'user-read-email',
+  'user-read-private',
   'user-read-playback-state',
   'user-modify-playback-state',
   'user-read-currently-playing',
@@ -145,7 +148,8 @@ authRouter.get('/status', (req, res) => {
     res.json({ 
       authenticated: effectivelyAuthenticated,
       tokenExpired: isExpired,
-      hasRefreshToken: !!tokens.refresh_token
+      hasRefreshToken: !!tokens.refresh_token,
+      accessToken: effectivelyAuthenticated ? tokens.access_token : null
     });
   } else {
     res.json({ authenticated: false });

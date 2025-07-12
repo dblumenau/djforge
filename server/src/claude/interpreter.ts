@@ -16,6 +16,10 @@ claudeRouter.post('/command', ensureValidToken, async (req, res) => {
     return res.status(400).json({ error: 'No command provided' });
   }
 
+  if (!req.session.spotifyTokens) {
+    return res.status(401).json({ error: 'Not authenticated with Spotify' });
+  }
+
   console.log('Processing command:', command);
 
   try {
@@ -61,7 +65,10 @@ claudeRouter.post('/command', ensureValidToken, async (req, res) => {
     console.log('Claude interpretation:', interpretation);
 
     // Execute the command based on interpretation
-    const spotifyControl = new SpotifyControl(req.session.spotifyTokens);
+    const spotifyControl = new SpotifyControl(
+      req.session.spotifyTokens,
+      (tokens) => { req.session.spotifyTokens = tokens; }
+    );
     let result;
 
     switch (interpretation.intent) {

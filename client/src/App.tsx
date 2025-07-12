@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import MusicLoader from './components/MusicLoader';
+import SpotifyPlayer from './components/SpotifyPlayer';
+import { useSpotifyAuth } from './hooks/useSpotifyAuth';
 
 // Helper component for clickable example lists
 const ExampleList: React.FC<{ examples: string[] }> = ({ examples }) => {
@@ -28,10 +30,13 @@ function App() {
   const [showExamplesModal, setShowExamplesModal] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [checking, setChecking] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [authChecking, setAuthChecking] = useState(true);
   const [command, setCommand] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  // Device management states (will be used for device selection UI)
+  // @ts-ignore - Will be used later
+  const [webPlayerDeviceId, setWebPlayerDeviceId] = useState<string | null>(null);
+  // @ts-ignore - Will be used later  
+  const [activeDeviceId, setActiveDeviceId] = useState<string | null>(null);
   const [commandHistory, setCommandHistory] = useState<Array<{
     command: string;
     response: string;
@@ -40,6 +45,10 @@ function App() {
     timestamp?: number;
     alternatives?: string[];
   }>>([])
+  
+  const authState = useSpotifyAuth();
+  const { isAuthenticated, accessToken, loading: authLoading } = authState;
+  const authChecking = authLoading;
 
   useEffect(() => {
     // Load command history from localStorage
@@ -58,7 +67,7 @@ function App() {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('success') === 'true') {
       window.history.replaceState({}, document.title, '/');
-      checkAuthStatus();
+      authState.checkAuthStatus();
     } else if (urlParams.get('error')) {
       console.error('Auth error:', urlParams.get('error'));
       window.history.replaceState({}, document.title, '/');
@@ -83,7 +92,6 @@ function App() {
       const response = await fetch('http://127.0.0.1:3001/api/health');
       if (response.ok) {
         setIsConnected(true);
-        checkAuthStatus();
       }
     } catch (error) {
       console.error('Server not reachable:', error);
@@ -92,22 +100,35 @@ function App() {
     }
   };
 
-  const checkAuthStatus = async () => {
-    try {
-      const response = await fetch('http://127.0.0.1:3001/api/auth/status', {
-        credentials: 'include'
-      });
-      const data = await response.json();
-      setIsAuthenticated(data.authenticated);
-    } catch (error) {
-      console.error('Auth check failed:', error);
-    } finally {
-      setAuthChecking(false);
-    }
+  const handleLogin = () => {
+    authState.login();
   };
 
-  const handleLogin = () => {
-    window.location.href = 'http://127.0.0.1:3001/api/auth/login';
+  const handleDeviceReady = (deviceId: string) => {
+    setWebPlayerDeviceId(deviceId);
+    // Optionally auto-transfer playback to web player
+    // transferPlayback(deviceId);
+  };
+
+  // Will be used for device selection UI
+  // @ts-ignore - Will be used later
+  const transferPlayback = async (deviceId: string) => {
+    try {
+      const response = await fetch('http://127.0.0.1:3001/api/control/transfer', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ deviceId, play: false })
+      });
+      
+      if (response.ok) {
+        setActiveDeviceId(deviceId);
+      }
+    } catch (error) {
+      console.error('Failed to transfer playback:', error);
+    }
   };
 
   const sendAlternativeCommand = async (alternative: string, action: 'play' | 'queue') => {
@@ -265,15 +286,27 @@ function App() {
 
   if (isAuthenticated) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-8">
-        <div className="max-w-7xl w-full flex flex-col md:flex-row gap-6">
-          {/* Left Column - Command Area */}
-          <div className="w-full md:w-5/12">
-            <div className="bg-zinc-900 rounded-xl shadow-xl p-8">
-              <div className="mb-8 text-center">
-                <h1 className="text-3xl font-bold text-green-500 mb-2">🎵 Spotify Claude Controller</h1>
-                <p className="text-gray-400">Control your music with natural language</p>
-              </div>
+      <div className="min-h-screen bg-zinc-950 p-8">
+        <div className="max-w-7xl mx-auto space-y-6">
+          {/* Spotify Player - Full Width at Top */}
+          {accessToken && (
+            <div className="w-full">
+              <SpotifyPlayer 
+                token={accessToken}
+                onDeviceReady={handleDeviceReady}
+              />
+            </div>
+          )}
+          
+          {/* Main Content - Two Columns */}
+          <div className="flex flex-col md:flex-row gap-6">
+            {/* Left Column - Command Area */}
+            <div className="w-full md:w-5/12">
+              <div className="bg-zinc-900 rounded-xl shadow-xl p-8">
+                <div className="mb-8 text-center">
+                  <h1 className="text-3xl font-bold text-green-500 mb-2">🎵 Spotify Claude Controller</h1>
+                  <p className="text-gray-400">Control your music with natural language</p>
+                </div>
               
               <div className="bg-zinc-800 rounded-lg p-6 mb-6">
                 <h2 className="text-xl font-semibold text-green-500 mb-4">🎤 Ready for Commands!</h2>
@@ -326,23 +359,18 @@ function App() {
                 <button 
                   className="px-6 py-2 bg-red-600 text-white font-semibold rounded-full hover:bg-red-700 transition-colors text-sm"
                   onClick={() => {
-                    fetch('http://127.0.0.1:3001/api/auth/logout', { 
-                      method: 'POST',
-                      credentials: 'include'
-                    }).then(() => {
-                      setIsAuthenticated(false);
-                    });
+                    authState.logout();
                   }}
                 >
                   Logout
                 </button>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Right Column - Command History */}
-          <div className="w-full md:w-7/12">
-            <div className="bg-zinc-900 rounded-xl shadow-xl p-6 h-full flex flex-col">
+            {/* Right Column - Command History */}
+            <div className="w-full md:w-7/12">
+              <div className="bg-zinc-900 rounded-xl shadow-xl p-6 flex flex-col" style={{ height: 'calc(100vh - 350px)' }}>
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xl font-semibold text-green-500">Command History</h3>
                 {commandHistory.length > 0 && (
@@ -357,7 +385,7 @@ function App() {
                   </button>
                 )}
               </div>
-              <div className="flex-1 overflow-y-auto space-y-4">
+              <div className="flex-1 overflow-y-auto space-y-4 min-h-0">
                 {commandHistory.length === 0 ? (
                   <p className="text-gray-400 text-sm">Your commands will appear here...</p>
                 ) : (
@@ -411,6 +439,7 @@ function App() {
                     </div>
                   ))
                 )}
+              </div>
               </div>
             </div>
           </div>

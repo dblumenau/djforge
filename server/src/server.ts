@@ -7,6 +7,8 @@ import { authRouter } from './spotify/auth';
 import { controlRouter } from './spotify/control';
 import { claudeRouter } from './claude/interpreter';
 import { enhancedClaudeRouter } from './claude/enhanced-interpreter';
+import { simpleLLMInterpreterRouter } from './routes/simple-llm-interpreter';
+import { llmInterpreterRouter } from './routes/llm-interpreter';
 
 const FileStore = require('session-file-store')(session);
 
@@ -50,8 +52,12 @@ app.use(session({
 app.use('/api/auth', authRouter);
 app.use('/api/control', controlRouter);
 
-// Use enhanced interpreter by default
-app.use('/api/claude', enhancedClaudeRouter);
+// Use flexible LLM interpreter by default (production-ready)
+app.use('/api/claude', simpleLLMInterpreterRouter);
+// Keep schema-based interpreter available at /api/claude-schema
+app.use('/api/claude-schema', llmInterpreterRouter);
+// Keep enhanced interpreter available at /api/claude-enhanced
+app.use('/api/claude-enhanced', enhancedClaudeRouter);
 // Keep original interpreter available at /api/claude-basic
 app.use('/api/claude-basic', claudeRouter);
 
