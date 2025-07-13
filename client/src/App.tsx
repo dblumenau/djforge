@@ -40,6 +40,7 @@ function App() {
   const [webPlayerDeviceId, setWebPlayerDeviceId] = useState<string | null>(null);
   // @ts-ignore - Will be used later  
   const [activeDeviceId, setActiveDeviceId] = useState<string | null>(null);
+  const [currentModel, setCurrentModel] = useState<string>('');
   const [commandHistory, setCommandHistory] = useState<Array<{
     command: string;
     response: string;
@@ -47,6 +48,7 @@ function App() {
     isEnhanced?: boolean;
     timestamp?: number;
     alternatives?: string[];
+    model?: string;
     interpretation?: {
       intent?: string;
       confidence?: number;
@@ -193,7 +195,8 @@ function App() {
         isEnhanced: true,
         timestamp: Date.now(),
         alternatives: alternatives,
-        interpretation: data.interpretation
+        interpretation: data.interpretation,
+        model: currentModel
       }]);
       setCommand('');
     } catch (error) {
@@ -284,7 +287,8 @@ function App() {
         isEnhanced: true,
         timestamp: Date.now(),
         alternatives: alternatives,
-        interpretation: data.interpretation
+        interpretation: data.interpretation,
+        model: currentModel
       }]);
       setCommand('');
     } catch (error) {
@@ -293,7 +297,8 @@ function App() {
         command: command.trim(), 
         response: 'Error processing command',
         isEnhanced: false,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        model: currentModel
       }]);
     } finally {
       setIsProcessing(false);
@@ -350,32 +355,28 @@ function App() {
           <div className="flex flex-col lg:flex-row gap-4 md:gap-6">
             {/* Left Column - Command Area */}
             <div className="w-full lg:w-5/12">
-              <div className="bg-zinc-900 rounded-xl shadow-xl p-4 md:p-6 lg:p-8">
-                <div className="mb-6 md:mb-8 text-center">
-                  <h1 className="text-2xl md:text-3xl font-bold text-green-500 mb-2">🎵 Spotify Claude Controller</h1>
-                  <p className="text-gray-400 text-sm md:text-base">Control your music with natural language</p>
+              <div className="bg-zinc-900 rounded-xl shadow-xl p-4 md:p-6 lg:p-8 flex flex-col">
+                <div className="mb-6 md:mb-8 text-center flex-shrink-0">
+                  <h1 className="text-2xl md:text-3xl font-bold text-green-500 mb-2">🎵 DJ Forge</h1>
+                  <p className="text-gray-400 text-sm md:text-base">Control your Spotify with natural language</p>
                   <div className="mt-4 flex justify-center">
-                    <ModelSelector />
+                    <ModelSelector onModelChange={setCurrentModel} />
                   </div>
                 </div>
               
-              <details className="bg-zinc-800 rounded-lg mb-4 md:mb-6">
+              <details className="bg-zinc-800 rounded-lg mb-4 md:mb-6 flex-shrink-0" open={window.innerWidth >= 1024}>
                 <summary className="cursor-pointer p-4 md:p-6 flex items-center justify-between text-lg md:text-xl font-semibold text-green-500 hover:text-green-400 transition-colors">
-                  <span>🎤 Show Commands</span>
-                  <span className="text-sm font-normal text-gray-400">Click to expand</span>
+                  <span>🎤 Command Examples</span>
+                  <span className="text-sm font-normal text-gray-400 lg:hidden">Click to expand</span>
                 </summary>
                 <div className="px-4 md:px-6 pb-4 md:pb-6">
                   <p className="text-gray-400 text-sm md:text-base mb-3 md:mb-4">Try natural language commands like:</p>
                   <ul className="space-y-2 text-gray-400 text-sm">
                     <li>• "Play" / "Pause" / "Skip" / "Volume up"</li>
                     <li>• "Play a lesser known Enya song"</li>
-                    <li>• "Play the most obscure Taylor Swift track"</li>
-                    <li>• "Queue something that sounds like rain"</li>
-                    <li>• "Play that song from the desert driving scene"</li>
-                    <li>• "Play some deep cut Beatles B-sides"</li>
-                    <li>• "Play Space Oddity original 1969 version not remaster"</li>
-                    <li>• "Play something melancholy for a rainy day"</li>
-                    <li>• "Play that dancey ABBA song from Mamma Mia"</li>
+                    <li>• "Queue the most obscure Taylor Swift track"</li>
+                    <li>• "Play Love Live"</li>
+                    <li>• "No! Only Taylors Version!"</li>
                     <li>• "What's playing?"</li>
                   </ul>
                   <button
@@ -388,6 +389,7 @@ function App() {
                 </div>
               </details>
               
+              <div className="flex-grow flex flex-col justify-end">
               <form onSubmit={handleCommandSubmit}>
                 <div className="space-y-3">
                   <input
@@ -417,9 +419,10 @@ function App() {
                 </div>
               </form>
 
-              {isProcessing && <MusicLoader />}
+              {isProcessing && <MusicLoader modelName={currentModel} />}
+              </div>
               
-              <div className="mt-6 text-center">
+              <div className="mt-6 text-center flex-shrink-0">
                 <button 
                   className="px-6 py-2 bg-red-600 text-white font-semibold rounded-full hover:bg-red-700 transition-colors text-sm"
                   onClick={() => {
@@ -428,13 +431,13 @@ function App() {
                 >
                   Logout
                 </button>
-                </div>
+              </div>
               </div>
             </div>
 
             {/* Right Column - Command History */}
             <div className="w-full lg:w-7/12 mt-4 lg:mt-0">
-              <div className="bg-zinc-900 rounded-xl shadow-xl p-4 md:p-6 flex flex-col min-h-[400px] lg:h-full">
+              <div className="bg-zinc-900 rounded-xl shadow-xl p-4 md:p-6 flex flex-col min-h-[400px] lg:min-h-[600px]">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg md:text-xl font-semibold text-green-500">Command History</h3>
                 {commandHistory.length > 0 && (
@@ -464,6 +467,11 @@ function App() {
                         {item.isEnhanced && (
                           <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">
                             Enhanced
+                          </span>
+                        )}
+                        {item.model && (
+                          <span className="text-xs bg-gray-600/30 text-gray-400 px-2 py-0.5 rounded-full">
+                            {item.model.split('/').pop()}
                           </span>
                         )}
                       </div>
