@@ -186,6 +186,45 @@ function App() {
   const playAlternative = (alternative: string) => sendAlternativeCommand(alternative, 'play');
   const queueAlternative = (alternative: string) => sendAlternativeCommand(alternative, 'queue');
 
+  const handleClearHistory = async () => {
+    setIsProcessing(true);
+    try {
+      const response = await fetch('http://127.0.0.1:3001/api/claude/clear-history', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include'
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        // Clear local command history too
+        setCommandHistory([{
+          command: '[System]',
+          response: 'Conversation history cleared successfully',
+          timestamp: Date.now()
+        }]);
+      } else {
+        setCommandHistory(prev => [...prev, {
+          command: '[System]',
+          response: data.message || 'Failed to clear history',
+          timestamp: Date.now()
+        }]);
+      }
+    } catch (error) {
+      console.error('Failed to clear history:', error);
+      setCommandHistory(prev => [...prev, {
+        command: '[System]',
+        response: 'Error clearing conversation history',
+        timestamp: Date.now()
+      }]);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handleCommandSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!command.trim() || isProcessing) return;
@@ -340,6 +379,14 @@ function App() {
                     className="w-full px-6 py-3 bg-green-500 text-black font-bold rounded-full hover:bg-green-400 disabled:bg-gray-600 disabled:text-gray-400 transition-all transform hover:scale-105 disabled:scale-100"
                   >
                     {isProcessing ? 'Processing...' : 'Send'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleClearHistory}
+                    disabled={isProcessing}
+                    className="w-full px-4 py-2 bg-zinc-700 text-gray-300 rounded-lg hover:bg-zinc-600 disabled:bg-zinc-800 disabled:text-gray-500 transition-colors text-sm"
+                  >
+                    Clear Conversation History
                   </button>
                 </div>
               </form>

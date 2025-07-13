@@ -4,7 +4,7 @@ import { ensureValidToken } from '../spotify/auth';
 import { SpotifyTrack } from '../types';
 import { llmOrchestrator, OPENROUTER_MODELS } from '../llm/orchestrator';
 import { llmMonitor } from '../llm/monitoring';
-import { RedisConversation, createConversationManager, ConversationEntry } from '../utils/redisConversation';
+import { RedisConversation, createConversationManager, ConversationEntry, DialogState } from '../utils/redisConversation';
 
 export const simpleLLMInterpreterRouter = Router();
 
@@ -91,13 +91,45 @@ function normalizeResponse(raw: any): any {
   };
 }
 
+// Check if low confidence destructive action needs confirmation
+function needsConfirmation(interpretation: any): boolean {
+  if (!conversationManager) return false;
+  
+  const isDestructive = conversationManager.isDestructiveAction(interpretation.intent);
+  const lowConfidence = interpretation.confidence < 0.7;
+  
+  return isDestructive && lowConfidence;
+}
+
+// Create confirmation response
+function createConfirmationResponse(interpretation: any): any {
+  const action = interpretation.intent.replace('_', ' ');
+  const target = interpretation.track || interpretation.artist || interpretation.query || 'that';
+  
+  return {
+    success: true,
+    message: `Are you asking me to ${action} "${target}"? (Low confidence: ${Math.round(interpretation.confidence * 100)}%)`,
+    confirmation_needed: true,
+    pending_action: interpretation,
+    confidence: interpretation.confidence
+  };
+}
+
 // Simple, flexible interpretation with retries
 async function interpretCommand(command: string, sessionId?: string, retryCount = 0): Promise<any> {
   let conversationHistory: ConversationEntry[] = [];
+  let dialogState: DialogState | null = null;
   
-  // Fetch conversation history if we have a session
+  // Fetch conversation history and dialog state if we have a session
   if (sessionId && conversationManager) {
-    conversationHistory = await conversationManager.getHistory(sessionId, 3);
+    // Get both conversation history and dialog state
+    const [history, state] = await Promise.all([
+      conversationManager.getHistory(sessionId, 8),
+      conversationManager.getDialogState(sessionId)
+    ]);
+    
+    conversationHistory = history;
+    dialogState = state;
     
     // Check if this is a contextual reference
     if (conversationManager.isContextualReference(command)) {
@@ -119,10 +151,27 @@ async function interpretCommand(command: string, sessionId?: string, retryCount 
     }
   }
   
+  // Get relevant context using smart filtering
+  const relevantContext = conversationManager && dialogState ? 
+    conversationManager.getRelevantContext(command, conversationHistory, dialogState) : 
+    conversationHistory.slice(0, 2);
+  
+  console.log(`[DEBUG] Command: "${command}"`);
+  console.log(`[DEBUG] Full history length: ${conversationHistory.length}`);
+  console.log(`[DEBUG] Relevant context length: ${relevantContext.length}`);
+  console.log(`[DEBUG] Dialog state last action:`, dialogState?.last_action?.artist, '-', dialogState?.last_action?.track);
+  
+  if (relevantContext.length > 0) {
+    console.log(`[DEBUG] Relevant context entries:`);
+    relevantContext.forEach((entry, idx) => {
+      console.log(`  ${idx + 1}. ${entry.interpretation.intent}: ${entry.interpretation.artist || 'N/A'} - ${entry.interpretation.track || entry.interpretation.query || 'N/A'}`);
+    });
+  }
+  
   // Format conversation context for the LLM
-  const contextBlock = conversationHistory.length > 0 ? `
+  const contextBlock = relevantContext.length > 0 ? `
 CONVERSATION CONTEXT:
-${conversationHistory.map((entry, idx) => `
+${relevantContext.map((entry, idx) => `
 [${idx + 1}] User: "${entry.command}"
     Intent: ${entry.interpretation.intent}
     ${entry.interpretation.artist ? `Artist: ${entry.interpretation.artist}` : ''}
@@ -138,6 +187,7 @@ IMPORTANT: If the user is referencing something from the conversation above (lik
   const prompt = `You are an advanced music command interpreter for Spotify with deep knowledge of music.
 
 ${contextBlock}
+[DEBUG: Relevant context entries: ${relevantContext.length}]
 
 AVAILABLE INTENTS - Choose the most appropriate one:
 
@@ -159,6 +209,11 @@ AVAILABLE INTENTS - Choose the most appropriate one:
 • set_shuffle - Enable/disable shuffle (requires enabled field)
 • set_repeat - Enable/disable repeat (requires enabled field)
 • clear_queue - Clear the playback queue
+
+=== CONVERSATIONAL INTENTS (return text, no Spotify action) ===
+• chat - General music discussion ("what do you think of this artist")
+• ask_question - Questions about collaborations, facts ("did he collaborate with X")
+• get_info - Information about current/previous songs ("tell me about this song")
 
 === OTHER INTENTS ===
 • search - Search without playing (requires query)
@@ -184,9 +239,17 @@ CRITICAL DISTINCTIONS:
    - "play taylor swift playlist" → play_playlist with query: "taylor swift"
    - "play my discover weekly" → play_playlist with query: "discover weekly"
 
-3. KEY DISTINCTION:
+3. CONVERSATIONAL vs ACTION DISTINCTION:
+   - Questions starting with "did", "does", "has", "tell me about", "what do you think" → conversational intents
+   - Commands requesting action "play", "queue", "skip" → action intents
+   - "did he ever collaborate with X" → ask_question (return text, don't play music)
+   - "tell me about this song" → get_info (return info, don't play music)
+   - "what do you think of this artist" → chat (return opinion, don't play music)
+
+4. KEY DISTINCTION:
    - If asking for A SONG (even by name) → use play_specific_song/queue_specific_song
    - If asking for A PLAYLIST → use play_playlist/queue_playlist
+   - If asking QUESTIONS → use conversational intents (chat/ask_question/get_info)
    - The word "playlist" in the command is a strong indicator for playlist intents
 
 RESPONSE FORMAT:
@@ -213,6 +276,13 @@ For playlist requests:
   "query": "playlist search terms",
   "confidence": 0.7-1.0,
   "reasoning": "brief explanation"
+}
+
+For conversational requests:
+{
+  "intent": "chat" or "ask_question" or "get_info",
+  "confidence": 0.8-1.0,
+  "reasoning": "explain why this is conversational and what information to provide"
 }
 
 Other intents remain the same: pause, skip, volume, get_current_track, etc.
@@ -336,6 +406,46 @@ simpleLLMInterpreterRouter.get('/health', (req, res) => {
   });
 });
 
+// Clear conversation history endpoint
+simpleLLMInterpreterRouter.post('/clear-history', ensureValidToken, async (req, res) => {
+  try {
+    const sessionId = req.sessionID;
+    
+    if (sessionId && conversationManager) {
+      // Clear both conversation history and dialog state
+      await Promise.all([
+        conversationManager.clear(sessionId),
+        conversationManager.updateDialogState(sessionId, {
+          last_action: null,
+          last_candidates: [],
+          interaction_mode: 'music',
+          updated_at: Date.now()
+        })
+      ]);
+      
+      console.log(`[CLEAR] Conversation history cleared for session ${sessionId}`);
+      
+      res.json({
+        success: true,
+        message: 'Conversation history cleared',
+        timestamp: new Date().toISOString()
+      });
+    } else {
+      res.json({
+        success: false,
+        message: 'No active session to clear',
+        timestamp: new Date().toISOString()
+      });
+    }
+  } catch (error) {
+    console.error('Error clearing conversation history:', error);
+    res.status(500).json({
+      error: 'Failed to clear conversation history',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 // Main command endpoint
 simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) => {
   const { command } = req.body;
@@ -355,6 +465,7 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
   try {
     // Get session ID from request
     const sessionId = req.sessionID;
+    console.log('Session ID:', sessionId);
     
     const interpretation = await interpretCommand(command, sessionId);
     console.log('LLM interpretation:', interpretation);
@@ -374,10 +485,37 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
       model: interpretation.model || 'unknown'
     });
 
+    // Check if we need confirmation for low-confidence destructive actions
+    if (needsConfirmation(interpretation)) {
+      const confirmationResponse = createConfirmationResponse(interpretation);
+      
+      res.json({
+        ...confirmationResponse,
+        interpretation: {
+          command: command,
+          intent: interpretation.intent,
+          confidence: interpretation.confidence,
+          searchQuery: buildSearchQuery(interpretation),
+          ...(interpretation.reasoning && { reasoning: interpretation.reasoning }),
+          model: 'unknown'
+        },
+        timestamp: new Date().toISOString()
+      });
+      
+      return;
+    }
+
     // Handle different intents flexibly
     const intent = interpretation.intent || interpretation.action;
     
-    if (intent === 'play_specific_song' || intent === 'queue_specific_song' || ((intent?.includes('play') || intent?.includes('search')) && intent !== 'play_playlist')) {
+    // Handle conversational intents (return text, no Spotify action)
+    if (intent === 'chat' || intent === 'ask_question' || intent === 'get_info') {
+      result = {
+        success: true,
+        message: interpretation.reasoning || "I'd be happy to discuss that with you!",
+        conversational: true // Flag to indicate no Spotify action
+      };
+    } else if (intent === 'play_specific_song' || intent === 'queue_specific_song' || ((intent?.includes('play') || intent?.includes('search')) && intent !== 'play_playlist' && intent !== 'queue_playlist')) {
       const searchQuery = buildSearchQuery(interpretation);
       
       if (!searchQuery) {
@@ -590,8 +728,12 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
     // Record successful interpretation
     llmMonitor.recordInterpretation(command, interpretation, startTime, true);
     
-    // Store conversation entry in Redis for future context
+    // Store conversation entry and update dialog state in Redis for future context
     if (sessionId && conversationManager) {
+      // Get current dialog state
+      const currentDialogState = await conversationManager.getDialogState(sessionId);
+      
+      // Store conversation entry
       const conversationEntry: ConversationEntry = {
         command: command,
         interpretation: interpretation,
@@ -602,7 +744,20 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
         }
       };
       
-      await conversationManager.append(sessionId, conversationEntry);
+      // Update dialog state based on the action
+      const updatedDialogState = conversationManager.updateDialogStateFromAction(
+        currentDialogState,
+        interpretation,
+        interpretation.alternatives || []
+      );
+      
+      // Save both conversation and dialog state
+      await Promise.all([
+        conversationManager.append(sessionId, conversationEntry),
+        conversationManager.updateDialogState(sessionId, updatedDialogState)
+      ]);
+      
+      console.log(`Dialog state updated: mode=${updatedDialogState.interaction_mode}, last_action=${updatedDialogState.last_action?.type || 'none'}`);
     }
 
   } catch (error) {
@@ -678,6 +833,38 @@ simpleLLMInterpreterRouter.post('/test-interpret', async (req, res) => {
     const sessionId = req.sessionID;
     const interpretation = await interpretCommand(command, sessionId);
     const responseTime = Date.now() - startTime;
+    
+    // Store conversation entry for testing (same as main endpoint)
+    if (sessionId && conversationManager) {
+      // Get current dialog state
+      const currentDialogState = await conversationManager.getDialogState(sessionId);
+      
+      // Store conversation entry
+      const conversationEntry: ConversationEntry = {
+        command: command,
+        interpretation: interpretation,
+        timestamp: Date.now(),
+        response: {
+          success: true,
+          message: 'Test interpretation'
+        }
+      };
+      
+      // Update dialog state based on the action
+      const updatedDialogState = conversationManager.updateDialogStateFromAction(
+        currentDialogState,
+        interpretation,
+        interpretation.alternatives || []
+      );
+      
+      // Save both conversation and dialog state
+      await Promise.all([
+        conversationManager.append(sessionId, conversationEntry),
+        conversationManager.updateDialogState(sessionId, updatedDialogState)
+      ]);
+      
+      console.log(`[TEST] Conversation stored for session ${sessionId}`);
+    }
     
     res.json({
       command,

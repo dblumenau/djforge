@@ -24,9 +24,26 @@ export interface ConversationEntry {
   };
 }
 
+export interface DialogState {
+  last_action: {
+    type: 'play' | 'queue';
+    intent: string;
+    artist?: string;
+    track?: string;
+    album?: string;
+    query?: string;
+    timestamp: number;
+    alternatives?: string[];
+  } | null;
+  last_candidates: string[]; // alternatives from last response
+  interaction_mode: 'music' | 'chat';
+  updated_at: number;
+}
+
 export class RedisConversation {
   private client: any;
   private readonly prefix = 'djforge:conv:';
+  private readonly statePrefix = 'djforge:state:';
   private readonly maxEntries = 8; // Keep last 8 interactions
   private readonly ttl = 1800; // 30 minutes in seconds
   
@@ -120,6 +137,102 @@ export class RedisConversation {
   }
   
   /**
+   * Get or create dialog state for a session
+   * @param sessionId - The session ID
+   * @returns Dialog state object
+   */
+  async getDialogState(sessionId: string): Promise<DialogState> {
+    if (!sessionId || !this.client) {
+      return this.createDefaultDialogState();
+    }
+    
+    try {
+      const key = `${this.statePrefix}${sessionId}`;
+      const stateData = await this.client.get(key);
+      
+      if (!stateData) {
+        return this.createDefaultDialogState();
+      }
+      
+      return JSON.parse(stateData);
+    } catch (error) {
+      console.error('Error getting dialog state:', error);
+      return this.createDefaultDialogState();
+    }
+  }
+  
+  /**
+   * Update dialog state for a session
+   * @param sessionId - The session ID
+   * @param state - The updated dialog state
+   */
+  async updateDialogState(sessionId: string, state: DialogState): Promise<void> {
+    if (!sessionId || !this.client) {
+      return;
+    }
+    
+    try {
+      const key = `${this.statePrefix}${sessionId}`;
+      state.updated_at = Date.now();
+      
+      await this.client.setEx(key, this.ttl, JSON.stringify(state));
+    } catch (error) {
+      console.error('Error updating dialog state:', error);
+    }
+  }
+  
+  /**
+   * Create default dialog state
+   * @returns Default dialog state
+   */
+  private createDefaultDialogState(): DialogState {
+    return {
+      last_action: null,
+      last_candidates: [],
+      interaction_mode: 'music',
+      updated_at: Date.now()
+    };
+  }
+  
+  /**
+   * Check if a command is a similarity request
+   * @param command - The user command
+   * @returns True if requesting similar content
+   */
+  isSimilarityRequest(command: string): boolean {
+    const lowerCommand = command.toLowerCase();
+    
+    const similarityPatterns = [
+      /similar/,
+      /like (that|this|it)/,
+      /more of (that|this|the same)/,
+      /same (style|genre|vibe)/,
+      /playlist.*similar/,
+      /queue.*similar/,
+      /play.*similar/
+    ];
+    
+    return similarityPatterns.some(pattern => pattern.test(lowerCommand));
+  }
+  
+  /**
+   * Check if an intent is destructive (plays/queues music)
+   * @param intent - The intent string
+   * @returns True if intent causes music to play
+   */
+  isDestructiveAction(intent: string): boolean {
+    const destructiveIntents = [
+      'play_specific_song',
+      'queue_specific_song',
+      'play_playlist',
+      'queue_playlist',
+      'search_and_play'
+    ];
+    
+    return destructiveIntents.includes(intent) || intent.includes('play') || intent.includes('queue');
+  }
+  
+  /**
    * Check if a command is a contextual reference
    * @param command - The user command
    * @returns True if the command appears to reference previous context
@@ -168,6 +281,107 @@ export class RedisConversation {
   }
   
   /**
+   * Get relevant context for a command based on dialog state and history
+   * @param command - The user command
+   * @param history - Full conversation history
+   * @param dialogState - Current dialog state
+   * @returns Relevant context entries
+   */
+  getRelevantContext(
+    command: string,
+    history: ConversationEntry[],
+    dialogState: DialogState
+  ): ConversationEntry[] {
+    // For similarity requests, only return the last music action from dialog state
+    if (this.isSimilarityRequest(command)) {
+      if (dialogState.last_action) {
+        // Convert dialog state to conversation entry format
+        const lastActionEntry: ConversationEntry = {
+          command: `Previous: ${dialogState.last_action.type} ${dialogState.last_action.artist || dialogState.last_action.query || ''}`,
+          interpretation: {
+            intent: dialogState.last_action.intent,
+            artist: dialogState.last_action.artist,
+            track: dialogState.last_action.track,
+            album: dialogState.last_action.album,
+            query: dialogState.last_action.query,
+            confidence: 0.9,
+            alternatives: dialogState.last_action.alternatives || dialogState.last_candidates
+          },
+          timestamp: dialogState.last_action.timestamp
+        };
+        return [lastActionEntry];
+      }
+      return [];
+    }
+    
+    // For contextual references, return recent entries with alternatives
+    if (this.isContextualReference(command)) {
+      return history.filter(entry => 
+        entry.interpretation.alternatives && entry.interpretation.alternatives.length > 0
+      ).slice(0, 2);
+    }
+    
+    // For general commands, return time-boxed context (last 2-3 actions only)
+    // Filter out pure chat/info requests to prevent contamination
+    // Also filter by time - only include actions from last 10 minutes
+    const tenMinutesAgo = Date.now() - (10 * 60 * 1000);
+    const musicActions = history.filter(entry => {
+      const intent = entry.interpretation.intent;
+      const isRecentEnough = entry.timestamp > tenMinutesAgo;
+      const isMusicAction = ['play_specific_song', 'queue_specific_song', 'play_playlist', 'queue_playlist'].includes(intent);
+      return isMusicAction && isRecentEnough;
+    }).slice(0, 2);
+    
+    return musicActions;
+  }
+  
+  /**
+   * Update dialog state based on a successful action
+   * @param dialogState - Current dialog state
+   * @param interpretation - The command interpretation
+   * @param alternatives - Any alternatives provided
+   * @returns Updated dialog state
+   */
+  updateDialogStateFromAction(
+    dialogState: DialogState,
+    interpretation: any,
+    alternatives: string[] = []
+  ): DialogState {
+    const intent = interpretation.intent;
+    
+    // Only update for music actions, not chat/info requests
+    if (this.isDestructiveAction(intent)) {
+      const actionType = intent.includes('queue') ? 'queue' : 'play';
+      
+      return {
+        ...dialogState,
+        last_action: {
+          type: actionType,
+          intent: intent,
+          artist: interpretation.artist,
+          track: interpretation.track,
+          album: interpretation.album,
+          query: interpretation.query,
+          timestamp: Date.now(),
+          alternatives: alternatives
+        },
+        last_candidates: alternatives,
+        interaction_mode: 'music',
+        updated_at: Date.now()
+      };
+    } else if (['chat', 'ask_question', 'get_info'].includes(intent)) {
+      // For conversational intents, just update interaction mode
+      return {
+        ...dialogState,
+        interaction_mode: 'chat',
+        updated_at: Date.now()
+      };
+    }
+    
+    return dialogState;
+  }
+  
+  /**
    * Resolve a contextual reference from history
    * @param command - The contextual command (e.g., "no the taylor swift one")
    * @param history - Recent conversation history
@@ -192,9 +406,12 @@ export class RedisConversation {
           
           // Extract key terms from the command
           const searchTerms = lowerCommand
-            .replace(/^(no|not|yes|the|play|queue|actually|try)\s+/g, '')
+            .replace(/^(no|not|yes|play|queue|actually|try)\s+/g, '')
+            .replace(/\s*(the)\s+/g, ' ')
             .replace(/\s+(one|version)$/g, '')
-            .split(/\s+/);
+            .trim()
+            .split(/\s+/)
+            .filter(term => term.length > 0);
           
           // Check if all search terms appear in the alternative
           const matches = searchTerms.every(term => 
