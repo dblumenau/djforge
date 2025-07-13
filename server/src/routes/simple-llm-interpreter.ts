@@ -116,7 +116,7 @@ function createConfirmationResponse(interpretation: any): any {
 }
 
 // Simple, flexible interpretation with retries
-async function interpretCommand(command: string, sessionId?: string, retryCount = 0): Promise<any> {
+async function interpretCommand(command: string, sessionId?: string, retryCount = 0, preferredModel?: string): Promise<any> {
   let conversationHistory: ConversationEntry[] = [];
   let dialogState: DialogState | null = null;
   
@@ -300,7 +300,7 @@ Command: "${command}"`;
         { role: 'system', content: 'Respond with valid JSON. Be helpful and specific. Include confidence scores. CRITICAL: You must use the discriminated union pattern - when intent is "play_specific_song" or "queue_specific_song", you MUST include artist, track, and alternatives fields. When intent is "play_playlist" or "queue_playlist", use query field. Never use generic search queries for specific song requests - always recommend exact songs using your music knowledge. Distinguish between playing (immediate) and queuing (add to queue) for both songs and playlists.' },
         { role: 'user', content: prompt }
       ],
-      model: OPENROUTER_MODELS.CLAUDE_SONNET_4,
+      model: preferredModel || OPENROUTER_MODELS.CLAUDE_SONNET_4,
       temperature: 0.7,
       response_format: { type: 'json_object' }
     });
@@ -311,7 +311,7 @@ Command: "${command}"`;
     // Validate we got something useful
     if (normalized.intent === 'unknown' && retryCount < MAX_RETRIES) {
       console.log(`Retry ${retryCount + 1} for command interpretation`);
-      return interpretCommand(command, sessionId, retryCount + 1);
+      return interpretCommand(command, sessionId, retryCount + 1, preferredModel);
     }
     
     return normalized;
@@ -373,6 +373,91 @@ function buildSearchQuery(interpretation: any): string {
   // Otherwise use whatever the LLM thought was best (for playlists, etc.)
   return interpretation.query || interpretation.searchQuery || 
          `${interpretation.track || ''} ${interpretation.artist || ''}`.trim();
+}
+
+// Handle conversational queries by getting actual answers
+async function handleConversationalQuery(
+  command: string, 
+  intent: string, 
+  conversationHistory: ConversationEntry[],
+  dialogState: DialogState | null
+): Promise<string> {
+  try {
+    // Build context about recent music if available
+    let musicContext = '';
+    if (dialogState?.last_action) {
+      const lastAction = dialogState.last_action;
+      musicContext = `\nRecent music context: ${lastAction.type === 'play' ? 'Currently playing' : 'Recently queued'} "${lastAction.track || lastAction.query}" by ${lastAction.artist || 'Unknown Artist'}`;
+    }
+
+    // Include recent conversation for context
+    const recentContext = conversationHistory.slice(-3).map(entry => 
+      `User: "${entry.command}" → ${entry.interpretation.artist ? `${entry.interpretation.artist} - ${entry.interpretation.track || ''}` : entry.interpretation.query || ''}`
+    ).join('\n');
+
+    const conversationalPrompt = `You are a knowledgeable music assistant integrated with Spotify. Answer the user's question conversationally and informatively.
+
+${recentContext ? `Recent conversation:\n${recentContext}` : ''}${musicContext}
+
+User's question: "${command}"
+
+Provide a helpful, informative response. If the question is about music history, collaborations, facts, or seeking information, give accurate details. If asking about the current/recent music, use the context provided. Keep the response concise but informative.`;
+
+    const response = await llmOrchestrator.complete({
+      messages: [
+        { role: 'system', content: 'You are a friendly and knowledgeable music assistant. Provide accurate, helpful information about music, artists, and songs. Keep responses concise but informative.' },
+        { role: 'user', content: conversationalPrompt }
+      ],
+      model: OPENROUTER_MODELS.CLAUDE_SONNET_4,
+      temperature: 0.7
+    });
+
+    return response.content || "I'd be happy to help! Could you clarify what you'd like to know?";
+  } catch (error) {
+    console.error('Conversational query error:', error);
+    return "I'm having trouble processing that question right now. Could you try rephrasing it?";
+  }
+}
+
+// Canonicalize intent to avoid conflicts between generic and specific patterns
+function canonicalizeIntent(raw: string | undefined): string | null {
+  const intent = (raw ?? '').toLowerCase().trim();
+
+  // 1. Exact, high-priority matches first
+  const exact = [
+    'play_specific_song', 'queue_specific_song',
+    'pause', 'play', 'resume', 'skip', 'next', 'previous', 'back',
+    'set_volume', 'get_current_track',
+    'set_shuffle', 'set_repeat', 'get_devices', 'search', 'queue_add',
+    'get_recommendations', 'get_playlists', 'get_playlist_tracks',
+    'play_playlist', 'queue_playlist',
+    'get_recently_played', 'transfer_playback', 'seek', 'clear_queue'
+  ];
+  if (exact.includes(intent)) return intent;
+
+  // 2. Substring/fuzzy matches in STRICT priority order (specific > generic)
+  if (intent.includes('volume')) return 'set_volume';
+  if (intent.includes('current') || intent.includes('playing')) return 'get_current_track';
+  if (intent.includes('recommend')) return 'get_recommendations';
+  if (intent.includes('shuffle')) return 'set_shuffle';
+  if (intent.includes('repeat')) return 'set_repeat';
+  if (intent.includes('devices')) return 'get_devices';
+  if (intent.includes('recently') || intent.includes('history')) return 'get_recently_played';
+  if (intent.includes('transfer')) return 'transfer_playback';
+  if (intent.includes('seek')) return 'seek';
+  if (intent.includes('clear')) return 'clear_queue';
+
+  // Playlist-related need disambiguation (specific > generic)
+  if (intent.includes('queue') && intent.includes('playlist')) return 'queue_playlist';
+  if (intent.includes('play') && intent.includes('playlist')) return 'play_playlist';
+  if (intent.includes('tracks') && intent.includes('playlist')) return 'get_playlist_tracks';
+  if (intent.includes('playlist')) return 'get_playlists';
+
+  // Generic fallbacks
+  if (intent.includes('queue')) return 'queue_add';
+  if (intent.includes('play') || intent.includes('search')) return 'play_specific_song';
+
+  return null; // unknown
 }
 
 // Simple modifier application
@@ -467,7 +552,7 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
     const sessionId = req.sessionID;
     console.log('Session ID:', sessionId);
     
-    const interpretation = await interpretCommand(command, sessionId);
+    const interpretation = await interpretCommand(command, sessionId, 0, req.session.preferredModel);
     console.log('LLM interpretation:', interpretation);
 
     const spotifyControl = new SpotifyControl(
@@ -510,203 +595,118 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
     
     // Handle conversational intents (return text, no Spotify action)
     if (intent === 'chat' || intent === 'ask_question' || intent === 'get_info') {
+      // Get conversation history for context
+      let conversationHistory: ConversationEntry[] = [];
+      let dialogState: DialogState | null = null;
+      
+      if (sessionId && conversationManager) {
+        [conversationHistory, dialogState] = await Promise.all([
+          conversationManager.getHistory(sessionId, 5),
+          conversationManager.getDialogState(sessionId)
+        ]);
+      }
+      
+      // Get actual answer from LLM
+      const answer = await handleConversationalQuery(
+        command,
+        intent,
+        conversationHistory,
+        dialogState
+      );
+      
       result = {
         success: true,
-        message: interpretation.reasoning || "I'd be happy to discuss that with you!",
+        message: answer,
         conversational: true // Flag to indicate no Spotify action
       };
-    } else if (intent === 'play_specific_song' || intent === 'queue_specific_song' || ((intent?.includes('play') || intent?.includes('search')) && intent !== 'play_playlist' && intent !== 'queue_playlist')) {
-      const searchQuery = buildSearchQuery(interpretation);
-      
-      if (!searchQuery) {
-        return res.json({
-          success: false,
-          message: "I couldn't understand what you want to play",
-          interpretation
-        });
-      }
-
-      console.log(`Spotify search: "${searchQuery}"`);
-      const tracks = await spotifyControl.search(searchQuery);
-      const ranked = rankTracks(tracks, interpretation);
-
-      if (ranked.length === 0) {
-        result = {
-          success: false,
-          message: `No tracks found for: "${searchQuery}"`,
-        };
-      } else {
-        const track = ranked[0];
-        
-        // Check intent for queue vs play - now properly handles queue_specific_song
-        if (intent === 'queue_specific_song' || intent?.includes('queue')) {
-          await spotifyControl.queueTrackByUri(track.uri);
-          result = {
-            success: true,
-            message: `Added to queue: ${track.name} by ${track.artists.map(a => a.name).join(', ')}`
-          };
-        } else {
-          await spotifyControl.playTrack(track.uri);
-          result = {
-            success: true,
-            message: `Playing: ${track.name} by ${track.artists.map(a => a.name).join(', ')}`
-          };
-        }
-
-        // Add alternatives if we found multiple good matches
-        if (ranked.length > 1) {
-          (result as any).alternatives = ranked.slice(1, 5).map(t => ({
-            name: t.name,
-            artists: t.artists.map(a => a.name).join(', '),
-            popularity: t.popularity,
-            uri: t.uri
-          }));
-        }
-      }
-    } else if (intent === 'pause') {
-      result = await spotifyControl.pause();
-    } else if (intent === 'play' || intent === 'resume') {
-      result = await spotifyControl.play();
-    } else if (intent === 'skip' || intent === 'next') {
-      result = await spotifyControl.skip();
-    } else if (intent === 'previous' || intent === 'back') {
-      result = await spotifyControl.previous();
-    } else if (intent?.includes('volume') || intent === 'set_volume') {
-      const volume = interpretation.volume || interpretation.volume_level || interpretation.value;
-      if (volume !== undefined) {
-        // Convert volume strings to numbers if needed
-        let volumeValue = volume;
-        if (typeof volume === 'string') {
-          if (volume.toLowerCase() === 'full' || volume.toLowerCase() === 'max') {
-            volumeValue = 100;
-          } else if (volume.toLowerCase() === 'half' || volume.toLowerCase() === 'medium') {
-            volumeValue = 50;
-          } else if (volume.toLowerCase() === 'low' || volume.toLowerCase() === 'min') {
-            volumeValue = 10;
-          } else {
-            volumeValue = parseInt(volume) || 50;
-          }
-        }
-        result = await spotifyControl.setVolume(volumeValue);
-      } else {
-        result = { success: false, message: 'No volume level specified' };
-      }
-    } else if (intent === 'get_current_track' || intent?.includes('current') || intent?.includes('playing')) {
-      result = await spotifyControl.getCurrentTrack();
-    } else if (intent === 'set_shuffle' || intent?.includes('shuffle')) {
-      const enabled = interpretation.enabled !== undefined ? interpretation.enabled : 
-                     (interpretation.state !== 'off' && interpretation.state !== 'false');
-      result = await spotifyControl.setShuffle(enabled);
-    } else if (intent === 'set_repeat' || intent?.includes('repeat')) {
-      const enabled = interpretation.enabled !== undefined ? interpretation.enabled : 
-                     (interpretation.state !== 'off' && interpretation.state !== 'false');
-      result = await spotifyControl.setRepeat(enabled);
-    } else if (intent === 'get_devices' || intent?.includes('devices')) {
-      result = await spotifyControl.getDevices();
-    } else if (intent === 'search' && !intent?.includes('play')) {
-      const searchQuery = buildSearchQuery(interpretation);
-      if (!searchQuery) {
-        result = { success: false, message: "I need something to search for" };
-      } else {
-        const tracks = await spotifyControl.search(searchQuery);
-        const ranked = rankTracks(tracks, interpretation);
-        result = {
-          success: true,
-          message: `Found ${tracks.length} tracks for: "${searchQuery}"`,
-          tracks: ranked.slice(0, 10).map(t => ({
-            name: t.name,
-            artists: t.artists.map(a => a.name).join(', '),
-            album: t.album.name,
-            popularity: t.popularity,
-            uri: t.uri
-          }))
-        };
-      }
-    } else if (intent === 'queue_add' || intent?.includes('queue')) {
-      const searchQuery = buildSearchQuery(interpretation);
-      if (!searchQuery) {
-        result = { success: false, message: "I need something to add to the queue" };
-      } else {
-        result = await spotifyControl.queueTrack(searchQuery);
-      }
-    } else if (intent === 'get_recommendations' || intent?.includes('recommend')) {
-      const trackId = interpretation.track_id || interpretation.trackId;
-      if (!trackId) {
-        result = { success: false, message: "I need a track ID to get recommendations" };
-      } else {
-        result = await spotifyControl.getRecommendations(trackId);
-      }
-    } else if (intent === 'get_playlists' || intent?.includes('playlists')) {
-      result = await spotifyControl.getPlaylists();
-    } else if (intent === 'get_playlist_tracks' || intent?.includes('playlist_tracks')) {
-      const playlistId = interpretation.playlist_id || interpretation.playlistId;
-      if (!playlistId) {
-        result = { success: false, message: "I need a playlist ID to get tracks" };
-      } else {
-        result = await spotifyControl.getPlaylistTracks(playlistId);
-      }
-    } else if (intent === 'play_playlist' || intent?.includes('play_playlist')) {
-      const playlistUri = interpretation.playlist_uri || interpretation.playlistUri;
-      const searchQuery = interpretation.query || interpretation.search_query;
-      
-      console.log(`[DEBUG] play_playlist intent detected. URI: ${playlistUri}, Query: ${searchQuery}`);
-      
-      if (playlistUri) {
-        // Play playlist by URI
-        console.log(`[DEBUG] Playing playlist by URI: ${playlistUri}`);
-        result = await spotifyControl.playPlaylist(playlistUri);
-      } else if (searchQuery) {
-        // Search for playlist and play it
-        console.log(`[DEBUG] Searching for playlist: ${searchQuery}`);
-        result = await spotifyControl.searchAndPlayPlaylist(searchQuery);
-      } else {
-        console.log(`[DEBUG] No playlist URI or query provided`);
-        result = { success: false, message: "I need a playlist name or URI to play" };
-      }
-    } else if (intent === 'queue_playlist' || intent?.includes('queue_playlist')) {
-      const playlistUri = interpretation.playlist_uri || interpretation.playlistUri;
-      const searchQuery = interpretation.query || interpretation.search_query;
-      
-      console.log(`[DEBUG] queue_playlist intent detected. URI: ${playlistUri}, Query: ${searchQuery}`);
-      
-      if (playlistUri) {
-        // Queue playlist by URI (extract ID from URI)
-        const playlistId = playlistUri.split(':').pop() || playlistUri.split('/').pop();
-        console.log(`[DEBUG] Queuing playlist by URI/ID: ${playlistId}`);
-        result = await spotifyControl.queuePlaylist(playlistId);
-      } else if (searchQuery) {
-        // Search for playlist and queue it
-        console.log(`[DEBUG] Searching and queuing playlist: ${searchQuery}`);
-        result = await spotifyControl.searchAndQueuePlaylist(searchQuery);
-      } else {
-        console.log(`[DEBUG] No playlist URI or query provided for queue`);
-        result = { success: false, message: "I need a playlist name or URI to queue" };
-      }
-    } else if (intent === 'get_recently_played' || intent?.includes('recently') || intent?.includes('history')) {
-      result = await spotifyControl.getRecentlyPlayed();
-    } else if (intent === 'transfer_playback' || intent?.includes('transfer')) {
-      const deviceId = interpretation.device_id || interpretation.deviceId;
-      if (!deviceId) {
-        result = { success: false, message: "I need a device ID to transfer playback" };
-      } else {
-        const play = interpretation.play !== undefined ? interpretation.play : true;
-        result = await spotifyControl.transferPlayback(deviceId, play);
-      }
-    } else if (intent === 'seek' || intent?.includes('seek')) {
-      const position = interpretation.position || interpretation.seconds || interpretation.time;
-      if (position === undefined) {
-        result = { success: false, message: "I need a position in seconds to seek to" };
-      } else {
-        result = await spotifyControl.seekToPosition(position);
-      }
-    } else if (intent === 'clear_queue' || intent?.includes('clear')) {
-      console.log(`[DEBUG] clear_queue intent detected`);
-      result = await spotifyControl.clearQueue();
     } else {
-      result = { 
-        success: false, 
-        message: `I don't know how to: ${intent || command}`
-      };
+      // Use canonicalized intent for clean switch handling
+      const canonicalIntent = canonicalizeIntent(intent);
+      
+      switch (canonicalIntent) {
+        case 'play_specific_song':
+        case 'queue_specific_song': {
+          const searchQuery = buildSearchQuery(interpretation);
+          
+          if (!searchQuery) {
+            return res.json({
+              success: false,
+              message: "I couldn't understand what you want to play",
+              interpretation
+            });
+          }
+
+          console.log(`Spotify search: "${searchQuery}"`);
+          const tracks = await spotifyControl.search(searchQuery);
+          const ranked = rankTracks(tracks, interpretation);
+
+          if (ranked.length === 0) {
+            result = {
+              success: false,
+              message: `No tracks found for: "${searchQuery}"`,
+            };
+          } else {
+            const track = ranked[0];
+            
+            // Check intent for queue vs play - now properly handles queue_specific_song
+            if (canonicalIntent === 'queue_specific_song') {
+              await spotifyControl.queueTrackByUri(track.uri);
+              result = {
+                success: true,
+                message: `Added to queue: ${track.name} by ${track.artists.map(a => a.name).join(', ')}`
+              };
+            } else {
+              await spotifyControl.playTrack(track.uri);
+              result = {
+                success: true,
+                message: `Playing: ${track.name} by ${track.artists.map(a => a.name).join(', ')}`
+              };
+            }
+
+            // Add alternatives if we found multiple good matches
+            if (ranked.length > 1) {
+              (result as any).alternatives = ranked.slice(1, 5).map(t => ({
+                name: t.name,
+                artists: t.artists.map(a => a.name).join(', '),
+                popularity: t.popularity,
+                uri: t.uri
+              }));
+            }
+          }
+          break;
+        }
+
+        case 'queue_playlist': {
+          const playlistUri = interpretation.playlist_uri || interpretation.playlistUri;
+          const searchQuery = interpretation.query || interpretation.search_query;
+          
+          console.log(`[DEBUG] queue_playlist intent detected. URI: ${playlistUri}, Query: ${searchQuery}`);
+          console.log(`[DEBUG] Full interpretation object:`, JSON.stringify(interpretation, null, 2));
+          
+          if (playlistUri) {
+            // Queue playlist by URI (extract ID from URI)
+            const playlistId = playlistUri.split(':').pop() || playlistUri.split('/').pop();
+            console.log(`[DEBUG] Queuing playlist by URI/ID: ${playlistId}`);
+            result = await spotifyControl.queuePlaylist(playlistId);
+          } else if (searchQuery) {
+            // Search for playlist and queue it
+            console.log(`[DEBUG] Searching and queuing playlist: ${searchQuery}`);
+            result = await spotifyControl.searchAndQueuePlaylist(searchQuery);
+            console.log(`[DEBUG] searchAndQueuePlaylist result:`, JSON.stringify(result, null, 2));
+          } else {
+            console.log(`[DEBUG] No playlist URI or query provided for queue`);
+            result = { success: false, message: "I need a playlist name or URI to queue" };
+          }
+          break;
+        }
+
+        default:
+          result = { 
+            success: false, 
+            message: `I don't know how to: ${intent || command}`
+          };
+          break;
+      }
     }
 
     const responseData = {
@@ -810,7 +810,7 @@ simpleLLMInterpreterRouter.get('/test', async (req, res) => {
   const results = [];
   for (const cmd of testCommands) {
     try {
-      const interpretation = await interpretCommand(cmd);
+      const interpretation = await interpretCommand(cmd, undefined, 0, undefined);
       results.push({ command: cmd, interpretation });
     } catch (error) {
       results.push({ command: cmd, error: error instanceof Error ? error.message : 'Failed' });
@@ -831,7 +831,7 @@ simpleLLMInterpreterRouter.post('/test-interpret', async (req, res) => {
   try {
     const startTime = Date.now();
     const sessionId = req.sessionID;
-    const interpretation = await interpretCommand(command, sessionId);
+    const interpretation = await interpretCommand(command, sessionId, 0, req.session.preferredModel);
     const responseTime = Date.now() - startTime;
     
     // Store conversation entry for testing (same as main endpoint)

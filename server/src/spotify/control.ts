@@ -209,30 +209,32 @@ export class SpotifyControl {
     try {
       console.log(`[DEBUG] Queuing playlist with ID: ${playlistId}`);
       
-      // Get all tracks from the playlist
-      const tracksResponse = await this.getPlaylistTracks(playlistId);
-      if (!tracksResponse.success || !tracksResponse.tracks) {
-        return { success: false, message: "Couldn't get playlist tracks" };
-      }
-
-      const tracks = tracksResponse.tracks;
-      if (tracks.length === 0) {
+      // Get ALL tracks from the playlist directly from API (not limited to 20)
+      const allTracks = await this.webAPI.getPlaylistTracks(playlistId);
+      console.log(`[DEBUG] Got ${allTracks.length} tracks from playlist API`);
+      
+      if (allTracks.length === 0) {
         return { success: false, message: "Playlist is empty" };
       }
-
-      console.log(`[DEBUG] Queuing ${tracks.length} tracks from playlist`);
-
+      
+      // Only queue up to 10 tracks to avoid overwhelming the queue
+      const tracksToQueue = allTracks.slice(0, 10);
+      console.log(`[DEBUG] Queuing ${tracksToQueue.length} tracks from playlist (max 10)`);
+      
       // Queue all tracks from the playlist
-      for (let i = 0; i < tracks.length; i++) {
-        await this.webAPI.addToQueue(tracks[i].uri);
+      for (let i = 0; i < tracksToQueue.length; i++) {
+        const track = tracksToQueue[i].track || tracksToQueue[i];
+        if (track && track.uri) {
+          await this.webAPI.addToQueue(track.uri);
+        }
       }
-
+      
       return { 
         success: true, 
-        message: `Queued ${tracks.length} tracks from playlist`,
-        tracksQueued: tracks.length,
+        message: `Queued ${tracksToQueue.length} tracks from playlist${allTracks.length > 10 ? ` (limited to 10 of ${allTracks.length})` : ''}`,
+        tracksQueued: tracksToQueue.length,
         playlistInfo: {
-          totalTracks: tracks.length,
+          totalTracks: allTracks.length,
           method: 'queue_all'
         }
       };
@@ -267,6 +269,12 @@ export class SpotifyControl {
         playlists = rawPlaylists.filter(p => p && p.id && p.uri && (p.name || p.title));
         
         console.log(`[DEBUG] Raw playlists found: ${rawPlaylists.length}, Valid playlists: ${playlists.length}`);
+        console.log(`[DEBUG] First playlist:`, playlists[0] ? JSON.stringify({
+          name: playlists[0].name,
+          id: playlists[0].id,
+          uri: playlists[0].uri,
+          tracks: playlists[0].tracks
+        }, null, 2) : 'none');
         
         if (playlists.length === 0) {
           return { 
