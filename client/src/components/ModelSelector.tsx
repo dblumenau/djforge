@@ -96,11 +96,11 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange }) => {
         <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
         </svg>
-        <span className="text-gray-300">
+        <span className="text-gray-300 truncate max-w-[150px] md:max-w-none">
           {selectedModelInfo ? selectedModelInfo.name : 'Select Model'}
         </span>
         {selectedModelInfo?.supportsJSON && (
-          <span className="text-xs text-green-400 bg-green-900/30 px-2 py-0.5 rounded">
+          <span className="hidden sm:inline text-xs text-green-400 bg-green-900/30 px-2 py-0.5 rounded">
             JSON
           </span>
         )}
@@ -123,10 +123,10 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange }) => {
 
       {/* Dropdown Menu */}
       {showDropdown && models && (
-        <div className="absolute top-full mt-2 w-96 max-h-96 overflow-y-auto bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50">
+        <div className="absolute top-full mt-2 w-screen max-w-sm md:max-w-md lg:max-w-lg right-0 md:right-auto md:left-0 max-h-[70vh] md:max-h-96 overflow-y-auto bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50">
           {Object.entries(models.models).map(([provider, providerModels]) => (
             <div key={provider} className="border-b border-gray-700 last:border-0">
-              <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              <div className="px-3 md:px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 {provider}
               </div>
               {providerModels.map((model) => (
@@ -135,7 +135,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange }) => {
                   onClick={() => handleModelSelect(model.id)}
                   disabled={isSaving}
                   className={`
-                    w-full text-left px-4 py-3 hover:bg-gray-700 transition-colors
+                    w-full text-left px-3 md:px-4 py-2 md:py-3 hover:bg-gray-700 transition-colors
                     ${model.id === selectedModel ? 'bg-gray-700/50' : ''}
                     ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}
                   `}
@@ -143,7 +143,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange }) => {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center space-x-2">
-                        <span className="font-medium text-gray-200">
+                        <span className="font-medium text-gray-200 text-sm md:text-base">
                           {model.name}
                         </span>
                         {model.id === models.defaultModel && (
@@ -157,11 +157,11 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange }) => {
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-gray-400 mt-1">
+                      <p className="text-xs text-gray-400 mt-1 line-clamp-2 md:line-clamp-none">
                         {model.description}
                       </p>
                     </div>
-                    <div className="ml-4 flex items-center space-x-2">
+                    <div className="ml-2 md:ml-4 hidden sm:flex items-center space-x-2">
                       {model.supportsJSON ? (
                         <div className="flex items-center text-green-400" title="Supports JSON output mode">
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
