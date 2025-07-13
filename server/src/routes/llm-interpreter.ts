@@ -12,20 +12,58 @@ import {
   type MusicCommand
 } from '../llm/schemas';
 import { buildSpotifySearchQuery, extractEssentialFields } from '../llm/normalizer';
+import { verifyJWT, extractTokenFromHeader } from '../utils/jwt';
+import crypto from 'crypto';
 
 export const llmInterpreterRouter = Router();
+
+// Redis client reference for model preferences
+let redisClient: any = null;
+
+export function setRedisClient(client: any) {
+  redisClient = client;
+}
+
+// Helper to get user ID from JWT
+function getUserIdFromRequest(req: any): string | null {
+  const authHeader = req.headers.authorization;
+  const jwtToken = extractTokenFromHeader(authHeader);
+  
+  if (!jwtToken) return null;
+  
+  const payload = verifyJWT(jwtToken);
+  if (!payload) return null;
+  
+  // Create a stable user ID from the Spotify refresh token
+  const refreshToken = payload.spotifyTokens.refresh_token;
+  return crypto.createHash('sha256').update(refreshToken).digest('hex').substring(0, 16);
+}
+
+// Get user's model preference from Redis
+async function getUserModelPreference(userId: string): Promise<string | null> {
+  if (!redisClient) return null;
+  
+  try {
+    const key = `user:${userId}:model_preference`;
+    const preference = await redisClient.get(key);
+    return preference;
+  } catch (error) {
+    console.error('Error getting model preference from Redis:', error);
+    return null;
+  }
+}
 
 interface TrackWithScore extends SpotifyTrack {
   relevanceScore: number;
 }
 
 // Interpret command using LLM orchestrator
-async function interpretCommand(command: string): Promise<MusicCommand> {
+async function interpretCommand(command: string, preferredModel?: string): Promise<MusicCommand> {
   const request = createSchemaRequest(
     SYSTEM_PROMPTS.MUSIC_INTERPRETER,
     command,
     MusicCommandSchema,
-    OPENROUTER_MODELS.GPT_4O // Start with fast, cheap model
+    preferredModel || OPENROUTER_MODELS.GPT_4O // Use preferred model or default
   );
 
   try {
@@ -208,12 +246,24 @@ llmInterpreterRouter.post('/command', ensureValidToken, async (req, res) => {
   console.log('Processing LLM command:', command);
 
   try {
-    const interpretation = await interpretCommand(command);
+    // Get user's preferred model from Redis
+    const userId = getUserIdFromRequest(req);
+    let preferredModel = OPENROUTER_MODELS.GPT_4O;
+    
+    if (userId) {
+      const savedPreference = await getUserModelPreference(userId);
+      if (savedPreference) {
+        preferredModel = savedPreference;
+        console.log(`Using user's preferred model: ${preferredModel}`);
+      }
+    }
+    
+    const interpretation = await interpretCommand(command, preferredModel);
     console.log('LLM interpretation:', interpretation);
 
     const spotifyControl = new SpotifyControl(
-      req.session.spotifyTokens,
-      (tokens) => { req.session.spotifyTokens = tokens; }
+      req.spotifyTokens!,
+      (tokens) => { req.spotifyTokens = tokens; }
     );
     let result;
 

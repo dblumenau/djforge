@@ -1,8 +1,59 @@
 import { Router } from 'express';
 import { ensureValidToken } from '../spotify/auth';
 import { llmOrchestrator, OPENROUTER_MODELS } from '../llm/orchestrator';
+import { verifyJWT, extractTokenFromHeader } from '../utils/jwt';
+import crypto from 'crypto';
 
 export const modelPreferencesRouter = Router();
+
+// Redis client reference
+let redisClient: any = null;
+
+export function setRedisClient(client: any) {
+  redisClient = client;
+}
+
+// Helper to get user ID from JWT
+function getUserIdFromRequest(req: any): string | null {
+  const authHeader = req.headers.authorization;
+  const jwtToken = extractTokenFromHeader(authHeader);
+  
+  if (!jwtToken) return null;
+  
+  const payload = verifyJWT(jwtToken);
+  if (!payload) return null;
+  
+  // Create a stable user ID from the Spotify refresh token
+  const refreshToken = payload.spotifyTokens.refresh_token;
+  return crypto.createHash('sha256').update(refreshToken).digest('hex').substring(0, 16);
+}
+
+// Get model preference from Redis
+async function getUserModelPreference(userId: string): Promise<string | null> {
+  if (!redisClient) return null;
+  
+  try {
+    const key = `user:${userId}:model_preference`;
+    const preference = await redisClient.get(key);
+    return preference;
+  } catch (error) {
+    console.error('Error getting model preference from Redis:', error);
+    return null;
+  }
+}
+
+// Set model preference in Redis
+async function setUserModelPreference(userId: string, modelId: string): Promise<void> {
+  if (!redisClient) return;
+  
+  try {
+    const key = `user:${userId}:model_preference`;
+    // Store for 90 days
+    await redisClient.set(key, modelId, 'EX', 90 * 24 * 60 * 60);
+  } catch (error) {
+    console.error('Error setting model preference in Redis:', error);
+  }
+}
 
 // Model display information
 const MODEL_DISPLAY_INFO: Record<string, { name: string; provider: string; description: string }> = {
@@ -194,7 +245,17 @@ function getGroupedModels() {
 modelPreferencesRouter.get('/models', ensureValidToken, async (req, res) => {
   try {
     const availableModels = getGroupedModels();
-    const currentPreference = req.session.preferredModel || OPENROUTER_MODELS.CLAUDE_SONNET_4;
+    
+    // Get user preference from Redis
+    const userId = getUserIdFromRequest(req);
+    let currentPreference = OPENROUTER_MODELS.CLAUDE_SONNET_4;
+    
+    if (userId) {
+      const savedPreference = await getUserModelPreference(userId);
+      if (savedPreference && MODEL_DISPLAY_INFO[savedPreference]) {
+        currentPreference = savedPreference;
+      }
+    }
     
     res.json({
       models: availableModels,
@@ -223,21 +284,16 @@ modelPreferencesRouter.post('/models', ensureValidToken, async (req, res) => {
       });
     }
     
-    // Update session preference
-    req.session.preferredModel = modelId;
+    // Get user ID and save preference to Redis
+    const userId = getUserIdFromRequest(req);
+    if (userId) {
+      await setUserModelPreference(userId, modelId);
+    }
     
-    // Save session
-    req.session.save((err) => {
-      if (err) {
-        console.error('Session save error:', err);
-        return res.status(500).json({ error: 'Failed to save preference' });
-      }
-      
-      res.json({
-        success: true,
-        modelId,
-        modelInfo: MODEL_DISPLAY_INFO[modelId]
-      });
+    res.json({
+      success: true,
+      modelId,
+      modelInfo: MODEL_DISPLAY_INFO[modelId]
     });
   } catch (error) {
     console.error('Error updating model preference:', error);

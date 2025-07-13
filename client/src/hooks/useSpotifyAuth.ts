@@ -23,8 +23,22 @@ export const useSpotifyAuth = () => {
       const url = apiEndpoint('/api/auth/status');
       console.log('📡 useSpotifyAuth: Checking auth at:', url);
       
+      // Get JWT token from localStorage
+      const jwtToken = localStorage.getItem('spotify_jwt');
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (jwtToken) {
+        headers['Authorization'] = `Bearer ${jwtToken}`;
+        console.log('📡 useSpotifyAuth: Sending JWT token in Authorization header');
+      } else {
+        console.log('📡 useSpotifyAuth: No JWT token found, checking session cookies');
+      }
+      
       const response = await fetch(url, {
-        credentials: 'include'
+        credentials: 'include',
+        headers
       });
       
       console.log('📋 useSpotifyAuth: Auth check response status:', response.status);
@@ -87,6 +101,10 @@ export const useSpotifyAuth = () => {
 
   const logout = async () => {
     try {
+      // Clear JWT token
+      localStorage.removeItem('spotify_jwt');
+      
+      // Also call logout endpoint (for session cleanup if any)
       await fetch(apiEndpoint('/api/auth/logout'), {
         method: 'POST',
         credentials: 'include'

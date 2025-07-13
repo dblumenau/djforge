@@ -2,6 +2,7 @@ import { Router } from 'express';
 import crypto from 'crypto';
 import axios from 'axios';
 import { SpotifyAuthTokens } from '../types';
+import { verifyJWT, extractTokenFromHeader } from '../utils/jwt';
 
 export const authRouter = Router();
 
@@ -102,43 +103,100 @@ authRouter.get('/callback', async (req, res) => {
   }
 });
 
-// Middleware to check and refresh token if needed
+// Middleware to check and refresh token if needed (now uses JWT)
 export async function ensureValidToken(req: any, res: any, next: any) {
-  if (!req.session.spotifyTokens) {
+  // Try JWT first, then fallback to session for backwards compatibility
+  const authHeader = req.headers.authorization;
+  const jwtToken = extractTokenFromHeader(authHeader);
+  
+  let tokens: SpotifyAuthTokens | null = null;
+  let tokenTimestamp = 0;
+  
+  if (jwtToken) {
+    // JWT-based authentication
+    const payload = verifyJWT(jwtToken);
+    if (!payload) {
+      return res.status(401).json({ error: 'Invalid JWT token' });
+    }
+    tokens = payload.spotifyTokens;
+    tokenTimestamp = payload.tokenTimestamp;
+  } else if (req.session.spotifyTokens) {
+    // Fallback to session-based auth (for local dev)
+    tokens = req.session.spotifyTokens;
+    tokenTimestamp = req.session.tokenTimestamp || 0;
+  } else {
     return res.status(401).json({ error: 'Not authenticated' });
   }
 
-  const tokens = req.session.spotifyTokens;
-  const tokenAge = Date.now() - (req.session.tokenTimestamp || 0);
+  if (!tokens) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const tokenAge = Date.now() - tokenTimestamp;
   const expiresIn = tokens.expires_in * 1000; // Convert to milliseconds
   
   // Refresh if token is older than 50 minutes (leaving 10 min buffer)
   if (tokenAge > expiresIn - 600000) {
     try {
       const newTokens = await refreshAccessToken(tokens.refresh_token);
-      req.session.spotifyTokens = { ...tokens, ...newTokens };
-      req.session.tokenTimestamp = Date.now();
+      const refreshedTokens = { ...tokens, ...newTokens };
+      
+      if (jwtToken) {
+        // For JWT auth, we can't refresh in place - client needs to get new JWT
+        // For now, just use the current tokens and let client handle refresh
+        req.spotifyTokens = tokens;
+      } else {
+        // Session-based: update session
+        req.session.spotifyTokens = refreshedTokens;
+        req.session.tokenTimestamp = Date.now();
+        req.spotifyTokens = refreshedTokens;
+      }
       console.log('Token refreshed successfully');
     } catch (error) {
       console.error('Token refresh failed:', error);
       return res.status(401).json({ error: 'Token refresh failed' });
     }
+  } else {
+    req.spotifyTokens = tokens;
   }
   
   next();
 }
 
-// Check authentication status
+// Check authentication status (supports both JWT and session)
 authRouter.get('/status', (req, res) => {
-  console.log('Auth status check - Session ID:', req.sessionID);
-  console.log('Has tokens:', !!req.session.spotifyTokens);
+  // Try JWT first
+  const authHeader = req.headers.authorization;
+  const jwtToken = extractTokenFromHeader(authHeader);
   
-  const tokens = req.session.spotifyTokens;
+  let tokens: SpotifyAuthTokens | null = null;
+  let tokenTimestamp = 0;
+  
+  if (jwtToken) {
+    // JWT-based authentication
+    const payload = verifyJWT(jwtToken);
+    if (payload) {
+      tokens = payload.spotifyTokens;
+      tokenTimestamp = payload.tokenTimestamp;
+      console.log('Auth status check - JWT token valid');
+    } else {
+      console.log('Auth status check - JWT token invalid');
+    }
+  } else if (req.session.spotifyTokens) {
+    // Fallback to session-based auth
+    tokens = req.session.spotifyTokens;
+    tokenTimestamp = req.session.tokenTimestamp || 0;
+    console.log('Auth status check - Session ID:', req.sessionID);
+    console.log('Has tokens:', !!tokens);
+  } else {
+    console.log('Auth status check - No JWT or session tokens');
+  }
+  
   const isAuthenticated = !!tokens?.access_token;
   
-  if (isAuthenticated && req.session.tokenTimestamp) {
+  if (isAuthenticated && tokens && tokenTimestamp) {
     // Calculate if token is expired (Spotify tokens last 1 hour)
-    const tokenAge = Date.now() - req.session.tokenTimestamp;
+    const tokenAge = Date.now() - tokenTimestamp;
     const expiresIn = (tokens.expires_in || 3600) * 1000; // Convert to ms
     const isExpired = tokenAge >= expiresIn;
     
@@ -156,48 +214,7 @@ authRouter.get('/status', (req, res) => {
   }
 });
 
-// Token exchange endpoint for cross-domain auth
-authRouter.post('/exchange-token', async (req, res) => {
-  const { token } = req.body;
-  
-  if (!token) {
-    return res.status(400).json({ error: 'Token required' });
-  }
-  
-  try {
-    // Decode the token
-    const decoded = JSON.parse(Buffer.from(token, 'base64').toString());
-    
-    // Verify token is recent (within 1 minute)
-    if (Date.now() - decoded.timestamp > 60000) {
-      return res.status(401).json({ error: 'Token expired' });
-    }
-    
-    // Load the session data from the original session
-    req.sessionStore.get(decoded.sessionId, (err: any, sessionData: any) => {
-      if (err || !sessionData || !sessionData.spotifyTokens) {
-        return res.status(401).json({ error: 'Invalid token' });
-      }
-      
-      // Copy the session data to the current session
-      req.session.spotifyTokens = sessionData.spotifyTokens;
-      req.session.tokenTimestamp = sessionData.tokenTimestamp;
-      
-      req.session.save((saveErr: any) => {
-        if (saveErr) {
-          return res.status(500).json({ error: 'Session save failed' });
-        }
-        
-        res.json({ 
-          authenticated: true,
-          accessToken: sessionData.spotifyTokens.access_token
-        });
-      });
-    });
-  } catch (error) {
-    res.status(400).json({ error: 'Invalid token format' });
-  }
-});
+// No longer needed - JWT tokens are passed directly
 
 // Logout
 authRouter.post('/logout', (req, res) => {

@@ -1,18 +1,19 @@
 import { Router } from 'express';
 import { SpotifyWebAPI } from './api';
 import { SpotifyAuthTokens, SpotifyTrack } from '../types';
+import { ensureValidToken } from './auth';
 
 export const controlRouter = Router();
 
-// Helper to get WebAPI instance from session
+// Helper to get WebAPI instance from request
 const getWebAPI = (req: any): SpotifyWebAPI => {
-  if (!req.session.spotifyTokens) {
+  if (!req.spotifyTokens) {
     throw new Error('Not authenticated with Spotify');
   }
   
   return new SpotifyWebAPI(
-    req.session.spotifyTokens,
-    (tokens) => { req.session.spotifyTokens = tokens; }
+    req.spotifyTokens,
+    (tokens) => { req.spotifyTokens = tokens; }
   );
 };
 
@@ -543,16 +544,10 @@ export class SpotifyControl {
   }
 }
 
-// Middleware to check authentication
-const requireAuth = (req: any, res: any, next: any) => {
-  if (!req.session.spotifyTokens) {
-    return res.status(401).json({ error: 'Not authenticated' });
-  }
-  next();
-};
+// All endpoints now use ensureValidToken from auth.ts
 
 // Basic playback controls using Web API
-controlRouter.post('/play', requireAuth, async (req, res) => {
+controlRouter.post('/play', ensureValidToken, async (req, res) => {
   try {
     const webAPI = getWebAPI(req);
     await webAPI.play(req.body.deviceId);
@@ -562,7 +557,7 @@ controlRouter.post('/play', requireAuth, async (req, res) => {
   }
 });
 
-controlRouter.post('/pause', requireAuth, async (req, res) => {
+controlRouter.post('/pause', ensureValidToken, async (req, res) => {
   try {
     const webAPI = getWebAPI(req);
     await webAPI.pause();
@@ -572,7 +567,7 @@ controlRouter.post('/pause', requireAuth, async (req, res) => {
   }
 });
 
-controlRouter.post('/next', requireAuth, async (req, res) => {
+controlRouter.post('/next', ensureValidToken, async (req, res) => {
   try {
     const webAPI = getWebAPI(req);
     await webAPI.nextTrack();
@@ -582,7 +577,7 @@ controlRouter.post('/next', requireAuth, async (req, res) => {
   }
 });
 
-controlRouter.post('/previous', requireAuth, async (req, res) => {
+controlRouter.post('/previous', ensureValidToken, async (req, res) => {
   try {
     const webAPI = getWebAPI(req);
     await webAPI.previousTrack();
@@ -593,7 +588,7 @@ controlRouter.post('/previous', requireAuth, async (req, res) => {
 });
 
 // Volume control
-controlRouter.post('/volume', requireAuth, async (req, res) => {
+controlRouter.post('/volume', ensureValidToken, async (req, res) => {
   const { volume, deviceId } = req.body;
   
   if (typeof volume !== 'number' || volume < 0 || volume > 100) {
@@ -609,7 +604,7 @@ controlRouter.post('/volume', requireAuth, async (req, res) => {
   }
 });
 
-controlRouter.get('/volume', requireAuth, async (req, res) => {
+controlRouter.get('/volume', ensureValidToken, async (req, res) => {
   try {
     const webAPI = getWebAPI(req);
     const volume = await webAPI.getVolume();
@@ -620,7 +615,7 @@ controlRouter.get('/volume', requireAuth, async (req, res) => {
 });
 
 // Get current playback state
-controlRouter.get('/current', requireAuth, async (req, res) => {
+controlRouter.get('/current', ensureValidToken, async (req, res) => {
   try {
     const webAPI = getWebAPI(req);
     const playback = await webAPI.getCurrentPlayback();
@@ -654,7 +649,7 @@ controlRouter.get('/current', requireAuth, async (req, res) => {
 });
 
 // Shuffle and repeat controls
-controlRouter.post('/shuffle', requireAuth, async (req, res) => {
+controlRouter.post('/shuffle', ensureValidToken, async (req, res) => {
   const { enabled } = req.body;
   
   try {
@@ -666,7 +661,7 @@ controlRouter.post('/shuffle', requireAuth, async (req, res) => {
   }
 });
 
-controlRouter.post('/repeat', requireAuth, async (req, res) => {
+controlRouter.post('/repeat', ensureValidToken, async (req, res) => {
   const { enabled, mode } = req.body;
   
   try {
@@ -681,7 +676,7 @@ controlRouter.post('/repeat', requireAuth, async (req, res) => {
 });
 
 // Get available devices
-controlRouter.get('/devices', requireAuth, async (req, res) => {
+controlRouter.get('/devices', ensureValidToken, async (req, res) => {
   try {
     const webAPI = getWebAPI(req);
     const devices = await webAPI.getDevices();
@@ -692,7 +687,7 @@ controlRouter.get('/devices', requireAuth, async (req, res) => {
 });
 
 // Transfer playback to a specific device
-controlRouter.post('/transfer', requireAuth, async (req, res) => {
+controlRouter.post('/transfer', ensureValidToken, async (req, res) => {
   const { deviceId, play } = req.body;
   
   if (!deviceId) {
@@ -709,7 +704,7 @@ controlRouter.post('/transfer', requireAuth, async (req, res) => {
 });
 
 // Play specific track (requires Web API search first)
-controlRouter.post('/play-uri', requireAuth, async (req, res) => {
+controlRouter.post('/play-uri', ensureValidToken, async (req, res) => {
   const { uri, deviceId } = req.body;
   
   if (!uri || typeof uri !== 'string') {
@@ -726,7 +721,7 @@ controlRouter.post('/play-uri', requireAuth, async (req, res) => {
 });
 
 // Search for tracks
-controlRouter.get('/search', requireAuth, async (req, res) => {
+controlRouter.get('/search', ensureValidToken, async (req, res) => {
   const { q } = req.query;
   
   if (!q || typeof q !== 'string') {
@@ -743,7 +738,7 @@ controlRouter.get('/search', requireAuth, async (req, res) => {
 });
 
 // Queue a track
-controlRouter.post('/queue', requireAuth, async (req, res) => {
+controlRouter.post('/queue', ensureValidToken, async (req, res) => {
   const { uri } = req.body;
   
   if (!uri || typeof uri !== 'string') {
@@ -760,7 +755,7 @@ controlRouter.post('/queue', requireAuth, async (req, res) => {
 });
 
 // Seek to position
-controlRouter.post('/seek', requireAuth, async (req, res) => {
+controlRouter.post('/seek', ensureValidToken, async (req, res) => {
   const { position } = req.body;
   
   if (typeof position !== 'number' || position < 0) {

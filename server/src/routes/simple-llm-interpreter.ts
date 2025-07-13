@@ -1,20 +1,55 @@
   import { Router } from 'express';
 import { SpotifyControl } from '../spotify/control';
 import { ensureValidToken } from '../spotify/auth';
-import { SpotifyTrack } from '../types';
+import { SpotifyTrack, SpotifyAuthTokens } from '../types';
 import { llmOrchestrator, OPENROUTER_MODELS } from '../llm/orchestrator';
 import { llmMonitor } from '../llm/monitoring';
 import { RedisConversation, createConversationManager, ConversationEntry, DialogState } from '../utils/redisConversation';
+import { verifyJWT, extractTokenFromHeader } from '../utils/jwt';
+import crypto from 'crypto';
 
 export const simpleLLMInterpreterRouter = Router();
 
 // Conversation manager instance (will be set when Redis is available)
 let conversationManager: RedisConversation | null = null;
 
-export function setRedisClient(redisClient: any) {
-  if (redisClient) {
-    conversationManager = createConversationManager(redisClient);
+// Redis client reference for model preferences
+let redisClient: any = null;
+
+export function setRedisClient(client: any) {
+  redisClient = client;
+  if (client) {
+    conversationManager = createConversationManager(client);
     console.log('✅ Conversation manager initialized for contextual understanding');
+  }
+}
+
+// Helper to get user ID from JWT
+function getUserIdFromRequest(req: any): string | null {
+  const authHeader = req.headers.authorization;
+  const jwtToken = extractTokenFromHeader(authHeader);
+  
+  if (!jwtToken) return null;
+  
+  const payload = verifyJWT(jwtToken);
+  if (!payload) return null;
+  
+  // Create a stable user ID from the Spotify refresh token
+  const refreshToken = payload.spotifyTokens.refresh_token;
+  return crypto.createHash('sha256').update(refreshToken).digest('hex').substring(0, 16);
+}
+
+// Get user's model preference from Redis
+async function getUserModelPreference(userId: string): Promise<string | null> {
+  if (!redisClient) return null;
+  
+  try {
+    const key = `user:${userId}:model_preference`;
+    const preference = await redisClient.get(key);
+    return preference;
+  } catch (error) {
+    console.error('Error getting model preference from Redis:', error);
+    return null;
   }
 }
 
@@ -380,7 +415,8 @@ async function handleConversationalQuery(
   command: string, 
   intent: string, 
   conversationHistory: ConversationEntry[],
-  dialogState: DialogState | null
+  dialogState: DialogState | null,
+  preferredModel?: string
 ): Promise<string> {
   try {
     // Build context about recent music if available
@@ -408,7 +444,7 @@ Provide a helpful, informative response. If the question is about music history,
         { role: 'system', content: 'You are a friendly and knowledgeable music assistant. Provide accurate, helpful information about music, artists, and songs. Keep responses concise but informative.' },
         { role: 'user', content: conversationalPrompt }
       ],
-      model: OPENROUTER_MODELS.CLAUDE_SONNET_4,
+      model: preferredModel || OPENROUTER_MODELS.CLAUDE_SONNET_4,
       temperature: 0.7
     });
 
@@ -552,12 +588,30 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
     const sessionId = req.sessionID;
     console.log('Session ID:', sessionId);
     
-    const interpretation = await interpretCommand(command, sessionId, 0, req.session.preferredModel);
+    // Get user's preferred model from Redis
+    const userId = getUserIdFromRequest(req);
+    let preferredModel = OPENROUTER_MODELS.CLAUDE_SONNET_4;
+    
+    if (userId) {
+      const savedPreference = await getUserModelPreference(userId);
+      if (savedPreference) {
+        preferredModel = savedPreference;
+        console.log(`Using user's preferred model: ${preferredModel}`);
+      }
+    }
+    
+    const interpretation = await interpretCommand(command, sessionId, 0, preferredModel);
     console.log('LLM interpretation:', interpretation);
 
+    let refreshedTokens: SpotifyAuthTokens | null = null;
+    
     const spotifyControl = new SpotifyControl(
-      req.session.spotifyTokens!,
-      (tokens) => { req.session.spotifyTokens = tokens; }
+      req.spotifyTokens!,
+      (tokens) => { 
+        // Store refreshed tokens to include in response
+        refreshedTokens = tokens;
+        req.spotifyTokens = tokens; 
+      }
     );
 
     let result;
@@ -611,7 +665,8 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
         command,
         intent,
         conversationHistory,
-        dialogState
+        dialogState,
+        preferredModel
       );
       
       result = {
@@ -720,7 +775,9 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
         ...(interpretation.alternatives && { alternatives: interpretation.alternatives }),
         model: 'unknown' // Add model info
       },
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      // Include refreshed tokens if they were updated
+      ...(refreshedTokens ? { refreshedTokens } : {})
     };
     
     res.json(responseData);

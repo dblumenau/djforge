@@ -66,8 +66,8 @@ claudeRouter.post('/command', ensureValidToken, async (req, res) => {
 
     // Execute the command based on interpretation
     const spotifyControl = new SpotifyControl(
-      req.session.spotifyTokens,
-      (tokens) => { req.session.spotifyTokens = tokens; }
+      req.spotifyTokens!,
+      (tokens) => { req.spotifyTokens = tokens; }
     );
     let result;
 

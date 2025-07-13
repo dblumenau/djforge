@@ -8,9 +8,9 @@ import { controlRouter } from './spotify/control';
 import { claudeRouter } from './claude/interpreter';
 import { enhancedClaudeRouter } from './claude/enhanced-interpreter';
 import { simpleLLMInterpreterRouter, setRedisClient } from './routes/simple-llm-interpreter';
-import { llmInterpreterRouter } from './routes/llm-interpreter';
+import { llmInterpreterRouter, setRedisClient as setLLMRedisClient } from './routes/llm-interpreter';
 import { sessionManagementRouter, setRedisUtils } from './routes/session-management';
-import { modelPreferencesRouter } from './routes/model-preferences';
+import { modelPreferencesRouter, setRedisClient as setModelPrefsRedisClient } from './routes/model-preferences';
 import { createRedisClient, checkRedisHealth } from './config/redis';
 import { RedisUtils } from './utils/redis-utils';
 
@@ -51,6 +51,12 @@ async function initializeSessionStore() {
       
       // Initialize conversation manager for LLM interpreter
       setRedisClient(redisClient);
+      
+      // Initialize Redis client for model preferences
+      setModelPrefsRedisClient(redisClient);
+      
+      // Initialize Redis client for LLM interpreter
+      setLLMRedisClient(redisClient);
     } else {
       throw new Error('Redis health check failed');
     }
@@ -178,34 +184,16 @@ async function initializeAndStart() {
       }
     );
     
-    req.session.spotifyTokens = response.data;
-    req.session.tokenTimestamp = Date.now();
+    // Generate JWT token with Spotify tokens
+    const { generateJWT } = require('./utils/jwt');
+    const jwtToken = generateJWT(response.data);
+    
     delete req.session.codeVerifier;
     
-    console.log('Auth successful, tokens saved:', !!req.session.spotifyTokens);
-    console.log('Session ID:', req.sessionID);
+    console.log('Auth successful, JWT generated');
     
-    // Force session save before redirect
-    req.session.save((err) => {
-      if (err) {
-        console.error('Session save error:', err);
-        return res.redirect(`${clientUrl}?error=session_save_failed`);
-      }
-      
-      // For cross-domain scenarios, pass a temporary token
-      if (process.env.NODE_ENV === 'production') {
-        // Generate a temporary token that can be exchanged for session
-        const tempToken = Buffer.from(JSON.stringify({
-          sessionId: req.sessionID,
-          timestamp: Date.now()
-        })).toString('base64');
-        
-        res.redirect(`${clientUrl}?success=true&token=${encodeURIComponent(tempToken)}`);
-      } else {
-        // Local development can use cookies directly
-        res.redirect(`${clientUrl}?success=true`);
-      }
-    });
+    // Redirect with JWT token for all environments
+    res.redirect(`${clientUrl}?success=true&token=${encodeURIComponent(jwtToken)}`);
   } catch (error) {
     console.error('Token exchange error:', error);
     res.redirect(`${clientUrl}?error=token_exchange_failed`);

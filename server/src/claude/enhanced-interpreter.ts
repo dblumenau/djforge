@@ -175,8 +175,8 @@ enhancedClaudeRouter.post('/command', ensureValidToken, async (req, res) => {
     console.log('Enhanced interpretation:', interpretation);
 
     const spotifyControl = new SpotifyControl(
-      req.session.spotifyTokens,
-      (tokens) => { req.session.spotifyTokens = tokens; }
+      req.spotifyTokens!,
+      (tokens) => { req.spotifyTokens = tokens; }
     );
     let result;
 

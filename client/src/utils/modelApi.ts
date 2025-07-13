@@ -1,4 +1,4 @@
-import { apiEndpoint } from '../config/api';
+import { authenticatedFetch } from './api';
 
 export interface ModelInfo {
   id: string;
@@ -30,9 +30,7 @@ export interface ModelCapabilities {
 
 export class ModelAPI {
   static async getModelPreferences(): Promise<ModelPreferencesResponse> {
-    const response = await fetch(apiEndpoint('/api/preferences/models'), {
-      credentials: 'include',
-    });
+    const response = await authenticatedFetch('/api/preferences/models');
     
     if (!response.ok) {
       throw new Error('Failed to fetch model preferences');
@@ -42,12 +40,8 @@ export class ModelAPI {
   }
 
   static async setModelPreference(modelId: string): Promise<{ success: boolean; modelInfo: any }> {
-    const response = await fetch(apiEndpoint('/api/preferences/models'), {
+    const response = await authenticatedFetch('/api/preferences/models', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      credentials: 'include',
       body: JSON.stringify({ modelId }),
     });
     
@@ -59,9 +53,7 @@ export class ModelAPI {
   }
 
   static async getModelCapabilities(modelId: string): Promise<ModelCapabilities> {
-    const response = await fetch(apiEndpoint(`/api/preferences/models/${modelId}/capabilities`), {
-      credentials: 'include',
-    });
+    const response = await authenticatedFetch(`/api/preferences/models/${modelId}/capabilities`);
     
     if (!response.ok) {
       throw new Error('Failed to fetch model capabilities');
