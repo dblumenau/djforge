@@ -44,6 +44,13 @@ function App() {
     isEnhanced?: boolean;
     timestamp?: number;
     alternatives?: string[];
+    interpretation?: {
+      intent?: string;
+      confidence?: number;
+      reasoning?: string;
+      searchQuery?: string;
+      model?: string;
+    };
   }>>([])
   
   const authState = useSpotifyAuth();
@@ -148,15 +155,8 @@ function App() {
 
       const data = await response.json();
       
-      // Format response
+      // Format response - keep it simple since we now show interpretation details separately
       let responseMessage = data.message || 'Command processed';
-      
-      if (data.interpretation?.confidence !== undefined) {
-        responseMessage += `\n🎯 Confidence: ${Math.round(data.interpretation.confidence * 100)}%`;
-      }
-      if (data.interpretation?.reasoning) {
-        responseMessage += `\n💭 ${data.interpretation.reasoning}`;
-      }
       
       const alternatives = data.interpretation?.alternatives || [];
       
@@ -166,7 +166,8 @@ function App() {
         confidence: data.interpretation?.confidence,
         isEnhanced: true,
         timestamp: Date.now(),
-        alternatives: alternatives
+        alternatives: alternatives,
+        interpretation: data.interpretation
       }]);
       setCommand('');
     } catch (error) {
@@ -202,19 +203,8 @@ function App() {
 
       const data = await response.json();
       
-      // Format response with enhanced interpreter info
+      // Format response - keep it simple since we now show interpretation details separately
       let responseMessage = data.message || 'Command processed';
-      
-      // Add confidence and reasoning if available
-      if (data.interpretation?.confidence !== undefined) {
-        responseMessage += `\n🎯 Confidence: ${Math.round(data.interpretation.confidence * 100)}%`;
-      }
-      if (data.interpretation?.reasoning) {
-        responseMessage += `\n💭 ${data.interpretation.reasoning}`;
-      }
-      if (data.interpretation?.enhancedQuery) {
-        responseMessage += `\n🔍 Searched for: "${data.interpretation.enhancedQuery}"`;
-      }
       
       // Add alternatives with popularity scores
       if (data.result?.alternatives && data.result.alternatives.length > 0) {
@@ -236,7 +226,8 @@ function App() {
         confidence: data.interpretation?.confidence,
         isEnhanced: true,
         timestamp: Date.now(),
-        alternatives: alternatives
+        alternatives: alternatives,
+        interpretation: data.interpretation
       }]);
       setCommand('');
     } catch (error) {
@@ -403,6 +394,63 @@ function App() {
                           </span>
                         )}
                       </div>
+                      
+                      {/* Show intent and confidence */}
+                      {item.interpretation && (
+                        <div className="pl-4 mb-2 flex items-center gap-3 flex-wrap">
+                          {item.interpretation.intent && (
+                            <span className={`text-xs px-2 py-1 rounded ${
+                              item.interpretation.intent === 'play_specific_song' ? 'bg-purple-500/20 text-purple-400' :
+                              item.interpretation.intent === 'queue_specific_song' ? 'bg-green-500/20 text-green-400' :
+                              item.interpretation.intent === 'play_playlist' ? 'bg-blue-500/20 text-blue-400' :
+                              item.interpretation.intent === 'queue_playlist' ? 'bg-cyan-500/20 text-cyan-400' :
+                              item.interpretation.intent === 'pause' ? 'bg-yellow-500/20 text-yellow-400' :
+                              item.interpretation.intent === 'skip' ? 'bg-orange-500/20 text-orange-400' :
+                              item.interpretation.intent === 'set_volume' ? 'bg-pink-500/20 text-pink-400' :
+                              'bg-gray-500/20 text-gray-400'
+                            }`}>
+                              Intent: {item.interpretation.intent}
+                            </span>
+                          )}
+                          {item.interpretation.confidence !== undefined && (
+                            <div className="flex items-center gap-1">
+                              <span className="text-xs text-gray-500">Confidence:</span>
+                              <div className="w-16 h-2 bg-zinc-700 rounded-full overflow-hidden">
+                                <div 
+                                  className={`h-full ${
+                                    item.interpretation.confidence > 0.8 ? 'bg-green-500' : 
+                                    item.interpretation.confidence > 0.6 ? 'bg-yellow-500' : 
+                                    'bg-orange-500'
+                                  }`}
+                                  style={{ width: `${item.interpretation.confidence * 100}%` }}
+                                />
+                              </div>
+                              <span className="text-xs text-gray-400">{Math.round(item.interpretation.confidence * 100)}%</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
+                      {/* Show reasoning in distinct style */}
+                      {item.interpretation?.reasoning && (
+                        <div className="pl-4 mb-2">
+                          <div className="bg-zinc-900/50 border-l-2 border-purple-500/30 px-3 py-2 rounded">
+                            <p className="text-xs text-purple-300 italic">
+                              💭 {item.interpretation.reasoning}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Show search query if available */}
+                      {item.interpretation?.searchQuery && (
+                        <div className="pl-4 mb-2">
+                          <p className="text-xs text-gray-500">
+                            🔍 Searched Spotify for: <code className="bg-zinc-800 px-1 rounded">{item.interpretation.searchQuery}</code>
+                          </p>
+                        </div>
+                      )}
+                      
                       <div className="text-gray-400 text-sm whitespace-pre-line pl-4">
                         {item.response}
                       </div>

@@ -84,30 +84,60 @@ function normalizeResponse(raw: any): any {
 async function interpretCommand(command: string, retryCount = 0): Promise<any> {
   const prompt = `You are an advanced music command interpreter for Spotify with deep knowledge of music.
 
-CRITICAL: You must distinguish between two types of play requests:
+AVAILABLE INTENTS - Choose the most appropriate one:
 
-1. SPECIFIC SONG REQUESTS (intent: "play_specific_song")
-   When users ask for songs using descriptions, moods, cultural references, or vague requests, YOU MUST:
-   - Use your music knowledge to recommend a SPECIFIC song
-   - Include the exact artist, track name, and optionally album
-   - Provide 5 alternative song suggestions that also match the request
-   - Include reasoning for why you chose this specific song
+=== SONG INTENTS (require specific song recommendations) ===
+• play_specific_song - Play a specific song based on vague/mood/cultural descriptions
+• queue_specific_song - Queue a specific song based on vague/mood/cultural descriptions
 
-   Examples requiring specific recommendations:
-   - "play something for assassins creed" → Recommend specific epic/cinematic tracks like "Ezio's Family" by Jesper Kyd
-   - "play the most obscure Taylor Swift song" → Recommend actual deep cuts like "I'd Lie" or "Beautiful Eyes"
-   - "play something that sounds like rain" → Recommend specific ambient tracks like "Rain" by Brian Eno
-   - "play jpop for gaming" → Recommend specific energetic jpop tracks like "Gurenge" by LiSA
-   - "play that desert driving scene song" → Identify "Riders on the Storm" by The Doors
-   - "play something melancholy" → Recommend specific melancholy tracks
+=== PLAYLIST INTENTS (use search queries) ===
+• play_playlist - Search and play a playlist immediately
+• queue_playlist - Search and queue a playlist
 
-2. PLAYLIST REQUESTS (intent: "play_playlist" or "queue_playlist")
-   When users explicitly ask for playlists, use the current behavior with search queries.
+=== CONTROL INTENTS ===
+• pause - Pause playback
+• play/resume - Resume playback (no parameters needed)
+• skip/next - Skip to next track
+• previous/back - Go to previous track
+• set_volume - Set volume level (requires volume_level field)
+• get_current_track - Get currently playing track info
+• set_shuffle - Enable/disable shuffle (requires enabled field)
+• set_repeat - Enable/disable repeat (requires enabled field)
+• clear_queue - Clear the playback queue
+
+=== OTHER INTENTS ===
+• search - Search without playing (requires query)
+• get_devices - List available devices
+• get_playlists - Get user's playlists
+• get_recently_played - Get recently played tracks
+• queue_add - Generic queue add (DEPRECATED - use queue_specific_song for songs)
+
+CRITICAL DISTINCTIONS:
+
+1. SPECIFIC SONG REQUESTS (use play_specific_song or queue_specific_song):
+   - "play something for assassins creed" → play_specific_song with "Ezio's Family" by Jesper Kyd
+   - "queue the most obscure Taylor Swift song" → queue_specific_song with "I'd Lie"
+   - "play taylor swift" → play_specific_song with a popular Taylor Swift song
+   - "queue taylor swift" → queue_specific_song with a popular Taylor Swift song
+   - "add something melancholy to queue" → queue_specific_song with specific sad song
+   - "play bohemian rhapsody" → play_specific_song (even though it's specific, still use this intent)
+   - "queue bohemian rhapsody" → queue_specific_song (for consistency)
+
+2. PLAYLIST REQUESTS (use play_playlist or queue_playlist):
+   - "play my workout playlist" → play_playlist with query: "workout"
+   - "queue up a jazz playlist" → queue_playlist with query: "jazz"
+   - "play taylor swift playlist" → play_playlist with query: "taylor swift"
+   - "play my discover weekly" → play_playlist with query: "discover weekly"
+
+3. KEY DISTINCTION:
+   - If asking for A SONG (even by name) → use play_specific_song/queue_specific_song
+   - If asking for A PLAYLIST → use play_playlist/queue_playlist
+   - The word "playlist" in the command is a strong indicator for playlist intents
 
 RESPONSE FORMAT:
-For specific song requests (intent: "play_specific_song"):
+For specific song requests (both play and queue):
 {
-  "intent": "play_specific_song",
+  "intent": "play_specific_song" or "queue_specific_song",
   "artist": "Exact Artist Name",
   "track": "Exact Song Title",
   "album": "Album Name (optional)",
@@ -142,7 +172,7 @@ Command: "${command}"`;
     
     const responsePromise = llmOrchestrator.complete({
       messages: [
-        { role: 'system', content: 'Respond with valid JSON. Be helpful and specific. Include confidence scores. CRITICAL: You must use the discriminated union pattern - when intent is "play_specific_song", you MUST include artist, track, and alternatives fields. When intent is "play_playlist" or "queue_playlist", use query field. Never use generic search queries for specific song requests - always recommend exact songs using your music knowledge.' },
+        { role: 'system', content: 'Respond with valid JSON. Be helpful and specific. Include confidence scores. CRITICAL: You must use the discriminated union pattern - when intent is "play_specific_song" or "queue_specific_song", you MUST include artist, track, and alternatives fields. When intent is "play_playlist" or "queue_playlist", use query field. Never use generic search queries for specific song requests - always recommend exact songs using your music knowledge. Distinguish between playing (immediate) and queuing (add to queue) for both songs and playlists.' },
         { role: 'user', content: prompt }
       ],
       model: OPENROUTER_MODELS.CLAUDE_SONNET_4,
@@ -203,8 +233,9 @@ Command: "${command}"`;
 
 // Build Spotify search query - embrace flexibility
 function buildSearchQuery(interpretation: any): string {
-  // For play_specific_song intent, always use precise search
-  if (interpretation.intent === 'play_specific_song' && interpretation.artist && interpretation.track) {
+  // For specific song intents (both play and queue), always use precise search
+  if ((interpretation.intent === 'play_specific_song' || interpretation.intent === 'queue_specific_song') 
+      && interpretation.artist && interpretation.track) {
     // Use Spotify's precise search operators for exact matching
     return `artist:"${interpretation.artist}" track:"${interpretation.track}"`;
   }
@@ -288,7 +319,7 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
     // Handle different intents flexibly
     const intent = interpretation.intent || interpretation.action;
     
-    if (intent === 'play_specific_song' || ((intent?.includes('play') || intent?.includes('search')) && intent !== 'play_playlist')) {
+    if (intent === 'play_specific_song' || intent === 'queue_specific_song' || ((intent?.includes('play') || intent?.includes('search')) && intent !== 'play_playlist')) {
       const searchQuery = buildSearchQuery(interpretation);
       
       if (!searchQuery) {
@@ -311,7 +342,8 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
       } else {
         const track = ranked[0];
         
-        if (intent?.includes('queue')) {
+        // Check intent for queue vs play - now properly handles queue_specific_song
+        if (intent === 'queue_specific_song' || intent?.includes('queue')) {
           await spotifyControl.queueTrackByUri(track.uri);
           result = {
             success: true,
