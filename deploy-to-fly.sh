@@ -151,8 +151,32 @@ case $ACTION in
         elif [ "$COMPONENT" = "client" ]; then
             echo -e "${GREEN}📋 Fetching logs for djforge-client...${NC}"
             flyctl logs -a djforge-client
+        elif [ "$COMPONENT" = "all" ] || [ "$COMPONENT" = "both" ]; then
+            echo -e "${GREEN}📋 Tailing logs for both services (press Ctrl+C to stop)...${NC}"
+            echo "Opening server logs in background..."
+            flyctl logs -a djforge-server &
+            SERVER_PID=$!
+            echo "Opening client logs..."
+            flyctl logs -a djforge-client &
+            CLIENT_PID=$!
+            
+            # Wait for both processes and handle Ctrl+C
+            trap "kill $SERVER_PID $CLIENT_PID 2>/dev/null; exit" INT
+            wait
         else
-            echo "Please specify: ./deploy-to-fly.sh logs server|client"
+            echo -e "${GREEN}📋 Showing recent logs for both services...${NC}"
+            echo ""
+            echo "=== SERVER LOGS (recent) ==="
+            flyctl logs -a djforge-server -n
+            echo ""
+            echo "=== CLIENT LOGS (recent) ==="
+            flyctl logs -a djforge-client -n
+            echo ""
+            echo "Usage:"
+            echo "  ./deploy-to-fly.sh logs              - Show recent logs from both services"
+            echo "  ./deploy-to-fly.sh logs all          - Tail logs from both services continuously"
+            echo "  ./deploy-to-fly.sh logs server       - Tail server logs continuously"
+            echo "  ./deploy-to-fly.sh logs client       - Tail client logs continuously"
         fi
         ;;
         
@@ -189,7 +213,7 @@ case $ACTION in
         echo "  secrets           Set production secrets"
         echo "  deploy [all|server|client]   Deploy apps (default: all)"
         echo "  status            Check app status"
-        echo "  logs [server|client]         View app logs"
+        echo "  logs [server|client|all]     View app logs (default: recent from both)"
         echo "  scale [server|client] [count]  Scale app instances"
         echo "  destroy           Destroy all apps"
         echo "  help, -h, --help  Show this help message"

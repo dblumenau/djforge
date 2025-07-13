@@ -151,16 +151,16 @@ function createConfirmationResponse(interpretation: any): any {
 }
 
 // Simple, flexible interpretation with retries
-async function interpretCommand(command: string, sessionId?: string, retryCount = 0, preferredModel?: string): Promise<any> {
+async function interpretCommand(command: string, userId?: string, retryCount = 0, preferredModel?: string): Promise<any> {
   let conversationHistory: ConversationEntry[] = [];
   let dialogState: DialogState | null = null;
   
-  // Fetch conversation history and dialog state if we have a session
-  if (sessionId && conversationManager) {
+  // Fetch conversation history and dialog state if we have a user ID
+  if (userId && conversationManager) {
     // Get both conversation history and dialog state
     const [history, state] = await Promise.all([
-      conversationManager.getHistory(sessionId, 8),
-      conversationManager.getDialogState(sessionId)
+      conversationManager.getHistory(userId, 8),
+      conversationManager.getDialogState(userId)
     ]);
     
     conversationHistory = history;
@@ -184,6 +184,7 @@ async function interpretCommand(command: string, sessionId?: string, retryCount 
         };
       }
     }
+    
   }
   
   // Get relevant context using smart filtering
@@ -346,7 +347,7 @@ Command: "${command}"`;
     // Validate we got something useful
     if (normalized.intent === 'unknown' && retryCount < MAX_RETRIES) {
       console.log(`Retry ${retryCount + 1} for command interpretation`);
-      return interpretCommand(command, sessionId, retryCount + 1, preferredModel);
+      return interpretCommand(command, userId, retryCount + 1, preferredModel);
     }
     
     return normalized;
@@ -397,12 +398,22 @@ function buildSearchQuery(interpretation: any): string {
   if ((interpretation.intent === 'play_specific_song' || interpretation.intent === 'queue_specific_song') 
       && interpretation.artist && interpretation.track) {
     // Use Spotify's precise search operators for exact matching
-    return `artist:"${interpretation.artist}" track:"${interpretation.track}"`;
+    let query = `artist:"${interpretation.artist}" track:"${interpretation.track}"`;
+    // Include album if provided to distinguish between different versions
+    if (interpretation.album) {
+      query += ` album:"${interpretation.album}"`;
+    }
+    return query;
   }
   
   // If LLM gave us a specific artist and track (legacy behavior), use precise search
   if (interpretation.artist && interpretation.track) {
-    return `artist:"${interpretation.artist}" track:"${interpretation.track}"`;
+    let query = `artist:"${interpretation.artist}" track:"${interpretation.track}"`;
+    // Include album if provided to distinguish between different versions
+    if (interpretation.album) {
+      query += ` album:"${interpretation.album}"`;
+    }
+    return query;
   }
   
   // Otherwise use whatever the LLM thought was best (for playlists, etc.)
@@ -506,10 +517,17 @@ function rankTracks(tracks: SpotifyTrack[], interpretation: any): TrackWithScore
       score *= (100 - (track.popularity || 50)) / 100;
     }
     
-    // If original version requested, penalize remasters
-    if (interpretation.original || interpretation.version === 'original') {
-      if (track.name.toLowerCase().includes('remaster') ||
-          track.album.name.toLowerCase().includes('remaster')) {
+    // If we have a specific album name in the interpretation, prefer exact matches
+    if (interpretation.album) {
+      const targetAlbum = interpretation.album.toLowerCase();
+      const actualAlbum = track.album.name.toLowerCase();
+      
+      // Exact match gets full score
+      if (actualAlbum === targetAlbum) {
+        score *= 1.0;
+      }
+      // No match gets lower score
+      else {
         score *= 0.3;
       }
     }
@@ -530,13 +548,13 @@ simpleLLMInterpreterRouter.get('/health', (req, res) => {
 // Clear conversation history endpoint
 simpleLLMInterpreterRouter.post('/clear-history', ensureValidToken, async (req, res) => {
   try {
-    const sessionId = req.sessionID;
+    const userId = getUserIdFromRequest(req);
     
-    if (sessionId && conversationManager) {
+    if (userId && conversationManager) {
       // Clear both conversation history and dialog state
       await Promise.all([
-        conversationManager.clear(sessionId),
-        conversationManager.updateDialogState(sessionId, {
+        conversationManager.clear(userId),
+        conversationManager.updateDialogState(userId, {
           last_action: null,
           last_candidates: [],
           interaction_mode: 'music',
@@ -544,7 +562,7 @@ simpleLLMInterpreterRouter.post('/clear-history', ensureValidToken, async (req, 
         })
       ]);
       
-      console.log(`[CLEAR] Conversation history cleared for session ${sessionId}`);
+      console.log(`[CLEAR] Conversation history cleared for user ${userId}`);
       
       res.json({
         success: true,
@@ -584,12 +602,11 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
   const startTime = Date.now();
 
   try {
-    // Get session ID from request
-    const sessionId = req.sessionID;
-    console.log('Session ID:', sessionId);
+    // Get user ID from JWT for both conversation history and model preferences
+    const userId = getUserIdFromRequest(req);
+    console.log('User ID:', userId);
     
     // Get user's preferred model from Redis
-    const userId = getUserIdFromRequest(req);
     let preferredModel = OPENROUTER_MODELS.CLAUDE_SONNET_4;
     
     if (userId) {
@@ -600,7 +617,8 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
       }
     }
     
-    const interpretation = await interpretCommand(command, sessionId, 0, preferredModel);
+    // Use userId for conversation history instead of sessionId
+    const interpretation = await interpretCommand(command, userId || undefined, 0, preferredModel);
     console.log('LLM interpretation:', interpretation);
 
     let refreshedTokens: SpotifyAuthTokens | null = null;
@@ -653,10 +671,10 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
       let conversationHistory: ConversationEntry[] = [];
       let dialogState: DialogState | null = null;
       
-      if (sessionId && conversationManager) {
+      if (userId && conversationManager) {
         [conversationHistory, dialogState] = await Promise.all([
-          conversationManager.getHistory(sessionId, 5),
-          conversationManager.getDialogState(sessionId)
+          conversationManager.getHistory(userId, 5),
+          conversationManager.getDialogState(userId)
         ]);
       }
       
@@ -693,7 +711,20 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
 
           console.log(`Spotify search: "${searchQuery}"`);
           const tracks = await spotifyControl.search(searchQuery);
+          
+          // Debug: Log all tracks returned by Spotify
+          console.log(`[DEBUG] Spotify returned ${tracks.length} tracks:`);
+          tracks.forEach((track, idx) => {
+            console.log(`  ${idx + 1}. "${track.name}" by ${track.artists[0]?.name} - Album: "${track.album.name}" (${track.album.release_date || 'no date'})`);
+          });
+          
           const ranked = rankTracks(tracks, interpretation);
+          
+          // Debug: Log ranked tracks
+          console.log(`[DEBUG] After ranking:`);
+          ranked.forEach((track, idx) => {
+            console.log(`  ${idx + 1}. "${track.name}" - Album: "${track.album.name}" - Score: ${track.relevanceScore}`);
+          });
 
           if (ranked.length === 0) {
             result = {
@@ -702,6 +733,7 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
             };
           } else {
             const track = ranked[0];
+            console.log(`[DEBUG] Selected track: "${track.name}" - Album: "${track.album.name}" - URI: ${track.uri}`);
             
             // Check intent for queue vs play - now properly handles queue_specific_song
             if (canonicalIntent === 'queue_specific_song') {
@@ -786,9 +818,9 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
     llmMonitor.recordInterpretation(command, interpretation, startTime, true);
     
     // Store conversation entry and update dialog state in Redis for future context
-    if (sessionId && conversationManager) {
+    if (userId && conversationManager) {
       // Get current dialog state
-      const currentDialogState = await conversationManager.getDialogState(sessionId);
+      const currentDialogState = await conversationManager.getDialogState(userId);
       
       // Store conversation entry
       const conversationEntry: ConversationEntry = {
@@ -810,8 +842,8 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
       
       // Save both conversation and dialog state
       await Promise.all([
-        conversationManager.append(sessionId, conversationEntry),
-        conversationManager.updateDialogState(sessionId, updatedDialogState)
+        conversationManager.append(userId, conversationEntry),
+        conversationManager.updateDialogState(userId, updatedDialogState)
       ]);
       
       console.log(`Dialog state updated: mode=${updatedDialogState.interaction_mode}, last_action=${updatedDialogState.last_action?.type || 'none'}`);
@@ -887,14 +919,24 @@ simpleLLMInterpreterRouter.post('/test-interpret', async (req, res) => {
 
   try {
     const startTime = Date.now();
-    const sessionId = req.sessionID;
-    const interpretation = await interpretCommand(command, sessionId, 0, req.session.preferredModel);
+    const userId = getUserIdFromRequest(req);
+    
+    // Get user's preferred model
+    let preferredModel = OPENROUTER_MODELS.CLAUDE_SONNET_4;
+    if (userId) {
+      const savedPreference = await getUserModelPreference(userId);
+      if (savedPreference) {
+        preferredModel = savedPreference;
+      }
+    }
+    
+    const interpretation = await interpretCommand(command, userId || undefined, 0, preferredModel);
     const responseTime = Date.now() - startTime;
     
     // Store conversation entry for testing (same as main endpoint)
-    if (sessionId && conversationManager) {
+    if (userId && conversationManager) {
       // Get current dialog state
-      const currentDialogState = await conversationManager.getDialogState(sessionId);
+      const currentDialogState = await conversationManager.getDialogState(userId);
       
       // Store conversation entry
       const conversationEntry: ConversationEntry = {
@@ -916,11 +958,11 @@ simpleLLMInterpreterRouter.post('/test-interpret', async (req, res) => {
       
       // Save both conversation and dialog state
       await Promise.all([
-        conversationManager.append(sessionId, conversationEntry),
-        conversationManager.updateDialogState(sessionId, updatedDialogState)
+        conversationManager.append(userId, conversationEntry),
+        conversationManager.updateDialogState(userId, updatedDialogState)
       ]);
       
-      console.log(`[TEST] Conversation stored for session ${sessionId}`);
+      console.log(`[TEST] Conversation stored for user ${userId}`);
     }
     
     res.json({
