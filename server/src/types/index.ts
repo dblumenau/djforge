@@ -51,5 +51,6 @@ declare module 'express-session' {
     spotifyTokens?: SpotifyAuthTokens;
     codeVerifier?: string;
     tokenTimestamp?: number;
+    preferredModel?: string;
   }
 }

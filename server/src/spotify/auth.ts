@@ -156,6 +156,49 @@ authRouter.get('/status', (req, res) => {
   }
 });
 
+// Token exchange endpoint for cross-domain auth
+authRouter.post('/exchange-token', async (req, res) => {
+  const { token } = req.body;
+  
+  if (!token) {
+    return res.status(400).json({ error: 'Token required' });
+  }
+  
+  try {
+    // Decode the token
+    const decoded = JSON.parse(Buffer.from(token, 'base64').toString());
+    
+    // Verify token is recent (within 1 minute)
+    if (Date.now() - decoded.timestamp > 60000) {
+      return res.status(401).json({ error: 'Token expired' });
+    }
+    
+    // Load the session data from the original session
+    req.sessionStore.get(decoded.sessionId, (err: any, sessionData: any) => {
+      if (err || !sessionData || !sessionData.spotifyTokens) {
+        return res.status(401).json({ error: 'Invalid token' });
+      }
+      
+      // Copy the session data to the current session
+      req.session.spotifyTokens = sessionData.spotifyTokens;
+      req.session.tokenTimestamp = sessionData.tokenTimestamp;
+      
+      req.session.save((saveErr: any) => {
+        if (saveErr) {
+          return res.status(500).json({ error: 'Session save failed' });
+        }
+        
+        res.json({ 
+          authenticated: true,
+          accessToken: sessionData.spotifyTokens.access_token
+        });
+      });
+    });
+  } catch (error) {
+    res.status(400).json({ error: 'Invalid token format' });
+  }
+});
+
 // Logout
 authRouter.post('/logout', (req, res) => {
   req.session.destroy((err) => {

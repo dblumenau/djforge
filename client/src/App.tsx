@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import MusicLoader from './components/MusicLoader';
 import SpotifyPlayer from './components/SpotifyPlayer';
+import ModelSelector from './components/ModelSelector';
 import { useSpotifyAuth } from './hooks/useSpotifyAuth';
+import { apiEndpoint } from './config/api';
 
 // Helper component for clickable example lists
 const ExampleList: React.FC<{ examples: string[] }> = ({ examples }) => {
@@ -57,6 +59,39 @@ function App() {
   const { isAuthenticated, accessToken, loading: authLoading } = authState;
   const authChecking = authLoading;
 
+  // Handle auth callback in a separate effect that runs immediately
+  useEffect(() => {
+    // Check for auth callback params IMMEDIATELY
+    const urlParams = new URLSearchParams(window.location.search);
+    console.log('🔍 Checking URL params:', window.location.search);
+    
+    if (urlParams.get('success') === 'true') {
+      console.log('✅ Success param detected!');
+      const token = urlParams.get('token');
+      
+      if (token) {
+        // Production: Exchange token for session
+        console.log('🔑 Token found:', token.substring(0, 20) + '...');
+        
+        // Clear URL params AFTER we've read them
+        window.history.replaceState({}, document.title, '/');
+        
+        // Exchange token immediately
+        exchangeTokenForSession(token);
+      } else {
+        // Local development: Use cookies directly
+        console.log('🍪 No token, using cookies (local dev mode)');
+        window.history.replaceState({}, document.title, '/');
+        setTimeout(() => {
+          authState.checkAuthStatus();
+        }, 100);
+      }
+    } else if (urlParams.get('error')) {
+      console.error('❌ Auth error:', urlParams.get('error'));
+      window.history.replaceState({}, document.title, '/');
+    }
+  }, []); // This runs FIRST
+
   useEffect(() => {
     // Load command history from localStorage
     try {
@@ -71,15 +106,7 @@ function App() {
     }
 
     checkConnection();
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('success') === 'true') {
-      window.history.replaceState({}, document.title, '/');
-      authState.checkAuthStatus();
-    } else if (urlParams.get('error')) {
-      console.error('Auth error:', urlParams.get('error'));
-      window.history.replaceState({}, document.title, '/');
-    }
-  }, []);
+  }, []); // This runs SECOND
 
   // Save command history to localStorage whenever it changes
   useEffect(() => {
@@ -96,7 +123,7 @@ function App() {
 
   const checkConnection = async () => {
     try {
-      const response = await fetch('http://127.0.0.1:3001/api/health');
+      const response = await fetch(apiEndpoint('/api/health'));
       if (response.ok) {
         setIsConnected(true);
       }
@@ -104,6 +131,44 @@ function App() {
       console.error('Server not reachable:', error);
     } finally {
       setChecking(false);
+    }
+  };
+
+  const exchangeTokenForSession = async (token: string) => {
+    console.log('🔄 Starting token exchange...');
+    
+    try {
+      const url = apiEndpoint('/api/auth/exchange-token');
+      console.log('📡 Exchanging token at:', url);
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ token })
+      });
+
+      console.log('📋 Token exchange response status:', response.status);
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Token exchange successful:', data);
+        
+        // Wait a moment for session to be saved, then force a complete refresh
+        console.log('🔍 Waiting for session to be saved...');
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Force a complete page refresh to ensure fresh session
+        console.log('🔄 Forcing page refresh to pick up new session...');
+        window.location.reload();
+      } else {
+        const errorText = await response.text();
+        console.error('❌ Token exchange failed:', response.status, errorText);
+      }
+    } catch (error) {
+      console.error('💥 Token exchange error:', error);
     }
   };
 
@@ -121,7 +186,7 @@ function App() {
   // @ts-ignore - Will be used later
   const transferPlayback = async (deviceId: string) => {
     try {
-      const response = await fetch('http://127.0.0.1:3001/api/control/transfer', {
+      const response = await fetch(apiEndpoint('/api/control/transfer'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -144,7 +209,7 @@ function App() {
     setIsProcessing(true);
     
     try {
-      const response = await fetch('http://127.0.0.1:3001/api/claude/command', {
+      const response = await fetch(apiEndpoint('/api/claude/command'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -189,7 +254,7 @@ function App() {
   const handleClearHistory = async () => {
     setIsProcessing(true);
     try {
-      const response = await fetch('http://127.0.0.1:3001/api/claude/clear-history', {
+      const response = await fetch(apiEndpoint('/api/claude/clear-history'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -231,7 +296,7 @@ function App() {
 
     setIsProcessing(true);
     try {
-      const response = await fetch('http://127.0.0.1:3001/api/claude/command', {
+      const response = await fetch(apiEndpoint('/api/claude/command'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -336,6 +401,9 @@ function App() {
                 <div className="mb-8 text-center">
                   <h1 className="text-3xl font-bold text-green-500 mb-2">🎵 Spotify Claude Controller</h1>
                   <p className="text-gray-400">Control your music with natural language</p>
+                  <div className="mt-4 flex justify-center">
+                    <ModelSelector />
+                  </div>
                 </div>
               
               <div className="bg-zinc-800 rounded-lg p-6 mb-6">

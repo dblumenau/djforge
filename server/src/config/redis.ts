@@ -35,8 +35,9 @@ export function getRedisConfig(): RedisConfig {
 export async function createRedisClient() {
   const config = getRedisConfig();
   
-  // Build Redis URL
-  let redisUrl = `redis://`;
+  // Build Redis URL - use rediss:// for TLS (Upstash requires TLS)
+  const protocol = config.password ? 'rediss' : 'redis';
+  let redisUrl = `${protocol}://`;
   if (config.password) {
     redisUrl += `:${config.password}@`;
   }

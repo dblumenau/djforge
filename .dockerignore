@@ -1,0 +1,16 @@
+# Root level dockerignore
+.git
+.gitignore
+README.md
+.env*
+.DS_Store
+node_modules
+npm-debug.log
+coverage
+.nyc_output
+.vscode
+.idea
+sessions/*
+docs/
+*.md
+!docs/docker-deployment.md

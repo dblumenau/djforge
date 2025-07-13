@@ -1,0 +1,289 @@
+import { Router } from 'express';
+import { ensureValidToken } from '../spotify/auth';
+import { llmOrchestrator, OPENROUTER_MODELS } from '../llm/orchestrator';
+
+export const modelPreferencesRouter = Router();
+
+// Model display information
+const MODEL_DISPLAY_INFO: Record<string, { name: string; provider: string; description: string }> = {
+  // Claude Models
+  [OPENROUTER_MODELS.CLAUDE_OPUS_4]: { 
+    name: 'Claude Opus 4', 
+    provider: 'Anthropic',
+    description: 'Most capable Claude model (JSON via tool calling)'
+  },
+  [OPENROUTER_MODELS.CLAUDE_SONNET_4]: { 
+    name: 'Claude Sonnet 4', 
+    provider: 'Anthropic',
+    description: 'Balanced performance and speed (Default, JSON via tool calling)'
+  },
+  [OPENROUTER_MODELS.CLAUDE_HAIKU_4]: { 
+    name: 'Claude Haiku 4', 
+    provider: 'Anthropic',
+    description: 'Fast and efficient (JSON via tool calling)'
+  },
+  
+  // OpenAI Models
+  [OPENROUTER_MODELS.O3_PRO]: { 
+    name: 'O3 Pro', 
+    provider: 'OpenAI',
+    description: 'Advanced reasoning model (Native JSON support)'
+  },
+  [OPENROUTER_MODELS.GPT_4O]: { 
+    name: 'O4 Mini', 
+    provider: 'OpenAI',
+    description: 'Efficient model with tools support (Native JSON)'
+  },
+  
+  // Google Models
+  [OPENROUTER_MODELS.GEMINI_2_5_PRO]: { 
+    name: 'Gemini 2.5 Pro', 
+    provider: 'Google',
+    description: 'Google\'s most capable model (Limited JSON support)'
+  },
+  [OPENROUTER_MODELS.GEMINI_2_5_FLASH]: { 
+    name: 'Gemini 2.5 Flash', 
+    provider: 'Google',
+    description: 'Fast and reliable (Limited JSON support)'
+  },
+  
+  // Mistral Models
+  [OPENROUTER_MODELS.MISTRAL_MEDIUM_3]: { 
+    name: 'Mistral Medium 3', 
+    provider: 'Mistral',
+    description: 'Balanced open-source model'
+  },
+  
+  // DeepSeek Models
+  [OPENROUTER_MODELS.DEEPSEEK_R1_0528]: { 
+    name: 'DeepSeek R1', 
+    provider: 'DeepSeek',
+    description: 'Cost-effective with good performance'
+  },
+  
+  // Grok Models
+  [OPENROUTER_MODELS.GROK_4]: { 
+    name: 'Grok 4', 
+    provider: 'X.AI',
+    description: 'Latest Grok model'
+  },
+  [OPENROUTER_MODELS.GROK_3]: { 
+    name: 'Grok 3', 
+    provider: 'X.AI',
+    description: 'Powerful reasoning capabilities'
+  },
+  [OPENROUTER_MODELS.GROK_3_MINI]: { 
+    name: 'Grok 3 Mini', 
+    provider: 'X.AI',
+    description: 'Lightweight and fast'
+  },
+  
+  // Additional models
+  [OPENROUTER_MODELS.CODEX_MINI]: { 
+    name: 'Codex Mini', 
+    provider: 'OpenAI',
+    description: 'Code-optimized model (Native JSON support)'
+  },
+  [OPENROUTER_MODELS.GEMINI_2_5_PRO_PREVIEW]: { 
+    name: 'Gemini 2.5 Pro Preview', 
+    provider: 'Google',
+    description: 'Preview of upcoming features'
+  },
+  [OPENROUTER_MODELS.GEMINI_2_5_FLASH_LITE]: { 
+    name: 'Gemini 2.5 Flash Lite', 
+    provider: 'Google',
+    description: 'Ultra-fast lightweight model'
+  },
+  [OPENROUTER_MODELS.LLAMA_GUARD_4_12B]: { 
+    name: 'Llama Guard 4', 
+    provider: 'Meta',
+    description: 'Safety-focused model'
+  },
+  [OPENROUTER_MODELS.DEVSTRAL_MEDIUM]: { 
+    name: 'Devstral Medium', 
+    provider: 'Mistral',
+    description: 'Developer-focused model'
+  },
+  [OPENROUTER_MODELS.DEVSTRAL_SMALL]: { 
+    name: 'Devstral Small', 
+    provider: 'Mistral',
+    description: 'Fast developer assistant'
+  },
+  [OPENROUTER_MODELS.DEVSTRAL_SMALL_2505]: { 
+    name: 'Devstral Small 2505', 
+    provider: 'Mistral',
+    description: 'Latest small developer model'
+  },
+  [OPENROUTER_MODELS.MAGISTRAL_SMALL_2506]: { 
+    name: 'Magistral Small', 
+    provider: 'Mistral',
+    description: 'General purpose small model'
+  },
+  [OPENROUTER_MODELS.MAGISTRAL_MEDIUM_2506]: { 
+    name: 'Magistral Medium', 
+    provider: 'Mistral',
+    description: 'Balanced general purpose'
+  },
+  [OPENROUTER_MODELS.MISTRAL_SMALL_3_2]: { 
+    name: 'Mistral Small 3.2', 
+    provider: 'Mistral',
+    description: '24B parameter model'
+  },
+  [OPENROUTER_MODELS.DEEPSEEK_R1_DISTILL]: { 
+    name: 'DeepSeek R1 Distill', 
+    provider: 'DeepSeek',
+    description: 'Distilled efficient model'
+  },
+  [OPENROUTER_MODELS.DEEPSEEK_R1_QWEN3_8B]: { 
+    name: 'DeepSeek R1 Qwen3', 
+    provider: 'DeepSeek',
+    description: '8B parameter model'
+  },
+  [OPENROUTER_MODELS.DEEPSEEK_PROVER_V2]: { 
+    name: 'DeepSeek Prover V2', 
+    provider: 'DeepSeek',
+    description: 'Mathematical reasoning'
+  },
+  [OPENROUTER_MODELS.QWEN3_235B]: { 
+    name: 'Qwen3 235B', 
+    provider: 'Qwen',
+    description: 'Largest Qwen model'
+  },
+  [OPENROUTER_MODELS.QWEN3_32B]: { 
+    name: 'Qwen3 32B', 
+    provider: 'Qwen',
+    description: 'Large general purpose'
+  },
+  [OPENROUTER_MODELS.QWEN3_14B]: { 
+    name: 'Qwen3 14B', 
+    provider: 'Qwen',
+    description: 'Medium-sized model'
+  },
+  [OPENROUTER_MODELS.QWEN3_8B]: { 
+    name: 'Qwen3 8B', 
+    provider: 'Qwen',
+    description: 'Efficient small model'
+  },
+  [OPENROUTER_MODELS.QWEN3_4B]: { 
+    name: 'Qwen3 4B', 
+    provider: 'Qwen',
+    description: 'Compact and fast'
+  },
+};
+
+// Group models by provider
+function getGroupedModels() {
+  const grouped: Record<string, Array<{ id: string; name: string; description: string; supportsJSON: boolean }>> = {};
+  
+  Object.entries(MODEL_DISPLAY_INFO).forEach(([id, info]) => {
+    if (!grouped[info.provider]) {
+      grouped[info.provider] = [];
+    }
+    grouped[info.provider].push({
+      id,
+      name: info.name,
+      description: info.description,
+      supportsJSON: llmOrchestrator.isJSONCapable(id)
+    });
+  });
+  
+  return grouped;
+}
+
+// Get available models and current preference
+modelPreferencesRouter.get('/models', ensureValidToken, async (req, res) => {
+  try {
+    const availableModels = getGroupedModels();
+    const currentPreference = req.session.preferredModel || OPENROUTER_MODELS.CLAUDE_SONNET_4;
+    
+    res.json({
+      models: availableModels,
+      currentModel: currentPreference,
+      defaultModel: OPENROUTER_MODELS.CLAUDE_SONNET_4
+    });
+  } catch (error) {
+    console.error('Error fetching model preferences:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch model preferences',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Update user's preferred model
+modelPreferencesRouter.post('/models', ensureValidToken, async (req, res) => {
+  try {
+    const { modelId } = req.body;
+    
+    // Validate model ID
+    if (!modelId || !MODEL_DISPLAY_INFO[modelId]) {
+      return res.status(400).json({ 
+        error: 'Invalid model ID',
+        availableModels: Object.keys(MODEL_DISPLAY_INFO)
+      });
+    }
+    
+    // Update session preference
+    req.session.preferredModel = modelId;
+    
+    // Save session
+    req.session.save((err) => {
+      if (err) {
+        console.error('Session save error:', err);
+        return res.status(500).json({ error: 'Failed to save preference' });
+      }
+      
+      res.json({
+        success: true,
+        modelId,
+        modelInfo: MODEL_DISPLAY_INFO[modelId]
+      });
+    });
+  } catch (error) {
+    console.error('Error updating model preference:', error);
+    res.status(500).json({ 
+      error: 'Failed to update model preference',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Get model capabilities (for display purposes)
+modelPreferencesRouter.get('/models/:modelId/capabilities', ensureValidToken, async (req, res) => {
+  try {
+    const { modelId } = req.params;
+    
+    if (!MODEL_DISPLAY_INFO[modelId]) {
+      return res.status(404).json({ error: 'Model not found' });
+    }
+    
+    const isJSONCapable = llmOrchestrator.isJSONCapable(modelId);
+    
+    res.json({
+      modelId,
+      ...MODEL_DISPLAY_INFO[modelId],
+      capabilities: {
+        supportsJSON: isJSONCapable,
+        contextWindow: getContextWindow(modelId)
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching model capabilities:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch model capabilities',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Helper function to get context window size
+function getContextWindow(modelId: string): string {
+  // This is approximate based on the model
+  if (modelId.includes('claude')) return '200K tokens';
+  if (modelId.includes('gemini')) return '1M tokens';
+  if (modelId.includes('gpt-4') || modelId.includes('o3')) return '128K tokens';
+  if (modelId.includes('mistral')) return '32K tokens';
+  if (modelId.includes('deepseek')) return '64K tokens';
+  if (modelId.includes('grok')) return '100K tokens';
+  return 'Standard';
+}

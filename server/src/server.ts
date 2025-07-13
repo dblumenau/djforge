@@ -10,6 +10,7 @@ import { enhancedClaudeRouter } from './claude/enhanced-interpreter';
 import { simpleLLMInterpreterRouter, setRedisClient } from './routes/simple-llm-interpreter';
 import { llmInterpreterRouter } from './routes/llm-interpreter';
 import { sessionManagementRouter, setRedisUtils } from './routes/session-management';
+import { modelPreferencesRouter } from './routes/model-preferences';
 import { createRedisClient, checkRedisHealth } from './config/redis';
 import { RedisUtils } from './utils/redis-utils';
 
@@ -58,7 +59,7 @@ async function initializeSessionStore() {
     
     // Fallback to file-based sessions
     sessionStore = new FileStore({
-      path: '../sessions',
+      path: './sessions', // Use relative path from working directory
       ttl: 86400 * 30, // 30 days
       retries: 5,
       reapInterval: 3600 // Clean up expired sessions every hour
@@ -77,8 +78,19 @@ async function initializeSessionStore() {
 }
 
 // CORS must be configured before session middleware
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'https://djforge-client.fly.dev'
+];
+
+// Add any additional origins from environment variable
+if (process.env.ALLOWED_ORIGINS) {
+  allowedOrigins.push(...process.env.ALLOWED_ORIGINS.split(','));
+}
+
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
+  origin: allowedOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -100,11 +112,12 @@ async function initializeAndStart() {
       saveUninitialized: false,
       store: sessionStore,
       cookie: {
-        secure: false,
+        secure: process.env.NODE_ENV === 'production', // true in production for HTTPS
         httpOnly: true,
         maxAge: 86400000 * 30, // 30 days
-        sameSite: 'lax',
-        path: '/'
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // 'none' for cross-site in production
+        path: '/',
+        domain: process.env.NODE_ENV === 'production' ? '.fly.dev' : undefined // Share across subdomains
       },
       name: 'spotify_session'
     }));
@@ -124,6 +137,11 @@ async function initializeAndStart() {
 
     // Session management endpoints
     app.use('/api/sessions', sessionManagementRouter);
+    // Model preferences endpoints
+    app.use('/api/preferences', modelPreferencesRouter);
+
+    // Determine client URL based on environment
+    const clientUrl = process.env.CLIENT_URL || 'http://127.0.0.1:5173';
 
     // Handle callback at root level (Spotify redirects here)
     app.get('/callback', async (req, res) => {
@@ -131,16 +149,16 @@ async function initializeAndStart() {
   const { code, error } = req.query;
   
   if (error) {
-    return res.redirect('http://127.0.0.1:5173?error=' + error);
+    return res.redirect(`${clientUrl}?error=${error}`);
   }
   
   if (!code || typeof code !== 'string') {
-    return res.redirect('http://127.0.0.1:5173?error=no_code');
+    return res.redirect(`${clientUrl}?error=no_code`);
   }
   
   const codeVerifier = req.session.codeVerifier;
   if (!codeVerifier) {
-    return res.redirect('http://127.0.0.1:5173?error=no_verifier');
+    return res.redirect(`${clientUrl}?error=no_verifier`);
   }
   
   try {
@@ -171,13 +189,26 @@ async function initializeAndStart() {
     req.session.save((err) => {
       if (err) {
         console.error('Session save error:', err);
-        return res.redirect('http://127.0.0.1:5173?error=session_save_failed');
+        return res.redirect(`${clientUrl}?error=session_save_failed`);
       }
-      res.redirect('http://127.0.0.1:5173?success=true');
+      
+      // For cross-domain scenarios, pass a temporary token
+      if (process.env.NODE_ENV === 'production') {
+        // Generate a temporary token that can be exchanged for session
+        const tempToken = Buffer.from(JSON.stringify({
+          sessionId: req.sessionID,
+          timestamp: Date.now()
+        })).toString('base64');
+        
+        res.redirect(`${clientUrl}?success=true&token=${encodeURIComponent(tempToken)}`);
+      } else {
+        // Local development can use cookies directly
+        res.redirect(`${clientUrl}?success=true`);
+      }
     });
   } catch (error) {
     console.error('Token exchange error:', error);
-    res.redirect('http://127.0.0.1:5173?error=token_exchange_failed');
+    res.redirect(`${clientUrl}?error=token_exchange_failed`);
   }
 });
 
@@ -202,8 +233,12 @@ async function initializeAndStart() {
     });
 
     // Start the server
-    app.listen(PORT, () => {
-      console.log(`🎵 Spotify Controller server running on http://localhost:${PORT}`);
+    // Listen on all interfaces to ensure both localhost and 127.0.0.1 work
+    const host = '0.0.0.0';
+    const port = typeof PORT === 'string' ? parseInt(PORT) : PORT;
+    app.listen(port, host, () => {
+      const displayHost = process.env.NODE_ENV === 'production' ? host : 'localhost';
+      console.log(`🎵 Spotify Controller server running on http://${displayHost}:${port}`);
       console.log(`🤖 Ready to receive commands!`);
       console.log(`📦 Session storage: ${redisClient ? 'Redis' : 'File-based'}`);
     });

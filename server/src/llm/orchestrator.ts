@@ -87,19 +87,34 @@ export const OPENROUTER_MODELS = {
 };
 
 // Model capabilities
+// Based on OpenRouter documentation, JSON mode is primarily supported by:
+// - OpenAI models (o3, o4, gpt-4 variants)
+// - Some Nitro models
+// - Limited support from other providers (often silently ignored if unsupported)
 const JSON_CAPABLE_MODELS = new Set([
+  // OpenAI models - confirmed JSON support
   OPENROUTER_MODELS.O3_PRO,
+  OPENROUTER_MODELS.GPT_4O,
+  OPENROUTER_MODELS.CODEX_MINI,
+  
+  // Claude models - use tool calling for JSON, not native JSON mode
+  // Keeping these as they work with JSON responses, though not native JSON mode
   OPENROUTER_MODELS.CLAUDE_OPUS_4,
   OPENROUTER_MODELS.CLAUDE_SONNET_4,
+  OPENROUTER_MODELS.CLAUDE_HAIKU_4,
+  
+  // Google models - limited JSON support, requires specific schema setup
   OPENROUTER_MODELS.GEMINI_2_5_PRO,
   OPENROUTER_MODELS.GEMINI_2_5_PRO_PREVIEW,
   OPENROUTER_MODELS.GEMINI_2_5_FLASH,
+  
+  // These models may support JSON but documentation is unclear
+  // Including based on their advanced capabilities
   OPENROUTER_MODELS.MISTRAL_MEDIUM_3,
   OPENROUTER_MODELS.MAGISTRAL_MEDIUM_2506,
   OPENROUTER_MODELS.DEEPSEEK_R1_0528,
   OPENROUTER_MODELS.GROK_4,
   OPENROUTER_MODELS.GROK_3,
-  OPENROUTER_MODELS.QWEN3_235B,
 ]);
 
 export class LLMOrchestrator {
@@ -361,6 +376,16 @@ export class LLMOrchestrator {
   // Set default model
   setDefaultModel(model: string) {
     this.defaultModel = model;
+  }
+
+  // Get all model IDs as a list
+  getAllModelIds(): string[] {
+    return Object.values(OPENROUTER_MODELS);
+  }
+
+  // Check if a model ID is valid
+  isValidModel(modelId: string): boolean {
+    return Object.values(OPENROUTER_MODELS).includes(modelId);
   }
 }
 

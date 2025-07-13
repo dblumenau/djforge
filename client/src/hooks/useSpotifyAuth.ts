@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { apiEndpoint } from '../config/api';
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -16,18 +17,27 @@ export const useSpotifyAuth = () => {
   });
 
   const checkAuthStatus = async () => {
+    console.log('🔍 useSpotifyAuth: Starting auth status check...');
+    
     try {
-      const response = await fetch('http://127.0.0.1:3001/api/auth/status', {
+      const url = apiEndpoint('/api/auth/status');
+      console.log('📡 useSpotifyAuth: Checking auth at:', url);
+      
+      const response = await fetch(url, {
         credentials: 'include'
       });
+      
+      console.log('📋 useSpotifyAuth: Auth check response status:', response.status);
       
       if (!response.ok) {
         throw new Error('Failed to check auth status');
       }
 
       const data = await response.json();
+      console.log('📋 useSpotifyAuth: Auth check response data:', data);
       
       if (data.authenticated && data.accessToken) {
+        console.log('✅ useSpotifyAuth: Setting authenticated state');
         setAuthState({
           isAuthenticated: true,
           accessToken: data.accessToken,
@@ -35,6 +45,7 @@ export const useSpotifyAuth = () => {
           error: null
         });
       } else {
+        console.log('❌ useSpotifyAuth: Setting unauthenticated state');
         setAuthState({
           isAuthenticated: false,
           accessToken: null,
@@ -43,7 +54,7 @@ export const useSpotifyAuth = () => {
         });
       }
     } catch (error) {
-      console.error('Auth check failed:', error);
+      console.error('💥 useSpotifyAuth: Auth check failed:', error);
       setAuthState({
         isAuthenticated: false,
         accessToken: null,
@@ -71,12 +82,12 @@ export const useSpotifyAuth = () => {
   }, [authState.isAuthenticated]);
 
   const login = () => {
-    window.location.href = 'http://127.0.0.1:3001/api/auth/login';
+    window.location.href = apiEndpoint('/api/auth/login');
   };
 
   const logout = async () => {
     try {
-      await fetch('http://127.0.0.1:3001/api/auth/logout', {
+      await fetch(apiEndpoint('/api/auth/logout'), {
         method: 'POST',
         credentials: 'include'
       });
