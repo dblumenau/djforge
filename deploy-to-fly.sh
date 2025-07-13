@@ -3,8 +3,6 @@
 # Deploy DJForge to Fly.io
 set -e
 
-echo "🚀 Deploying DJForge to Fly.io..."
-
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -33,8 +31,14 @@ app_exists() {
 ACTION=${1:-deploy}
 COMPONENT=${2:-all}
 
+# Check for help flag
+if [ "$ACTION" = "--help" ] || [ "$ACTION" = "-h" ] || [ "$ACTION" = "help" ]; then
+    ACTION="help"
+fi
+
 case $ACTION in
     "init")
+        echo "🚀 DJForge Fly.io Deployment Tool"
         echo -e "${GREEN}🔧 Initializing Fly.io apps...${NC}"
         
         # Create server app
@@ -65,6 +69,7 @@ case $ACTION in
         ;;
         
     "secrets")
+        echo "🚀 DJForge Fly.io Deployment Tool"
         echo -e "${GREEN}🔐 Setting up secrets...${NC}"
         echo ""
         echo "Enter your production secrets:"
@@ -102,6 +107,7 @@ case $ACTION in
         ;;
         
     "deploy")
+        echo "🚀 Deploying DJForge to Fly.io..."
         if [ "$COMPONENT" = "all" ] || [ "$COMPONENT" = "server" ]; then
             echo -e "${GREEN}📦 Deploying server...${NC}"
             cd server
@@ -128,6 +134,7 @@ case $ACTION in
         ;;
         
     "status")
+        echo "🚀 DJForge Fly.io Status Check"
         echo -e "${GREEN}📊 Checking app status...${NC}"
         echo ""
         echo "Server status:"
@@ -139,8 +146,10 @@ case $ACTION in
         
     "logs")
         if [ "$COMPONENT" = "server" ]; then
+            echo -e "${GREEN}📋 Fetching logs for djforge-server...${NC}"
             flyctl logs -a djforge-server
         elif [ "$COMPONENT" = "client" ]; then
+            echo -e "${GREEN}📋 Fetching logs for djforge-client...${NC}"
             flyctl logs -a djforge-client
         else
             echo "Please specify: ./deploy-to-fly.sh logs server|client"
@@ -148,6 +157,7 @@ case $ACTION in
         ;;
         
     "scale")
+        echo "🚀 DJForge Fly.io Scaling"
         COUNT=${3:-1}
         if [ "$COMPONENT" = "server" ]; then
             flyctl scale count $COUNT -a djforge-server
@@ -159,6 +169,7 @@ case $ACTION in
         ;;
         
     "destroy")
+        echo "🚀 DJForge Fly.io App Management"
         echo -e "${RED}⚠️  This will destroy your Fly.io apps!${NC}"
         read -p "Are you sure? (yes/no): " CONFIRM
         if [ "$CONFIRM" = "yes" ]; then
@@ -168,7 +179,7 @@ case $ACTION in
         fi
         ;;
         
-    *)
+    "help")
         echo "DJForge Fly.io Deployment Script"
         echo ""
         echo "Usage: ./deploy-to-fly.sh [command] [options]"
@@ -181,10 +192,17 @@ case $ACTION in
         echo "  logs [server|client]         View app logs"
         echo "  scale [server|client] [count]  Scale app instances"
         echo "  destroy           Destroy all apps"
+        echo "  help, -h, --help  Show this help message"
         echo ""
         echo "Example workflow:"
         echo "  1. ./deploy-to-fly.sh init"
         echo "  2. ./deploy-to-fly.sh secrets"
         echo "  3. ./deploy-to-fly.sh deploy"
+        ;;
+        
+    *)
+        echo "Unknown command: $ACTION"
+        echo "Use './deploy-to-fly.sh --help' for usage information"
+        exit 1
         ;;
 esac
