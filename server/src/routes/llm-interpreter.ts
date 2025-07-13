@@ -25,7 +25,7 @@ async function interpretCommand(command: string): Promise<MusicCommand> {
     SYSTEM_PROMPTS.MUSIC_INTERPRETER,
     command,
     MusicCommandSchema,
-    OPENROUTER_MODELS.GPT_4O_MINI // Start with fast, cheap model
+    OPENROUTER_MODELS.GPT_4O // Start with fast, cheap model
   );
 
   try {
@@ -108,7 +108,7 @@ Modifiers: ${JSON.stringify(interpretation.modifiers)}`;
     SYSTEM_PROMPTS.SEARCH_ENHANCER,
     prompt,
     SpotifySearchEnhancementSchema,
-    OPENROUTER_MODELS.GPT_4O_MINI
+    OPENROUTER_MODELS.GPT_4O
   );
 
   try {
@@ -379,10 +379,10 @@ llmInterpreterRouter.get('/models', (req, res) => {
   res.json({
     available: llmOrchestrator.getAvailableModels(),
     recommended: {
-      fast: OPENROUTER_MODELS.GPT_4O_MINI,
-      balanced: OPENROUTER_MODELS.CLAUDE_3_HAIKU,
+      fast: OPENROUTER_MODELS.GPT_4O,
+      balanced: OPENROUTER_MODELS.CLAUDE_HAIKU_4,
       quality: OPENROUTER_MODELS.GPT_4O,
-      knowledge: OPENROUTER_MODELS.CLAUDE_3_5_SONNET
+      knowledge: OPENROUTER_MODELS.CLAUDE_SONNET_4
     }
   });
 });

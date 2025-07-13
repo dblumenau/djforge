@@ -312,4 +312,29 @@ export class SpotifyWebAPI {
       throw error;
     }
   }
+
+  async clearQueue(): Promise<void> {
+    // Workaround: Get current playing track and re-play just that track
+    // This effectively clears the queue since playing with 'uris' replaces the queue
+    const playback = await this.getCurrentPlayback();
+    
+    if (!playback || !playback.item) {
+      // Nothing playing, nothing to clear
+      return;
+    }
+
+    // Get current position to resume from the same spot
+    const currentPosition = playback.progress_ms || 0;
+    const currentTrackUri = playback.item.uri;
+    
+    // Play just the current track (this replaces the entire queue)
+    await this.playTrack(currentTrackUri);
+    
+    // Seek back to the position we were at
+    if (currentPosition > 0) {
+      // Small delay to ensure play command has processed
+      await new Promise(resolve => setTimeout(resolve, 100));
+      await this.seekToPosition(currentPosition);
+    }
+  }
 }

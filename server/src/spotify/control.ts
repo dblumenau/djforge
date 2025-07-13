@@ -205,6 +205,115 @@ export class SpotifyControl {
     }
   }
 
+  async queuePlaylist(playlistId: string) {
+    try {
+      console.log(`[DEBUG] Queuing playlist with ID: ${playlistId}`);
+      
+      // Get all tracks from the playlist
+      const tracksResponse = await this.getPlaylistTracks(playlistId);
+      if (!tracksResponse.success || !tracksResponse.tracks) {
+        return { success: false, message: "Couldn't get playlist tracks" };
+      }
+
+      const tracks = tracksResponse.tracks;
+      if (tracks.length === 0) {
+        return { success: false, message: "Playlist is empty" };
+      }
+
+      console.log(`[DEBUG] Queuing ${tracks.length} tracks from playlist`);
+
+      // Queue all tracks from the playlist
+      for (let i = 0; i < tracks.length; i++) {
+        await this.webAPI.addToQueue(tracks[i].uri);
+      }
+
+      return { 
+        success: true, 
+        message: `Queued ${tracks.length} tracks from playlist`,
+        tracksQueued: tracks.length,
+        playlistInfo: {
+          totalTracks: tracks.length,
+          method: 'queue_all'
+        }
+      };
+    } catch (error: any) {
+      console.log(`[DEBUG] Playlist queue failed: ${error.message}`);
+      return { success: false, message: error.message };
+    }
+  }
+
+  async searchAndQueuePlaylist(query: string) {
+    try {
+      let playlists;
+      
+      // Special case for "random" - get user's playlists and pick one randomly
+      if (query.toLowerCase().includes('random')) {
+        const playlistsResponse = await this.getPlaylists();
+        if (!playlistsResponse.success) {
+          return { success: false, message: "Couldn't get your playlists" };
+        }
+        playlists = playlistsResponse.playlists;
+        if (playlists.length === 0) {
+          return { success: false, message: "You don't have any playlists" };
+        }
+        // Pick a random playlist
+        const randomIndex = Math.floor(Math.random() * playlists.length);
+        playlists = [playlists[randomIndex]];
+      } else {
+        // Search for playlists by name
+        const rawPlaylists = await this.webAPI.search(query, ['playlist']);
+        
+        // Filter out null/invalid playlist entries
+        playlists = rawPlaylists.filter(p => p && p.id && p.uri && (p.name || p.title));
+        
+        console.log(`[DEBUG] Raw playlists found: ${rawPlaylists.length}, Valid playlists: ${playlists.length}`);
+        
+        if (playlists.length === 0) {
+          return { 
+            success: false, 
+            message: `No valid playlists found for: "${query}". Try searching for a playlist by name like "discover weekly" or "daily mix".`
+          };
+        }
+      }
+
+      // Queue the first result (or the random one)
+      const playlist = playlists[0];
+      console.log(`[DEBUG] Queuing playlist: ${playlist.name || playlist.title || 'Unknown'} (ID: ${playlist.id})`);
+      
+      // Handle different playlist object formats
+      const playlistName = playlist.name || playlist.title || 'Unknown Playlist';
+      const playlistId = playlist.id;
+      
+      if (!playlistId) {
+        console.log(`[DEBUG] Invalid playlist object - missing ID`);
+        return { success: false, message: "Found invalid playlist data" };
+      }
+      
+      // Queue all tracks from the playlist
+      const result = await this.queuePlaylist(playlistId);
+      if (result.success) {
+        return {
+          ...result,
+          message: `Queued playlist: ${playlistName} (${result.tracksQueued} tracks)`,
+          playlist: {
+            name: playlistName,
+            id: playlistId,
+            uri: playlist.uri,
+            totalTracks: result.playlistInfo?.totalTracks
+          },
+          alternatives: playlists.slice(1, 3).map(p => ({ 
+            name: p.name || p.title || 'Unknown', 
+            id: p.id 
+          }))
+        };
+      }
+      
+      return result;
+    } catch (error: any) {
+      return { success: false, message: `Playlist queue failed: ${error.message}` };
+    }
+  }
+
   async searchAndPlayPlaylist(query: string) {
     try {
       let playlists;
@@ -408,6 +517,20 @@ export class SpotifyControl {
       return { success: true, message: `Seeked to ${positionSeconds} seconds` };
     } catch (error: any) {
       return { success: false, message: error.message };
+    }
+  }
+
+  async clearQueue() {
+    try {
+      console.log(`[DEBUG] Clearing queue`);
+      await this.webAPI.clearQueue();
+      return { 
+        success: true, 
+        message: 'Queue cleared - only current track remains' 
+      };
+    } catch (error: any) {
+      console.log(`[DEBUG] Clear queue failed: ${error.message}`);
+      return { success: false, message: `Failed to clear queue: ${error.message}` };
     }
   }
 }

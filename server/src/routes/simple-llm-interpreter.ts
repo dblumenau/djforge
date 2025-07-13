@@ -82,53 +82,55 @@ function normalizeResponse(raw: any): any {
 
 // Simple, flexible interpretation with retries
 async function interpretCommand(command: string, retryCount = 0): Promise<any> {
-  const prompt = `You are a music command interpreter for Spotify. 
-Analyze this command and respond with JSON containing whatever fields make sense:
-- intent (play, pause, skip, search_and_play, set_volume, get_current_track, set_shuffle, set_repeat, get_devices, search, queue_add, get_recommendations, get_playlists, get_playlist_tracks, play_playlist, get_recently_played, transfer_playback, seek, etc.)
-- artist (if mentioned)
-- track (if mentioned)  
-- query (search query)
-- volume (for volume commands - number 0-100 or string like "full", "half")
-- volume_level (same as volume but always use this field for volume commands)
-- enabled (true/false for shuffle/repeat commands)
-- state (on/off/true/false for shuffle/repeat commands)
-- track_id (Spotify track ID for recommendations)
-- playlist_id (Spotify playlist ID for playlist operations)
-- device_id (Spotify device ID for device operations)
-- position (position in seconds for seek commands)
-- play (true/false for transfer commands)
-- confidence (0-1)
-- reasoning (brief explanation)
+  const prompt = `You are an advanced music command interpreter for Spotify with deep knowledge of music.
 
-Be smart about understanding vague requests. IMPORTANT: Distinguish between track vs playlist commands:
+CRITICAL: You must distinguish between two types of play requests:
 
-TRACK COMMANDS (intent: "search_and_play"):
-- "play Bohemian Rhapsody" → intent: "search_and_play", query: "Bohemian Rhapsody"
-- "play Taylor Swift Anti-Hero" → intent: "search_and_play", query: "Taylor Swift Anti-Hero"
-- "play something mellow" → intent: "search_and_play", query: "mellow"
-- "play that song about friendship bracelets" → intent: "search_and_play", query: "friendship bracelets"
-- "play most obscure Taylor Swift" → intent: "search_and_play", query: "Taylor Swift obscure"
+1. SPECIFIC SONG REQUESTS (intent: "play_specific_song")
+   When users ask for songs using descriptions, moods, cultural references, or vague requests, YOU MUST:
+   - Use your music knowledge to recommend a SPECIFIC song
+   - Include the exact artist, track name, and optionally album
+   - Provide 5 alternative song suggestions that also match the request
+   - Include reasoning for why you chose this specific song
 
-PLAYLIST COMMANDS (intent: "play_playlist"):
-- "play my chill playlist" → intent: "play_playlist", query: "chill"
-- "play playlist discover weekly" → intent: "play_playlist", query: "discover weekly"
-- "play study music playlist" → intent: "play_playlist", query: "study music"
-- "play a random playlist" → intent: "play_playlist", query: "random"
+   Examples requiring specific recommendations:
+   - "play something for assassins creed" → Recommend specific epic/cinematic tracks like "Ezio's Family" by Jesper Kyd
+   - "play the most obscure Taylor Swift song" → Recommend actual deep cuts like "I'd Lie" or "Beautiful Eyes"
+   - "play something that sounds like rain" → Recommend specific ambient tracks like "Rain" by Brian Eno
+   - "play jpop for gaming" → Recommend specific energetic jpop tracks like "Gurenge" by LiSA
+   - "play that desert driving scene song" → Identify "Riders on the Storm" by The Doors
+   - "play something melancholy" → Recommend specific melancholy tracks
 
-OTHER COMMANDS:
-- "volume to 100" → intent: "set_volume", volume_level: 100
-- "turn volume to full" → intent: "set_volume", volume_level: 100
-- "whats playing" → intent: "get_current_track"
-- "what song is this" → intent: "get_current_track"
-- "current track" → intent: "get_current_track"
-- "shuffle on" → intent: "set_shuffle", enabled: true
-- "turn off repeat" → intent: "set_repeat", enabled: false
-- "what devices" → intent: "get_devices"
-- "search for jazz" → intent: "search", query: "jazz"
-- "add this to queue" → intent: "queue_add", query: "..."
-- "show my playlists" → intent: "get_playlists"
-- "what did I play recently" → intent: "get_recently_played"
-- "seek to 30 seconds" → intent: "seek", position: 30
+2. PLAYLIST REQUESTS (intent: "play_playlist" or "queue_playlist")
+   When users explicitly ask for playlists, use the current behavior with search queries.
+
+RESPONSE FORMAT:
+For specific song requests (intent: "play_specific_song"):
+{
+  "intent": "play_specific_song",
+  "artist": "Exact Artist Name",
+  "track": "Exact Song Title",
+  "album": "Album Name (optional)",
+  "confidence": 0.8-1.0,
+  "reasoning": "Why this specific song matches their request",
+  "alternatives": [
+    "Artist Name - Song Title",
+    "Artist Name - Song Title",
+    "Artist Name - Song Title",
+    "Artist Name - Song Title",
+    "Artist Name - Song Title"
+  ]
+}
+
+For playlist requests:
+{
+  "intent": "play_playlist" or "queue_playlist",
+  "query": "playlist search terms",
+  "confidence": 0.7-1.0,
+  "reasoning": "brief explanation"
+}
+
+Other intents remain the same: pause, skip, volume, get_current_track, etc.
 
 Command: "${command}"`;
 
@@ -140,7 +142,7 @@ Command: "${command}"`;
     
     const responsePromise = llmOrchestrator.complete({
       messages: [
-        { role: 'system', content: 'Respond with valid JSON. Be helpful and specific. Include confidence scores. CRITICAL: Use "search_and_play" for individual songs/tracks, and "play_playlist" only when the word "playlist" is mentioned or when clearly referring to a collection of songs (like "my chill music" vs "chill songs").' },
+        { role: 'system', content: 'Respond with valid JSON. Be helpful and specific. Include confidence scores. CRITICAL: You must use the discriminated union pattern - when intent is "play_specific_song", you MUST include artist, track, and alternatives fields. When intent is "play_playlist" or "queue_playlist", use query field. Never use generic search queries for specific song requests - always recommend exact songs using your music knowledge.' },
         { role: 'user', content: prompt }
       ],
       model: OPENROUTER_MODELS.CLAUDE_SONNET_4,
@@ -201,12 +203,18 @@ Command: "${command}"`;
 
 // Build Spotify search query - embrace flexibility
 function buildSearchQuery(interpretation: any): string {
-  // If LLM gave us a specific artist and track, use precise search
+  // For play_specific_song intent, always use precise search
+  if (interpretation.intent === 'play_specific_song' && interpretation.artist && interpretation.track) {
+    // Use Spotify's precise search operators for exact matching
+    return `artist:"${interpretation.artist}" track:"${interpretation.track}"`;
+  }
+  
+  // If LLM gave us a specific artist and track (legacy behavior), use precise search
   if (interpretation.artist && interpretation.track) {
     return `artist:"${interpretation.artist}" track:"${interpretation.track}"`;
   }
   
-  // Otherwise use whatever the LLM thought was best
+  // Otherwise use whatever the LLM thought was best (for playlists, etc.)
   return interpretation.query || interpretation.searchQuery || 
          `${interpretation.track || ''} ${interpretation.artist || ''}`.trim();
 }
@@ -280,7 +288,7 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
     // Handle different intents flexibly
     const intent = interpretation.intent || interpretation.action;
     
-    if ((intent?.includes('play') || intent?.includes('search')) && intent !== 'play_playlist') {
+    if (intent === 'play_specific_song' || ((intent?.includes('play') || intent?.includes('search')) && intent !== 'play_playlist')) {
       const searchQuery = buildSearchQuery(interpretation);
       
       if (!searchQuery) {
@@ -427,6 +435,25 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
         console.log(`[DEBUG] No playlist URI or query provided`);
         result = { success: false, message: "I need a playlist name or URI to play" };
       }
+    } else if (intent === 'queue_playlist' || intent?.includes('queue_playlist')) {
+      const playlistUri = interpretation.playlist_uri || interpretation.playlistUri;
+      const searchQuery = interpretation.query || interpretation.search_query;
+      
+      console.log(`[DEBUG] queue_playlist intent detected. URI: ${playlistUri}, Query: ${searchQuery}`);
+      
+      if (playlistUri) {
+        // Queue playlist by URI (extract ID from URI)
+        const playlistId = playlistUri.split(':').pop() || playlistUri.split('/').pop();
+        console.log(`[DEBUG] Queuing playlist by URI/ID: ${playlistId}`);
+        result = await spotifyControl.queuePlaylist(playlistId);
+      } else if (searchQuery) {
+        // Search for playlist and queue it
+        console.log(`[DEBUG] Searching and queuing playlist: ${searchQuery}`);
+        result = await spotifyControl.searchAndQueuePlaylist(searchQuery);
+      } else {
+        console.log(`[DEBUG] No playlist URI or query provided for queue`);
+        result = { success: false, message: "I need a playlist name or URI to queue" };
+      }
     } else if (intent === 'get_recently_played' || intent?.includes('recently') || intent?.includes('history')) {
       result = await spotifyControl.getRecentlyPlayed();
     } else if (intent === 'transfer_playback' || intent?.includes('transfer')) {
@@ -444,6 +471,9 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
       } else {
         result = await spotifyControl.seekToPosition(position);
       }
+    } else if (intent === 'clear_queue' || intent?.includes('clear')) {
+      console.log(`[DEBUG] clear_queue intent detected`);
+      result = await spotifyControl.clearQueue();
     } else {
       result = { 
         success: false, 
@@ -459,6 +489,7 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
         confidence: interpretation.confidence,
         searchQuery: buildSearchQuery(interpretation),
         ...(interpretation.reasoning && { reasoning: interpretation.reasoning }),
+        ...(interpretation.alternatives && { alternatives: interpretation.alternatives }),
         model: 'unknown' // Add model info
       },
       timestamp: new Date().toISOString()

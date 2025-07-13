@@ -12,6 +12,8 @@ export const MusicCommandSchema = z.object({
     'search_and_play',
     'search_and_queue',
     'play_playlist',
+    'queue_playlist',
+    'clear_queue',
     'get_info',
     'control_playback',
     'unknown'
