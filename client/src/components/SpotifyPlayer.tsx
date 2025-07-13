@@ -214,7 +214,7 @@ const SpotifyPlayer: React.FC<SpotifyPlayerProps> = ({ token, onDeviceReady, onP
         console.log('New track detected, auto-resuming playback:', currentTrack.name);
         // Small delay to ensure the track is fully loaded
         setTimeout(() => {
-          spotifyPlayer.resume().catch((error) => {
+          spotifyPlayer.resume().catch((error: Error) => {
             console.log('Auto-resume failed (this is normal on first load):', error);
           });
         }, 100);

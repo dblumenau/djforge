@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { SpotifyWebAPI } from './api';
-import { SpotifyAuthTokens } from '../types';
+import { SpotifyAuthTokens, SpotifyTrack } from '../types';
 
 export const controlRouter = Router();
 
@@ -113,7 +113,7 @@ export class SpotifyControl {
       
       return { 
         success: true, 
-        message: `Playing: ${track.name} by ${track.artists.map(a => a.name).join(', ')}`,
+        message: `Playing: ${track.name} by ${track.artists.map((a: { name: string }) => a.name).join(', ')}`,
         track,
         alternatives: tracks.slice(1, 5) // Return other options
       };
@@ -137,7 +137,7 @@ export class SpotifyControl {
       
       return { 
         success: true, 
-        message: `Added to queue: ${track.name} by ${track.artists.map(a => a.name).join(', ')}`,
+        message: `Added to queue: ${track.name} by ${track.artists.map((a: { name: string }) => a.name).join(', ')}`,
         track
       };
     } catch (error: any) {
@@ -369,7 +369,7 @@ export class SpotifyControl {
       if (result.success) {
         return {
           ...result,
-          message: `Playing playlist: ${playlistName} (${result.tracksQueued + 1} tracks)`,
+          message: `Playing playlist: ${playlistName} (${(result.tracksQueued || 0) + 1} tracks)`,
           playlist: {
             name: playlistName,
             id: playlistId,
@@ -446,7 +446,7 @@ export class SpotifyControl {
         message: `Found ${tracks.length} recommendations`,
         tracks: tracks.slice(0, 10).map(t => ({
           name: t.name,
-          artists: t.artists.map(a => a.name).join(', '),
+          artists: t.artists.map((a: { name: string }) => a.name).join(', '),
           album: t.album.name,
           popularity: t.popularity,
           uri: t.uri
@@ -472,9 +472,9 @@ export class SpotifyControl {
       return { 
         success: true, 
         message: `Found ${tracks.length} tracks in playlist`,
-        tracks: tracks.slice(0, 20).map(t => ({
+        tracks: tracks.slice(0, 20).map((t: SpotifyTrack) => ({
           name: t.name,
-          artists: t.artists.map(a => a.name).join(', '),
+          artists: t.artists.map((a: { name: string }) => a.name).join(', '),
           album: t.album.name,
           uri: t.uri
         }))
@@ -490,9 +490,9 @@ export class SpotifyControl {
       return { 
         success: true, 
         message: `Found ${tracks.length} recently played tracks`,
-        tracks: tracks.slice(0, 20).map(t => ({
+        tracks: tracks.slice(0, 20).map((t: SpotifyTrack) => ({
           name: t.name,
-          artists: t.artists.map(a => a.name).join(', '),
+          artists: t.artists.map((a: { name: string }) => a.name).join(', '),
           album: t.album.name,
           uri: t.uri
         }))

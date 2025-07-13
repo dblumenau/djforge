@@ -41,6 +41,7 @@ declare namespace Spotify {
     position: number;
     repeat_mode: number;
     shuffle: boolean;
+    timestamp?: number;
     track_window: {
       current_track: Track;
       previous_tracks: Track[];
