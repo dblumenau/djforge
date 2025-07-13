@@ -152,7 +152,7 @@ async function initializeAndStart() {
     // Handle callback at root level (Spotify redirects here)
     app.get('/callback', async (req, res) => {
   // Import the callback handler logic
-  const { code, error } = req.query;
+  const { code, error, state } = req.query;
   
   if (error) {
     return res.redirect(`${clientUrl}?error=${error}`);
@@ -162,7 +162,21 @@ async function initializeAndStart() {
     return res.redirect(`${clientUrl}?error=no_code`);
   }
   
-  const codeVerifier = req.session.codeVerifier;
+  // Try to get codeVerifier from state parameter first (production)
+  let codeVerifier = req.session.codeVerifier;
+  
+  if (state && typeof state === 'string') {
+    try {
+      const stateData = JSON.parse(Buffer.from(state, 'base64url').toString());
+      if (stateData.codeVerifier) {
+        codeVerifier = stateData.codeVerifier;
+        console.log('Code verifier extracted from state parameter');
+      }
+    } catch (e) {
+      console.error('Failed to parse state parameter:', e);
+    }
+  }
+  
   if (!codeVerifier) {
     return res.redirect(`${clientUrl}?error=no_verifier`);
   }

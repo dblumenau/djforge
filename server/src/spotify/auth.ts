@@ -9,6 +9,16 @@ export const authRouter = Router();
 const SPOTIFY_AUTH_URL = 'https://accounts.spotify.com/authorize';
 const SPOTIFY_TOKEN_URL = 'https://accounts.spotify.com/api/token';
 
+// Generate random string for state
+function generateRandomString(length: number): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
 // PKCE helper functions
 function generateCodeVerifier(): string {
   return crypto.randomBytes(32).toString('base64url');
@@ -41,14 +51,22 @@ authRouter.get('/login', (req, res) => {
   const codeVerifier = generateCodeVerifier();
   const codeChallenge = generateCodeChallenge(codeVerifier);
   
-  // Store code verifier in session for later use
+  // Store code verifier in session for local dev fallback
   req.session.codeVerifier = codeVerifier;
+  
+  // For production, encode codeVerifier in state parameter
+  const stateData = {
+    random: generateRandomString(16), // For CSRF protection
+    codeVerifier: codeVerifier
+  };
+  const state = Buffer.from(JSON.stringify(stateData)).toString('base64url');
   
   const params = new URLSearchParams({
     client_id: process.env.SPOTIFY_CLIENT_ID!,
     response_type: 'code',
     redirect_uri: process.env.SPOTIFY_REDIRECT_URI!,
     scope: SCOPES,
+    state: state, // Include state parameter
     code_challenge_method: 'S256',
     code_challenge: codeChallenge
   });
