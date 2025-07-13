@@ -4,8 +4,19 @@ import { ensureValidToken } from '../spotify/auth';
 import { SpotifyTrack } from '../types';
 import { llmOrchestrator, OPENROUTER_MODELS } from '../llm/orchestrator';
 import { llmMonitor } from '../llm/monitoring';
+import { RedisConversation, createConversationManager, ConversationEntry } from '../utils/redisConversation';
 
 export const simpleLLMInterpreterRouter = Router();
+
+// Conversation manager instance (will be set when Redis is available)
+let conversationManager: RedisConversation | null = null;
+
+export function setRedisClient(redisClient: any) {
+  if (redisClient) {
+    conversationManager = createConversationManager(redisClient);
+    console.log('✅ Conversation manager initialized for contextual understanding');
+  }
+}
 
 // Security constants
 const MAX_RESPONSE_SIZE = 10_000; // characters
@@ -81,8 +92,52 @@ function normalizeResponse(raw: any): any {
 }
 
 // Simple, flexible interpretation with retries
-async function interpretCommand(command: string, retryCount = 0): Promise<any> {
+async function interpretCommand(command: string, sessionId?: string, retryCount = 0): Promise<any> {
+  let conversationHistory: ConversationEntry[] = [];
+  
+  // Fetch conversation history if we have a session
+  if (sessionId && conversationManager) {
+    conversationHistory = await conversationManager.getHistory(sessionId, 3);
+    
+    // Check if this is a contextual reference
+    if (conversationManager.isContextualReference(command)) {
+      const resolved = conversationManager.resolveContextualReference(command, conversationHistory);
+      if (resolved) {
+        console.log(`Resolved contextual reference: "${command}" → ${resolved.artist} - ${resolved.track}`);
+        // Return a pre-resolved interpretation
+        return {
+          intent: command.toLowerCase().includes('queue') ? 'queue_specific_song' : 'play_specific_song',
+          artist: resolved.artist,
+          track: resolved.track,
+          confidence: resolved.confidence,
+          reasoning: `Resolved from previous context: ${resolved.artist} - ${resolved.track}`,
+          query: '',
+          modifiers: {},
+          alternatives: []
+        };
+      }
+    }
+  }
+  
+  // Format conversation context for the LLM
+  const contextBlock = conversationHistory.length > 0 ? `
+CONVERSATION CONTEXT:
+${conversationHistory.map((entry, idx) => `
+[${idx + 1}] User: "${entry.command}"
+    Intent: ${entry.interpretation.intent}
+    ${entry.interpretation.artist ? `Artist: ${entry.interpretation.artist}` : ''}
+    ${entry.interpretation.track ? `Track: ${entry.interpretation.track}` : ''}
+    ${entry.interpretation.query ? `Query: ${entry.interpretation.query}` : ''}
+    ${entry.interpretation.alternatives && entry.interpretation.alternatives.length > 0 ? 
+      `Alternatives shown: ${entry.interpretation.alternatives.join(', ')}` : ''}
+`).join('\n')}
+
+IMPORTANT: If the user is referencing something from the conversation above (like "no the taylor swift one", "the second one", "actually play X instead"), look for it in the alternatives or context and respond with the specific song they're referring to.
+` : '';
+  
   const prompt = `You are an advanced music command interpreter for Spotify with deep knowledge of music.
+
+${contextBlock}
 
 AVAILABLE INTENTS - Choose the most appropriate one:
 
@@ -186,7 +241,7 @@ Command: "${command}"`;
     // Validate we got something useful
     if (normalized.intent === 'unknown' && retryCount < MAX_RETRIES) {
       console.log(`Retry ${retryCount + 1} for command interpretation`);
-      return interpretCommand(command, retryCount + 1);
+      return interpretCommand(command, sessionId, retryCount + 1);
     }
     
     return normalized;
@@ -298,7 +353,10 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
   const startTime = Date.now();
 
   try {
-    const interpretation = await interpretCommand(command);
+    // Get session ID from request
+    const sessionId = req.sessionID;
+    
+    const interpretation = await interpretCommand(command, sessionId);
     console.log('LLM interpretation:', interpretation);
 
     const spotifyControl = new SpotifyControl(
@@ -513,7 +571,7 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
       };
     }
 
-    res.json({
+    const responseData = {
       ...result,
       interpretation: {
         command: command,
@@ -525,10 +583,27 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
         model: 'unknown' // Add model info
       },
       timestamp: new Date().toISOString()
-    });
+    };
+    
+    res.json(responseData);
     
     // Record successful interpretation
     llmMonitor.recordInterpretation(command, interpretation, startTime, true);
+    
+    // Store conversation entry in Redis for future context
+    if (sessionId && conversationManager) {
+      const conversationEntry: ConversationEntry = {
+        command: command,
+        interpretation: interpretation,
+        timestamp: Date.now(),
+        response: {
+          success: result.success || false,
+          message: result.message || ''
+        }
+      };
+      
+      await conversationManager.append(sessionId, conversationEntry);
+    }
 
   } catch (error) {
     console.error('Command error:', error);
@@ -600,7 +675,8 @@ simpleLLMInterpreterRouter.post('/test-interpret', async (req, res) => {
 
   try {
     const startTime = Date.now();
-    const interpretation = await interpretCommand(command);
+    const sessionId = req.sessionID;
+    const interpretation = await interpretCommand(command, sessionId);
     const responseTime = Date.now() - startTime;
     
     res.json({

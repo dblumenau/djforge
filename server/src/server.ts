@@ -7,7 +7,7 @@ import { authRouter } from './spotify/auth';
 import { controlRouter } from './spotify/control';
 import { claudeRouter } from './claude/interpreter';
 import { enhancedClaudeRouter } from './claude/enhanced-interpreter';
-import { simpleLLMInterpreterRouter } from './routes/simple-llm-interpreter';
+import { simpleLLMInterpreterRouter, setRedisClient } from './routes/simple-llm-interpreter';
 import { llmInterpreterRouter } from './routes/llm-interpreter';
 import { sessionManagementRouter, setRedisUtils } from './routes/session-management';
 import { createRedisClient, checkRedisHealth } from './config/redis';
@@ -47,6 +47,9 @@ async function initializeSessionStore() {
       // Create Redis utils for session management
       redisUtils = new RedisUtils(redisClient);
       setRedisUtils(redisUtils);
+      
+      // Initialize conversation manager for LLM interpreter
+      setRedisClient(redisClient);
     } else {
       throw new Error('Redis health check failed');
     }
