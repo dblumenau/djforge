@@ -12,7 +12,6 @@ import { llmInterpreterRouter } from './routes/llm-interpreter';
 import { sessionManagementRouter, setRedisUtils } from './routes/session-management';
 import { createRedisClient, checkRedisHealth } from './config/redis';
 import { RedisUtils } from './utils/redis-utils';
-import RedisStore from 'connect-redis';
 
 // Fallback to file store if Redis is unavailable
 const FileStore = require('session-file-store')(session);
@@ -37,7 +36,9 @@ async function initializeSessionStore() {
     const isHealthy = await checkRedisHealth(redisClient);
     if (isHealthy) {
       console.log('✅ Using Redis for session storage');
-      sessionStore = new (RedisStore as any)({
+      // For connect-redis v9, we need to import it differently
+      const { RedisStore } = require('connect-redis');
+      sessionStore = new RedisStore({
         client: redisClient,
         prefix: 'djforge:sess:',
         ttl: 86400 * 30, // 30 days in seconds
@@ -83,24 +84,46 @@ app.use(cors({
 
 app.use(express.json());
 
-// Routes
-app.use('/api/auth', authRouter);
-app.use('/api/control', controlRouter);
+// Initialize and start server
+async function initializeAndStart() {
+  try {
+    // Initialize session store first
+    await initializeSessionStore();
+    
+    // Configure session middleware BEFORE routes
+    app.use(session({
+      secret: process.env.SESSION_SECRET || 'spotify-claude-secret',
+      resave: false,
+      saveUninitialized: false,
+      store: sessionStore,
+      cookie: {
+        secure: false,
+        httpOnly: true,
+        maxAge: 86400000 * 30, // 30 days
+        sameSite: 'lax',
+        path: '/'
+      },
+      name: 'spotify_session'
+    }));
 
-// Use flexible LLM interpreter by default (production-ready)
-app.use('/api/claude', simpleLLMInterpreterRouter);
-// Keep schema-based interpreter available at /api/claude-schema
-app.use('/api/claude-schema', llmInterpreterRouter);
-// Keep enhanced interpreter available at /api/claude-enhanced
-app.use('/api/claude-enhanced', enhancedClaudeRouter);
-// Keep original interpreter available at /api/claude-basic
-app.use('/api/claude-basic', claudeRouter);
+    // NOW add routes (after session middleware)
+    app.use('/api/auth', authRouter);
+    app.use('/api/control', controlRouter);
+    
+    // Use flexible LLM interpreter by default (production-ready)
+    app.use('/api/claude', simpleLLMInterpreterRouter);
+    // Keep schema-based interpreter available at /api/claude-schema
+    app.use('/api/claude-schema', llmInterpreterRouter);
+    // Keep enhanced interpreter available at /api/claude-enhanced
+    app.use('/api/claude-enhanced', enhancedClaudeRouter);
+    // Keep original interpreter available at /api/claude-basic
+    app.use('/api/claude-basic', claudeRouter);
 
-// Session management endpoints
-app.use('/api/sessions', sessionManagementRouter);
+    // Session management endpoints
+    app.use('/api/sessions', sessionManagementRouter);
 
-// Handle callback at root level (Spotify redirects here)
-app.get('/callback', async (req, res) => {
+    // Handle callback at root level (Spotify redirects here)
+    app.get('/callback', async (req, res) => {
   // Import the callback handler logic
   const { code, error } = req.query;
   
@@ -155,25 +178,37 @@ app.get('/callback', async (req, res) => {
   }
 });
 
-// Health check with Redis status
-app.get('/api/health', async (req, res) => {
-  const health: any = {
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    sessionStore: redisClient ? 'redis' : 'file',
-  };
-  
-  // Check Redis health if available
-  if (redisClient) {
-    try {
-      health.redis = await checkRedisHealth(redisClient) ? 'healthy' : 'unhealthy';
-    } catch {
-      health.redis = 'error';
-    }
+    // Health check with Redis status (inside initializeAndStart)
+    app.get('/api/health', async (req, res) => {
+      const health: any = {
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        sessionStore: redisClient ? 'redis' : 'file',
+      };
+      
+      // Check Redis health if available
+      if (redisClient) {
+        try {
+          health.redis = await checkRedisHealth(redisClient) ? 'healthy' : 'unhealthy';
+        } catch {
+          health.redis = 'error';
+        }
+      }
+      
+      res.json(health);
+    });
+
+    // Start the server
+    app.listen(PORT, () => {
+      console.log(`🎵 Spotify Controller server running on http://localhost:${PORT}`);
+      console.log(`🤖 Ready to receive commands!`);
+      console.log(`📦 Session storage: ${redisClient ? 'Redis' : 'File-based'}`);
+    });
+  } catch (error) {
+    console.error('❌ Failed to start server:', error);
+    process.exit(1);
   }
-  
-  res.json(health);
-});
+}
 
 // Graceful shutdown
 process.on('SIGTERM', async () => {
@@ -206,37 +241,5 @@ process.on('SIGINT', async () => {
   process.exit(0);
 });
 
-// Start server
-async function startServer() {
-  try {
-    // Initialize session store first
-    await initializeSessionStore();
-    
-    // Configure session middleware
-    app.use(session({
-      secret: process.env.SESSION_SECRET || 'spotify-claude-secret',
-      resave: false,
-      saveUninitialized: false,
-      store: sessionStore,
-      cookie: {
-        secure: false,
-        httpOnly: true,
-        maxAge: 86400000 * 30, // 30 days
-        sameSite: 'lax',
-        path: '/'
-      },
-      name: 'spotify_session'
-    }));
-    
-    app.listen(PORT, () => {
-      console.log(`🎵 Spotify Controller server running on http://localhost:${PORT}`);
-      console.log(`🤖 Ready to receive commands!`);
-      console.log(`📦 Session storage: ${redisClient ? 'Redis' : 'File-based'}`);
-    });
-  } catch (error) {
-    console.error('❌ Failed to start server:', error);
-    process.exit(1);
-  }
-}
-
-startServer();
+// Call the initialization function
+initializeAndStart();
