@@ -330,9 +330,18 @@ export class RedisConversation {
       const isRecentEnough = entry.timestamp > tenMinutesAgo;
       const isMusicAction = ['play_specific_song', 'queue_specific_song', 'play_playlist', 'queue_playlist'].includes(intent);
       return isMusicAction && isRecentEnough;
-    }).slice(0, 2);
+    });
     
-    return musicActions;
+    // If the command contains "this" or "that", only return the most recent action
+    // as the user is referring to the immediate context
+    const lowerCommand = command.toLowerCase();
+    if (lowerCommand.includes(' this') || lowerCommand.includes(' that') || 
+        lowerCommand === 'this' || lowerCommand === 'that') {
+      return musicActions.slice(0, 1);
+    }
+    
+    // Otherwise return last 2 music actions for general context
+    return musicActions.slice(0, 2);
   }
   
   /**
