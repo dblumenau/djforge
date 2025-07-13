@@ -55,7 +55,7 @@ async function getUserModelPreference(userId: string): Promise<string | null> {
 
 // Security constants
 const MAX_RESPONSE_SIZE = 10_000; // characters
-const INTERPRETATION_TIMEOUT = 10000; // 10 seconds
+const INTERPRETATION_TIMEOUT = 120000; // 120 seconds - support slow models like Gemini
 const MAX_RETRIES = 2;
 
 interface TrackWithScore extends SpotifyTrack {
