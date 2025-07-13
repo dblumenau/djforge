@@ -4,6 +4,7 @@ import SpotifyPlayer from './components/SpotifyPlayer';
 import ModelSelector from './components/ModelSelector';
 import { useSpotifyAuth } from './hooks/useSpotifyAuth';
 import { apiEndpoint } from './config/api';
+import { authenticatedFetch } from './utils/api';
 
 // Helper component for clickable example lists
 const ExampleList: React.FC<{ examples: string[] }> = ({ examples }) => {
@@ -70,21 +71,17 @@ function App() {
       const token = urlParams.get('token');
       
       if (token) {
-        // Production: Exchange token for session
-        console.log('🔑 Token found:', token.substring(0, 20) + '...');
+        // JWT token received (works for both local and production)
+        console.log('🔑 JWT token found:', token.substring(0, 20) + '...');
         
         // Clear URL params AFTER we've read them
         window.history.replaceState({}, document.title, '/');
         
-        // Exchange token immediately
-        exchangeTokenForSession(token);
+        // Handle JWT token immediately
+        handleJWTToken(token);
       } else {
-        // Local development: Use cookies directly
-        console.log('🍪 No token, using cookies (local dev mode)');
+        console.log('❌ No token found in callback');
         window.history.replaceState({}, document.title, '/');
-        setTimeout(() => {
-          authState.checkAuthStatus();
-        }, 100);
       }
     } else if (urlParams.get('error')) {
       console.error('❌ Auth error:', urlParams.get('error'));
@@ -134,42 +131,14 @@ function App() {
     }
   };
 
-  const exchangeTokenForSession = async (token: string) => {
-    console.log('🔄 Starting token exchange...');
+  const handleJWTToken = (token: string) => {
+    console.log('🔑 Storing JWT token and checking auth...');
     
-    try {
-      const url = apiEndpoint('/api/auth/exchange-token');
-      console.log('📡 Exchanging token at:', url);
-      
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({ token })
-      });
-
-      console.log('📋 Token exchange response status:', response.status);
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('✅ Token exchange successful:', data);
-        
-        // Wait a moment for session to be saved, then force a complete refresh
-        console.log('🔍 Waiting for session to be saved...');
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Force a complete page refresh to ensure fresh session
-        console.log('🔄 Forcing page refresh to pick up new session...');
-        window.location.reload();
-      } else {
-        const errorText = await response.text();
-        console.error('❌ Token exchange failed:', response.status, errorText);
-      }
-    } catch (error) {
-      console.error('💥 Token exchange error:', error);
-    }
+    // Store JWT in localStorage (could also use memory/context)
+    localStorage.setItem('spotify_jwt', token);
+    
+    // Check auth status with the new token
+    authState.checkAuthStatus();
   };
 
   const handleLogin = () => {
@@ -186,12 +155,8 @@ function App() {
   // @ts-ignore - Will be used later
   const transferPlayback = async (deviceId: string) => {
     try {
-      const response = await fetch(apiEndpoint('/api/control/transfer'), {
+      const response = await authenticatedFetch('/api/control/transfer', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
         body: JSON.stringify({ deviceId, play: false })
       });
       
@@ -209,12 +174,8 @@ function App() {
     setIsProcessing(true);
     
     try {
-      const response = await fetch(apiEndpoint('/api/claude/command'), {
+      const response = await authenticatedFetch('/api/claude/command', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
         body: JSON.stringify({ command })
       });
 
@@ -254,12 +215,8 @@ function App() {
   const handleClearHistory = async () => {
     setIsProcessing(true);
     try {
-      const response = await fetch(apiEndpoint('/api/claude/clear-history'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include'
+      const response = await authenticatedFetch('/api/claude/clear-history', {
+        method: 'POST'
       });
 
       const data = await response.json();
@@ -296,12 +253,8 @@ function App() {
 
     setIsProcessing(true);
     try {
-      const response = await fetch(apiEndpoint('/api/claude/command'), {
+      const response = await authenticatedFetch('/api/claude/command', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
         body: JSON.stringify({ command: command.trim() })
       });
 
@@ -381,8 +334,8 @@ function App() {
 
   if (isAuthenticated) {
     return (
-      <div className="min-h-screen bg-zinc-950 p-8">
-        <div className="max-w-7xl mx-auto space-y-6">
+      <div className="min-h-screen bg-zinc-950 p-4 md:p-8">
+        <div className="max-w-7xl mx-auto space-y-4 md:space-y-6">
           {/* Spotify Player - Full Width at Top */}
           {accessToken && (
             <div className="w-full">
@@ -394,41 +347,46 @@ function App() {
           )}
           
           {/* Main Content - Two Columns */}
-          <div className="flex flex-col md:flex-row gap-6" style={{ height: 'calc(100vh - 250px)' }}>
+          <div className="flex flex-col lg:flex-row gap-4 md:gap-6">
             {/* Left Column - Command Area */}
-            <div className="w-full md:w-5/12">
-              <div className="bg-zinc-900 rounded-xl shadow-xl p-8 h-full">
-                <div className="mb-8 text-center">
-                  <h1 className="text-3xl font-bold text-green-500 mb-2">🎵 Spotify Claude Controller</h1>
-                  <p className="text-gray-400">Control your music with natural language</p>
+            <div className="w-full lg:w-5/12">
+              <div className="bg-zinc-900 rounded-xl shadow-xl p-4 md:p-6 lg:p-8">
+                <div className="mb-6 md:mb-8 text-center">
+                  <h1 className="text-2xl md:text-3xl font-bold text-green-500 mb-2">🎵 Spotify Claude Controller</h1>
+                  <p className="text-gray-400 text-sm md:text-base">Control your music with natural language</p>
                   <div className="mt-4 flex justify-center">
                     <ModelSelector />
                   </div>
                 </div>
               
-              <div className="bg-zinc-800 rounded-lg p-6 mb-6">
-                <h2 className="text-xl font-semibold text-green-500 mb-4">🎤 Ready for Commands!</h2>
-                <p className="text-gray-400 mb-4">Try natural language commands like:</p>
-                <ul className="space-y-2 text-gray-400 text-sm">
-                  <li>• "Play" / "Pause" / "Skip" / "Volume up"</li>
-                  <li>• "Play a lesser known Enya song"</li>
-                  <li>• "Play the most obscure Taylor Swift track"</li>
-                  <li>• "Queue something that sounds like rain"</li>
-                  <li>• "Play that song from the desert driving scene"</li>
-                  <li>• "Play some deep cut Beatles B-sides"</li>
-                  <li>• "Play Space Oddity original 1969 version not remaster"</li>
-                  <li>• "Play something melancholy for a rainy day"</li>
-                  <li>• "Play that dancey ABBA song from Mamma Mia"</li>
-                  <li>• "What's playing?"</li>
-                </ul>
-                <button
-                  type="button"
-                  onClick={() => setShowExamplesModal(true)}
-                  className="mt-3 text-green-500 hover:text-green-400 text-sm underline"
-                >
-                  See 50+ more examples →
-                </button>
-              </div>
+              <details className="bg-zinc-800 rounded-lg mb-4 md:mb-6">
+                <summary className="cursor-pointer p-4 md:p-6 flex items-center justify-between text-lg md:text-xl font-semibold text-green-500 hover:text-green-400 transition-colors">
+                  <span>🎤 Show Commands</span>
+                  <span className="text-sm font-normal text-gray-400">Click to expand</span>
+                </summary>
+                <div className="px-4 md:px-6 pb-4 md:pb-6">
+                  <p className="text-gray-400 text-sm md:text-base mb-3 md:mb-4">Try natural language commands like:</p>
+                  <ul className="space-y-2 text-gray-400 text-sm">
+                    <li>• "Play" / "Pause" / "Skip" / "Volume up"</li>
+                    <li>• "Play a lesser known Enya song"</li>
+                    <li>• "Play the most obscure Taylor Swift track"</li>
+                    <li>• "Queue something that sounds like rain"</li>
+                    <li>• "Play that song from the desert driving scene"</li>
+                    <li>• "Play some deep cut Beatles B-sides"</li>
+                    <li>• "Play Space Oddity original 1969 version not remaster"</li>
+                    <li>• "Play something melancholy for a rainy day"</li>
+                    <li>• "Play that dancey ABBA song from Mamma Mia"</li>
+                    <li>• "What's playing?"</li>
+                  </ul>
+                  <button
+                    type="button"
+                    onClick={() => setShowExamplesModal(true)}
+                    className="mt-3 text-green-500 hover:text-green-400 text-sm underline"
+                  >
+                    See 50+ more examples →
+                  </button>
+                </div>
+              </details>
               
               <form onSubmit={handleCommandSubmit}>
                 <div className="space-y-3">
@@ -452,7 +410,7 @@ function App() {
                     type="button"
                     onClick={handleClearHistory}
                     disabled={isProcessing}
-                    className="w-full px-4 py-2 bg-zinc-700 text-gray-300 rounded-lg hover:bg-zinc-600 disabled:bg-zinc-800 disabled:text-gray-500 transition-colors text-sm"
+                    className="w-full px-6 py-3 bg-zinc-700 text-white font-semibold rounded-full hover:bg-zinc-600 disabled:bg-zinc-800 disabled:text-gray-500 transition-all transform hover:scale-105 disabled:scale-100"
                   >
                     Clear Conversation History
                   </button>
@@ -475,10 +433,10 @@ function App() {
             </div>
 
             {/* Right Column - Command History */}
-            <div className="w-full md:w-7/12">
-              <div className="bg-zinc-900 rounded-xl shadow-xl p-6 flex flex-col h-full">
+            <div className="w-full lg:w-7/12 mt-4 lg:mt-0">
+              <div className="bg-zinc-900 rounded-xl shadow-xl p-4 md:p-6 flex flex-col min-h-[400px] lg:h-full">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-semibold text-green-500">Command History</h3>
+                <h3 className="text-lg md:text-xl font-semibold text-green-500">Command History</h3>
                 {commandHistory.length > 0 && (
                   <button
                     onClick={() => {
