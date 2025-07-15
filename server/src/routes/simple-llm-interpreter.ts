@@ -945,8 +945,47 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
               };
             }
 
-            // Add alternatives if we found multiple good matches
-            if (ranked.length > 1) {
+            // Add alternatives from LLM response if provided, otherwise use search results
+            console.log(`[DEBUG] Processing alternatives from LLM: ${JSON.stringify(interpretation.alternatives)}`);
+            if (interpretation.alternatives && interpretation.alternatives.length > 0) {
+              // Convert LLM-provided alternatives to proper format with URIs
+              const alternativesWithUris = [];
+              console.log(`[DEBUG] Converting ${interpretation.alternatives.length} alternatives to URI format`);
+              for (const altString of interpretation.alternatives.slice(0, 5)) {
+                try {
+                  // Parse "Artist Name - Song Title" format
+                  const parts = altString.split(' - ');
+                  if (parts.length >= 2) {
+                    const artist = parts[0].trim();
+                    const track = parts.slice(1).join(' - ').trim();
+                    
+                    // Search for this alternative on Spotify
+                    const altSearchQuery = `artist:"${artist}" track:"${track}"`;
+                    const altTracks = await spotifyControl.search(altSearchQuery);
+                    
+                    if (altTracks.length > 0) {
+                      const altTrack = altTracks[0];
+                      alternativesWithUris.push({
+                        name: altTrack.name,
+                        artists: altTrack.artists.map((a: any) => a.name).join(', '),
+                        popularity: altTrack.popularity,
+                        uri: altTrack.uri
+                      });
+                    }
+                  }
+                } catch (error) {
+                  console.error('Error processing alternative:', altString, error);
+                }
+              }
+              
+              if (alternativesWithUris.length > 0) {
+                console.log(`[DEBUG] Successfully converted ${alternativesWithUris.length} alternatives with URIs`);
+                (result as any).alternatives = alternativesWithUris;
+              } else {
+                console.log(`[DEBUG] No alternatives were successfully converted`);
+              }
+            } else if (ranked.length > 1) {
+              // Fallback to search results if no LLM alternatives
               (result as any).alternatives = ranked.slice(1, 5).map((t: any) => ({
                 name: t.name,
                 artists: t.artists.map((a: any) => a.name).join(', '),
@@ -1215,13 +1254,18 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
         confidence: interpretation.confidence,
         searchQuery: buildSearchQuery(interpretation),
         ...(interpretation.reasoning && { reasoning: interpretation.reasoning }),
-        ...(interpretation.alternatives && { alternatives: interpretation.alternatives }),
+        // Use converted alternatives from result if available, otherwise use raw alternatives from interpretation
+        alternatives: (result as any).alternatives || interpretation.alternatives,
         model: interpretation.model || preferredModel || 'unknown' // Fix model info
       },
       timestamp: new Date().toISOString(),
       // Include refreshed tokens if they were updated
       ...(refreshedTokens ? { refreshedTokens } : {})
     };
+    
+    // Debug log the final response structure
+    console.log(`[DEBUG] Final response alternatives:`, (responseData as any).alternatives);
+    console.log(`[DEBUG] Final response interpretation alternatives:`, responseData.interpretation.alternatives);
     
     // Debug logging for conversational responses
     if (interpretation.intent === 'chat' || interpretation.intent === 'ask_question') {

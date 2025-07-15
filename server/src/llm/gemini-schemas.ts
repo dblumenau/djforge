@@ -118,6 +118,32 @@ export const MusicCommandIntentSchema = {
     responseMessage: {
       type: Type.STRING,
       description: 'For conversational intents (chat, ask_question), include the actual response text here'
+    },
+    songs: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          artist: {
+            type: Type.STRING,
+            description: 'Artist name'
+          },
+          track: {
+            type: Type.STRING,
+            description: 'Track/song name'
+          },
+          album: {
+            type: Type.STRING,
+            description: 'Album name (optional)'
+          }
+        },
+        required: ['artist', 'track']
+      },
+      description: 'Array of songs for queue_multiple_songs intent'
+    },
+    theme: {
+      type: Type.STRING,
+      description: 'Theme or description of the song collection for queue_multiple_songs intent'
     }
   },
   required: ['intent', 'confidence', 'reasoning'],
@@ -133,7 +159,9 @@ export const MusicCommandIntentSchema = {
     'reasoning',
     'alternatives',
     'enhancedQuery',
-    'responseMessage'
+    'responseMessage',
+    'songs',
+    'theme'
   ]
 };
 
@@ -323,6 +351,8 @@ Key guidelines:
 - Use enhanced Spotify search queries when possible
 - Be creative in interpreting vague requests while maintaining accuracy
 - IMPORTANT: For conversational intents (chat, ask_question), you MUST include the actual answer in the responseMessage field
+- IMPORTANT: For queue_multiple_songs intent, you MUST include a songs array with specific tracks (artist, track, album)
+- IMPORTANT: For queue_multiple_songs, analyze the context (current song, recent plays) to suggest similar songs
 
 Your response will be automatically validated against a strict schema.`,
 

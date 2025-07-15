@@ -54,6 +54,7 @@ const MainApp: React.FC = () => {
     reasoning?: string;
     model?: string;
     interpretation?: any; // Full interpretation object for debugging
+    queuedSongs?: Array<{ name: string; artists: string; success: boolean }>;
   }>>([]);
   // Authentication
   const { isAuthenticated, accessToken, loading: authLoading, logout, checkAuthStatus } = useSpotifyAuth();
@@ -175,7 +176,8 @@ const MainApp: React.FC = () => {
           intent: data.interpretation?.intent,
           reasoning: data.interpretation?.reasoning,
           model: data.interpretation?.model || currentModel,
-          interpretation: data.interpretation
+          interpretation: data.interpretation,
+          queuedSongs: data.queuedSongs
         }]);
       } else {
         setCommandHistory(prev => [...prev, {
@@ -186,7 +188,8 @@ const MainApp: React.FC = () => {
           intent: data.interpretation?.intent,
           reasoning: data.interpretation?.reasoning,
           model: data.interpretation?.model || currentModel,
-          interpretation: data.interpretation
+          interpretation: data.interpretation,
+          queuedSongs: data.queuedSongs
         }]);
       }
     } catch (error) {
@@ -238,7 +241,8 @@ const MainApp: React.FC = () => {
           intent: data.interpretation?.intent,
           reasoning: data.interpretation?.reasoning,
           model: data.interpretation?.model || currentModel,
-          interpretation: data.interpretation // Store the full interpretation object
+          interpretation: data.interpretation, // Store the full interpretation object
+          queuedSongs: data.queuedSongs
         }]);
       } else {
         setCommandHistory(prev => [...prev, {
@@ -249,7 +253,8 @@ const MainApp: React.FC = () => {
           intent: data.interpretation?.intent,
           reasoning: data.interpretation?.reasoning,
           model: data.interpretation?.model || currentModel,
-          interpretation: data.interpretation // Store the full interpretation object
+          interpretation: data.interpretation, // Store the full interpretation object
+          queuedSongs: data.queuedSongs
         }]);
       }
     } catch (error) {
@@ -560,6 +565,29 @@ const MainApp: React.FC = () => {
                                 <span className="font-medium">Also tried:</span> {(item.alternatives as string[]).join(', ')}
                               </div>
                             )}
+                          </div>
+                        )}
+                        
+                        {/* Queued Songs */}
+                        {item.queuedSongs && item.queuedSongs.length > 0 && (
+                          <div className="mt-2 pl-6">
+                            <div className="space-y-2">
+                              <span className="text-xs text-gray-500 font-medium">Songs queued:</span>
+                              <div className="space-y-1">
+                                {item.queuedSongs.map((song, songIndex) => (
+                                  <div key={songIndex} className="flex items-center bg-zinc-900/50 rounded p-2 text-xs">
+                                    <span className="text-blue-400 mr-2">♪</span>
+                                    <div className="flex-1 text-gray-300">
+                                      <span className="font-medium">{song.name}</span>
+                                      <span className="text-gray-500"> by {song.artists}</span>
+                                    </div>
+                                    {song.success && (
+                                      <span className="text-green-400 text-xs">✓</span>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
                           </div>
                         )}
                       </div>
