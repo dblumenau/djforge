@@ -232,8 +232,9 @@ export function validateMusicCommandIntent(
     result.warnings.push('Volume intent should typically include a "value" field');
   }
 
-  if (['play_specific_song', 'queue_specific_song'].includes(intent.intent) && !intent.query) {
-    result.warnings.push('Search intents should typically include a "query" field');
+  if (['play_specific_song', 'queue_specific_song'].includes(intent.intent) && 
+      !intent.query && !intent.artist && !intent.track && !intent.enhancedQuery) {
+    result.warnings.push('Search intents should include either a "query" field or structured search fields (artist/track)');
   }
 
   result.isValid = result.errors.length === 0;
