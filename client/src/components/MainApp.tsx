@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import MusicLoader from './MusicLoader';
 import SpotifyPlayer from './SpotifyPlayer';
 import ModelSelector from './ModelSelector';
@@ -30,6 +31,7 @@ const ExampleList: React.FC<{ examples: string[] }> = ({ examples }) => {
 };
 
 const MainApp: React.FC = () => {
+  const navigate = useNavigate();
   const [showExamplesModal, setShowExamplesModal] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [checking, setChecking] = useState(true);
@@ -47,18 +49,20 @@ const MainApp: React.FC = () => {
     confidence?: number;
     isEnhanced?: boolean;
     timestamp?: number;
-    alternatives?: string[];
+    alternatives?: string[] | Array<{ name: string; artists: string; popularity: number; uri: string }>;
+    intent?: string;
+    reasoning?: string;
+    model?: string;
+    interpretation?: any; // Full interpretation object for debugging
   }>>([]);
   // Authentication
-  const authState = useSpotifyAuth();
-  const { isAuthenticated } = authState;
-  const [authChecking, setAuthChecking] = useState(false);
+  const { isAuthenticated, accessToken, loading: authLoading, logout, checkAuthStatus } = useSpotifyAuth();
 
   // Check server connection
   useEffect(() => {
     const checkConnection = async () => {
       try {
-        const response = await fetch(`${apiEndpoint}/health`);
+        const response = await fetch(apiEndpoint('/api/health'));
         if (response.ok) {
           setIsConnected(true);
         } else {
@@ -82,18 +86,48 @@ const MainApp: React.FC = () => {
   // Check authentication when component mounts
   useEffect(() => {
     if (isConnected && !checking) {
-      authState.checkAuthStatus();
+      checkAuthStatus();
     }
-  }, [isConnected, checking, authState]);
+  }, [isConnected, checking, checkAuthStatus]);
 
-  const updateModelPreference = async (type: string, model: string) => {
+  // Load command history from Redis when authenticated
+  useEffect(() => {
+    const loadCommandHistory = async () => {
+      if (!isAuthenticated) return;
+      
+      try {
+        const response = await authenticatedFetch(apiEndpoint('/api/claude/history'));
+        if (response.ok) {
+          const data = await response.json();
+          if (data.history && Array.isArray(data.history)) {
+            setCommandHistory(data.history);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load command history:', error);
+      }
+    };
+
+    loadCommandHistory();
+  }, [isAuthenticated]);
+
+  // Redirect to landing page if not authenticated
+  useEffect(() => {
+    console.log('🔄 MainApp: Auth redirect check -', { checking, authLoading, isAuthenticated });
+    if (!checking && !authLoading && !isAuthenticated) {
+      console.log('⚠️ MainApp: Redirecting to landing page');
+      navigate('/landing');
+    }
+  }, [checking, authLoading, isAuthenticated, navigate]);
+
+  const updateModelPreference = async (_type: string, model: string) => {
     if (!isAuthenticated) return;
 
     try {
-      const response = await authenticatedFetch(`${apiEndpoint}/preferences/model`, {
+      const response = await authenticatedFetch(apiEndpoint('/api/preferences/models'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type, model })
+        body: JSON.stringify({ modelId: model })
       });
 
       if (response.ok) {
@@ -104,14 +138,66 @@ const MainApp: React.FC = () => {
     }
   };
 
-  const handleLogin = async () => {
-    setAuthChecking(true);
+  const handleAlternativeClick = async (alternative: { name: string; artists: string; popularity: number; uri: string }, action: 'play' | 'queue') => {
+    if (isProcessing) return;
+    
     try {
-      authState.login();
+      setIsProcessing(true);
+      
+      // Use the Spotify URI to play or queue the track
+      const command = action === 'play' ? `play ${alternative.name} by ${alternative.artists}` : `queue ${alternative.name} by ${alternative.artists}`;
+      
+      const response = await authenticatedFetch(apiEndpoint('/api/claude/command'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          command: command,
+          model: currentModel 
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.success) {
+        setCommandHistory(prev => [...prev, {
+          command: command,
+          response: data.response || data.message,
+          confidence: data.interpretation?.confidence,
+          isEnhanced: data.isEnhanced,
+          timestamp: Date.now(),
+          alternatives: data.interpretation?.alternatives,
+          intent: data.interpretation?.intent,
+          reasoning: data.interpretation?.reasoning,
+          model: data.interpretation?.model || currentModel,
+          interpretation: data.interpretation
+        }]);
+      } else {
+        setCommandHistory(prev => [...prev, {
+          command: command,
+          response: data.error || data.message || 'An error occurred',
+          timestamp: Date.now(),
+          confidence: data.interpretation?.confidence,
+          intent: data.interpretation?.intent,
+          reasoning: data.interpretation?.reasoning,
+          model: data.interpretation?.model || currentModel,
+          interpretation: data.interpretation
+        }]);
+      }
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('Alternative click error:', error);
+      setCommandHistory(prev => [...prev, {
+        command: `${action} ${alternative.name} by ${alternative.artists}`,
+        response: 'Network error. Please try again.',
+        timestamp: Date.now()
+      }]);
     } finally {
-      setAuthChecking(false);
+      setIsProcessing(false);
     }
   };
 
@@ -124,7 +210,7 @@ const MainApp: React.FC = () => {
     setCommand('');
 
     try {
-      const response = await authenticatedFetch(`${apiEndpoint}/claude`, {
+      const response = await authenticatedFetch(apiEndpoint('/api/claude/command'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -144,17 +230,26 @@ const MainApp: React.FC = () => {
       if (data.success) {
         setCommandHistory(prev => [...prev, {
           command: userCommand,
-          response: data.response,
-          confidence: data.confidence,
+          response: data.response || data.message,
+          confidence: data.interpretation?.confidence,
           isEnhanced: data.isEnhanced,
           timestamp: Date.now(),
-          alternatives: data.alternatives
+          alternatives: data.interpretation?.alternatives,
+          intent: data.interpretation?.intent,
+          reasoning: data.interpretation?.reasoning,
+          model: data.interpretation?.model || currentModel,
+          interpretation: data.interpretation // Store the full interpretation object
         }]);
       } else {
         setCommandHistory(prev => [...prev, {
           command: userCommand,
-          response: data.error || 'An error occurred',
-          timestamp: Date.now()
+          response: data.error || data.message || 'An error occurred',
+          timestamp: Date.now(),
+          confidence: data.interpretation?.confidence,
+          intent: data.interpretation?.intent,
+          reasoning: data.interpretation?.reasoning,
+          model: data.interpretation?.model || currentModel,
+          interpretation: data.interpretation // Store the full interpretation object
         }]);
       }
     } catch (error) {
@@ -169,8 +264,25 @@ const MainApp: React.FC = () => {
     }
   };
 
-  const handleClearHistory = () => {
-    setCommandHistory([]);
+  const handleClearHistory = async () => {
+    try {
+      // Clear Redis conversation history
+      const response = await authenticatedFetch(apiEndpoint('/api/claude/clear-history'), {
+        method: 'POST'
+      });
+      
+      if (response.ok) {
+        // Clear local state only if Redis clear was successful
+        setCommandHistory([]);
+        console.log('Conversation history cleared successfully');
+      } else {
+        console.error('Failed to clear conversation history on server');
+      }
+    } catch (error) {
+      console.error('Error clearing conversation history:', error);
+      // Still clear local state even if server request fails
+      setCommandHistory([]);
+    }
   };
 
   const handleModelSelect = (model: string) => {
@@ -214,21 +326,9 @@ const MainApp: React.FC = () => {
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto px-6">
-          <div className="mb-8">
-            <h1 className="text-4xl font-bold text-white mb-4">🎵 Spotify Claude</h1>
-            <p className="text-gray-300">Control your Spotify with natural language commands powered by Claude AI.</p>
-          </div>
-          
-          <div className="text-center">
-            <button 
-              className="px-8 py-3 bg-green-500 text-black font-bold rounded-full hover:bg-green-400 disabled:bg-gray-600 disabled:text-gray-400 transition-all transform hover:scale-105 disabled:scale-100"
-              onClick={handleLogin}
-              disabled={authChecking}
-            >
-              {authChecking ? 'Checking...' : 'Login with Spotify'}
-            </button>
-          </div>
+        <div className="text-center">
+          <MusicLoader modelName="System" />
+          <p className="text-white mt-4">Redirecting to login...</p>
         </div>
       </div>
     );
@@ -244,17 +344,25 @@ const MainApp: React.FC = () => {
             <p className="text-gray-400">Control your Spotify with natural language</p>
           </div>
 
-          {/* Model Selector */}
-          <div className="mb-6">
+          {/* Model Selector and Logout */}
+          <div className="mb-6 flex justify-between items-center">
             <ModelSelector 
               onModelChange={handleModelSelect}
             />
+            <button 
+              className="px-4 py-2 bg-red-600 text-white font-semibold rounded-full hover:bg-red-700 transition-colors text-sm"
+              onClick={() => {
+                logout();
+              }}
+            >
+              Logout
+            </button>
           </div>
 
           {/* Spotify Player */}
           <div className="mb-6">
             <SpotifyPlayer 
-              token={authState.accessToken || ''}
+              token={accessToken || ''}
               onDeviceReady={handleDeviceReady}
             />
           </div>
@@ -295,63 +403,168 @@ const MainApp: React.FC = () => {
                       </button>
                       {isProcessing && <MusicLoader modelName={currentModel} />}
                     </div>
-                    <button
-                      type="button"
-                      onClick={handleClearHistory}
-                      disabled={isProcessing}
-                      className="w-full px-6 py-3 bg-zinc-700 text-white font-semibold rounded-full hover:bg-zinc-600 disabled:bg-zinc-800 disabled:text-gray-500 transition-all transform hover:scale-105 disabled:scale-100"
-                    >
-                      Clear Conversation History
-                    </button>
                   </div>
                 </form>
-              </div>
-              
-              <div className="mt-6 text-center flex-shrink-0">
-                <button 
-                  className="px-6 py-2 bg-red-600 text-white font-semibold rounded-full hover:bg-red-700 transition-colors text-sm"
-                  onClick={() => {
-                    authState.logout();
-                  }}
-                >
-                  Logout
-                </button>
               </div>
             </div>
 
             {/* Command History */}
             <div className="bg-zinc-800 rounded-lg p-6 border border-zinc-700">
-              <h2 className="text-xl font-semibold mb-4">Command History</h2>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-semibold">Command History</h2>
+                {commandHistory.length > 0 && (
+                  <button
+                    onClick={handleClearHistory}
+                    className="text-xs text-gray-400 hover:text-red-400 transition-colors"
+                  >
+                    Clear History
+                  </button>
+                )}
+              </div>
               <div className="space-y-4 max-h-96 overflow-y-auto">
                 {commandHistory.length === 0 ? (
                   <p className="text-gray-500 text-center py-8">No commands yet. Try sending a command!</p>
                 ) : (
-                  commandHistory.map((item, index) => (
-                    <div key={index} className="border-b border-zinc-700 pb-4 last:border-b-0">
-                      <div className="flex justify-between items-start mb-2">
-                        <p className="text-green-400 font-medium flex-1">{item.command}</p>
-                        <div className="flex items-center space-x-2 text-xs text-gray-500 ml-2">
-                          {item.confidence !== undefined && (
-                            <span className="px-2 py-1 bg-zinc-700 rounded">
-                              {Math.round(item.confidence * 100)}%
-                            </span>
-                          )}
-                          {item.isEnhanced && (
-                            <span className="px-2 py-1 bg-blue-600 rounded">Enhanced</span>
-                          )}
+                  commandHistory.slice().reverse().map((item, index) => {
+                    // Extract interpretation data properly
+                    const intent = item.intent;
+                    const confidence = item.confidence;
+                    const reasoning = item.reasoning;
+                    const searchQuery = undefined;
+                    
+                    return (
+                      <div key={index} className="border-b border-zinc-800 pb-4 last:border-0">
+                        {/* Command with badges */}
+                        <div className="flex items-start gap-2 mb-2">
+                          <span className="text-green-500 text-sm">▶</span>
+                          <div className="flex-1">
+                            <span className="text-green-500 text-sm font-medium">{item.command}</span>
+                            {/* Badges */}
+                            <div className="inline-flex items-center gap-2 ml-3">
+                              {item.isEnhanced && (
+                                <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">
+                                  Enhanced
+                                </span>
+                              )}
+                              {item.model && (
+                                <span className="text-xs bg-gray-600/30 text-gray-400 px-2 py-0.5 rounded-full" title={item.model}>
+                                  {item.model.split('/').pop()?.split('-')[0] || item.model}
+                                </span>
+                              )}
+                            </div>
+                          </div>
                           {item.timestamp && (
-                            <span>{new Date(item.timestamp).toLocaleTimeString()}</span>
+                            <span className="text-xs text-gray-500">{new Date(item.timestamp).toLocaleTimeString()}</span>
                           )}
                         </div>
-                      </div>
-                      <p className="text-gray-300">{item.response}</p>
-                      {item.alternatives && item.alternatives.length > 0 && (
-                        <div className="mt-2 text-xs text-gray-500">
-                          <span className="font-medium">Alternatives:</span> {item.alternatives.join(', ')}
+                        
+                        {/* Intent and confidence */}
+                        {(intent || confidence !== undefined) && (
+                          <div className="pl-6 mb-2 flex items-center gap-3 flex-wrap">
+                            {intent && (
+                              <span className={`text-xs px-2 py-1 rounded ${
+                                intent === 'play_specific_song' ? 'bg-purple-500/20 text-purple-400' :
+                                intent === 'queue_specific_song' ? 'bg-green-500/20 text-green-400' :
+                                intent === 'play_playlist' ? 'bg-blue-500/20 text-blue-400' :
+                                intent === 'queue_playlist' ? 'bg-cyan-500/20 text-cyan-400' :
+                                intent === 'pause' ? 'bg-yellow-500/20 text-yellow-400' :
+                                intent === 'skip' ? 'bg-orange-500/20 text-orange-400' :
+                                intent === 'set_volume' ? 'bg-pink-500/20 text-pink-400' :
+                                intent === 'get_playback_info' ? 'bg-indigo-500/20 text-indigo-400' :
+                                intent === 'chat' ? 'bg-blue-500/20 text-blue-400' :
+                                'bg-gray-500/20 text-gray-400'
+                              }`}>
+                                Intent: {intent.replace(/_/g, ' ')}
+                              </span>
+                            )}
+                            {confidence !== undefined && (
+                              <div className="flex items-center gap-1">
+                                <span className="text-xs text-gray-500">Confidence:</span>
+                                <div className="w-16 h-2 bg-zinc-700 rounded-full overflow-hidden">
+                                  <div 
+                                    className={`h-full transition-all ${
+                                      confidence > 0.8 ? 'bg-green-500' : 
+                                      confidence > 0.6 ? 'bg-yellow-500' : 
+                                      'bg-orange-500'
+                                    }`}
+                                    style={{ width: `${confidence * 100}%` }}
+                                  />
+                                </div>
+                                <span className="text-xs text-gray-400">{Math.round(confidence * 100)}%</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        
+                        {/* Reasoning */}
+                        {reasoning && (
+                          <div className="pl-6 mb-2">
+                            <div className="bg-zinc-900/50 border-l-2 border-purple-500/30 px-3 py-2 rounded">
+                              <p className="text-xs text-purple-300 italic">
+                                💭 {reasoning}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Search query */}
+                        {searchQuery && (
+                          <div className="pl-6 mb-2">
+                            <p className="text-xs text-gray-500">
+                              🔍 Searched for: <code className="bg-zinc-800 px-1 rounded">{searchQuery}</code>
+                            </p>
+                          </div>
+                        )}
+                        
+                        {/* Response */}
+                        <div className="text-gray-400 text-sm pl-6 whitespace-pre-line">
+                          {item.response}
                         </div>
-                      )}
-                    </div>
-                  ))
+                        
+                        {/* Alternatives */}
+                        {item.alternatives && item.alternatives.length > 0 && (
+                          <div className="mt-2 pl-6">
+                            {/* Check if alternatives are objects with URI (new format) or simple strings (old format) */}
+                            {typeof item.alternatives[0] === 'object' ? (
+                              <div className="space-y-2">
+                                <span className="text-xs text-gray-500 font-medium">Similar songs:</span>
+                                <div className="space-y-1">
+                                  {(item.alternatives as Array<{ name: string; artists: string; popularity: number; uri: string }>).map((alt, altIndex) => (
+                                    <div key={altIndex} className="flex items-center justify-between bg-zinc-900/50 rounded p-2 text-xs">
+                                      <div className="flex-1 text-gray-300">
+                                        <span className="font-medium">{alt.name}</span>
+                                        <span className="text-gray-500"> by {alt.artists}</span>
+                                      </div>
+                                      <div className="flex gap-1">
+                                        <button
+                                          onClick={() => handleAlternativeClick(alt, 'play')}
+                                          disabled={isProcessing}
+                                          className="px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                        >
+                                          Play
+                                        </button>
+                                        <button
+                                          onClick={() => handleAlternativeClick(alt, 'queue')}
+                                          disabled={isProcessing}
+                                          className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                        >
+                                          Queue
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="text-xs text-gray-500">
+                                <span className="font-medium">Also tried:</span> {(item.alternatives as string[]).join(', ')}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
                 )}
               </div>
             </div>

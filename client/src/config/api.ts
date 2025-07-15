@@ -1,5 +1,6 @@
 // API configuration for different environments
 const getApiUrl = () => {
+  console.log(import.meta.env.VITE_API_URL);
   // Check if we have a Vite environment variable
   if (import.meta.env.VITE_API_URL) {
     return import.meta.env.VITE_API_URL;
@@ -13,7 +14,13 @@ export const API_URL = getApiUrl();
 
 // Helper to ensure URLs are properly formatted
 export const apiEndpoint = (path: string) => {
-  const baseUrl = API_URL.endsWith('/') ? API_URL.slice(0, -1) : API_URL;
-  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  if (!API_URL) {
+    throw new Error('API_URL is not defined');
+  }
+  if (/^https?:\/\//.test(path)) {
+    return path;
+  }
+  const baseUrl = API_URL.replace(/\/+$/, '');
+  const cleanPath = `/${path.replace(/^\/+/, '')}`;
   return `${baseUrl}${cleanPath}`;
 };

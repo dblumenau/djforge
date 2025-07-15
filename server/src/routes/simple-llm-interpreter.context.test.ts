@@ -199,7 +199,7 @@ describe('LLM Interpreter - Context Integration Tests', () => {
 
       (llmOrchestrator.complete as jest.Mock).mockResolvedValue({
         content: JSON.stringify({
-          intent: 'get_info',
+          intent: 'ask_question',
           confidence: 0.9,
           reasoning: 'User wants information about the current or a specific song, not to play music.'
         })

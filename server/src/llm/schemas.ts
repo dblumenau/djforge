@@ -13,8 +13,19 @@ export const MusicCommandSchema = z.object({
     'skip',
     'previous',
     'volume',
+    'set_volume',
+    'resume',
+    'next',
+    'back',
+    'get_current_track',
+    'set_shuffle',
+    'set_repeat',
     'clear_queue',
-    'get_info',
+    'get_devices',
+    'get_playlists',
+    'get_recently_played',
+    'search',
+    'get_playback_info',
     'chat',
     'ask_question',
     'unknown'
@@ -29,6 +40,10 @@ export const MusicCommandSchema = z.object({
   album: z.string().optional().describe('Album name if specified'),
   
   value: z.number().optional().describe('Numeric value for volume commands'),
+  
+  volume_level: z.number().optional().describe('Volume level between 0-100'),
+  
+  enabled: z.boolean().optional().describe('Boolean flag for shuffle/repeat commands'),
   
   modifiers: z.object({
     obscurity: z.union([
@@ -66,7 +81,19 @@ export const MusicCommandSchema = z.object({
     .describe('Alternative interpretations or suggestions'),
   
   enhancedQuery: z.string().optional()
-    .describe('Enhanced Spotify search query with proper operators')
+    .describe('Enhanced Spotify search query with proper operators'),
+    
+  // For queue_multiple_songs intent
+  songs: z.array(z.object({
+    artist: z.string(),
+    track: z.string(),
+    album: z.string().optional()
+  })).optional()
+    .describe('Array of songs for queue_multiple_songs intent'),
+    
+  // For queue_multiple_songs theme
+  theme: z.string().optional()
+    .describe('Theme description for multiple queued songs')
 });
 
 export type MusicCommand = z.infer<typeof MusicCommandSchema>;
@@ -165,7 +192,7 @@ You have deep knowledge of music history, artists, albums, and can understand:
 - Version preferences ("acoustic version", "original not remaster")
 
 You must respond with a JSON object containing these fields:
-- intent: one of "play_specific_song", "queue_specific_song", "queue_multiple_songs", "play_playlist", "queue_playlist", "play", "pause", "skip", "previous", "volume", "clear_queue", "get_info", "chat", "ask_question", "unknown"
+- intent: one of "play_specific_song", "queue_specific_song", "queue_multiple_songs", "play_playlist", "queue_playlist", "play", "pause", "skip", "previous", "volume", "clear_queue", "get_playback_info", "chat", "ask_question", "unknown"
 - query (optional): search query string
 - artist (optional): artist name
 - track (optional): track name
@@ -228,6 +255,7 @@ export function createSchemaRequest(
     response_format: { type: 'json_object' as const },
     schema,
     model,
-    temperature: 0.7
+    temperature: 0.7,
+    conversationContext: undefined as string | undefined
   };
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { apiEndpoint } from '../config/api';
 
 interface AuthState {
@@ -16,8 +16,11 @@ export const useSpotifyAuth = () => {
     error: null
   });
 
-  const checkAuthStatus = async () => {
+  const checkAuthStatus = useCallback(async () => {
     console.log('🔍 useSpotifyAuth: Starting auth status check...');
+    
+    // Set loading to true when starting auth check
+    setAuthState(prev => ({ ...prev, loading: true }));
     
     try {
       const url = apiEndpoint('/api/auth/status');
@@ -76,12 +79,12 @@ export const useSpotifyAuth = () => {
         error: error instanceof Error ? error.message : 'Auth check failed'
       });
     }
-  };
+  }, []);
 
   // Initial auth check
   useEffect(() => {
     checkAuthStatus();
-  }, []);
+  }, [checkAuthStatus]);
 
   // Refresh token before expiry
   useEffect(() => {
@@ -93,13 +96,13 @@ export const useSpotifyAuth = () => {
     }, 30 * 60 * 1000);
 
     return () => clearInterval(interval);
-  }, [authState.isAuthenticated]);
+  }, [authState.isAuthenticated, checkAuthStatus]);
 
-  const login = () => {
+  const login = useCallback(() => {
     window.location.href = apiEndpoint('/api/auth/login');
-  };
+  }, []);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       // Clear JWT token
       localStorage.removeItem('spotify_jwt');
@@ -119,7 +122,7 @@ export const useSpotifyAuth = () => {
     } catch (error) {
       console.error('Logout failed:', error);
     }
-  };
+  }, []);
 
   return {
     ...authState,

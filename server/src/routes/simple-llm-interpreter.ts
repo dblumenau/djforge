@@ -4,51 +4,29 @@ import { ensureValidToken } from '../spotify/auth';
 import { SpotifyTrack, SpotifyAuthTokens } from '../types';
 import { llmOrchestrator, OPENROUTER_MODELS } from '../llm/orchestrator';
 import { llmMonitor } from '../llm/monitoring';
-import { RedisConversation, createConversationManager, ConversationEntry, DialogState } from '../utils/redisConversation';
-import { verifyJWT, extractTokenFromHeader } from '../utils/jwt';
+import { ConversationEntry, DialogState } from '../utils/redisConversation';
+import { ConversationManager, getConversationManager } from '../services/ConversationManager';
 
 export const simpleLLMInterpreterRouter = Router();
 
-// Conversation manager instance (will be set when Redis is available)
-let conversationManager: RedisConversation | null = null;
-
-// Redis client reference for model preferences
-let redisClient: any = null;
+// Shared conversation manager instance
+let conversationManager: ConversationManager;
 
 export function setRedisClient(client: any) {
-  redisClient = client;
-  if (client) {
-    conversationManager = createConversationManager(client);
-    console.log('✅ Conversation manager initialized for contextual understanding');
-  }
+  conversationManager = getConversationManager(client);
+  console.log('✅ Shared ConversationManager initialized for contextual understanding');
 }
 
 // Helper to get user ID from JWT
 function getUserIdFromRequest(req: any): string | null {
-  const authHeader = req.headers.authorization;
-  const jwtToken = extractTokenFromHeader(authHeader);
-  
-  if (!jwtToken) return null;
-  
-  const payload = verifyJWT(jwtToken);
-  if (!payload) return null;
-  
-  // Return the stable Spotify user ID from JWT
-  return payload.sub || payload.spotify_user_id || null;
+  if (!conversationManager) return null;
+  return conversationManager.getUserIdFromRequest(req);
 }
 
 // Get user's model preference from Redis
 async function getUserModelPreference(userId: string): Promise<string | null> {
-  if (!redisClient) return null;
-  
-  try {
-    const key = `user:${userId}:model_preference`;
-    const preference = await redisClient.get(key);
-    return preference;
-  } catch (error) {
-    console.error('Error getting model preference from Redis:', error);
-    return null;
-  }
+  if (!conversationManager) return null;
+  return await conversationManager.getUserModelPreference(userId);
 }
 
 // Security constants
@@ -128,7 +106,17 @@ function normalizeResponse(raw: any): any {
 function needsConfirmation(interpretation: any): boolean {
   if (!conversationManager) return false;
   
-  const isDestructive = conversationManager.isDestructiveAction(interpretation.intent);
+  // Check if this is a destructive action using Redis conversation logic
+  const destructiveIntents = [
+    'play_specific_song',
+    'queue_specific_song',
+    'play_playlist',
+    'queue_playlist',
+  ];
+  
+  const isDestructive = destructiveIntents.includes(interpretation.intent) || 
+                       interpretation.intent.includes('play') || 
+                       interpretation.intent.includes('queue');
   const lowConfidence = interpretation.confidence < 0.7;
   
   return isDestructive && lowConfidence;
@@ -149,7 +137,7 @@ function createConfirmationResponse(interpretation: any): any {
 }
 
 // Simple, flexible interpretation with retries
-async function interpretCommand(command: string, userId?: string, retryCount = 0, preferredModel?: string): Promise<any> {
+async function interpretCommand(command: string, userId?: string, retryCount = 0, preferredModel?: string, musicContext?: string): Promise<any> {
   let conversationHistory: ConversationEntry[] = [];
   let dialogState: DialogState | null = null;
   
@@ -157,7 +145,7 @@ async function interpretCommand(command: string, userId?: string, retryCount = 0
   if (userId && conversationManager) {
     // Get both conversation history and dialog state
     const [history, state] = await Promise.all([
-      conversationManager.getHistory(userId, 8),
+      conversationManager.getConversationHistory(userId, 8),
       conversationManager.getDialogState(userId)
     ]);
     
@@ -230,11 +218,11 @@ AVAILABLE INTENTS - Choose the most appropriate one:
 === CONVERSATIONAL INTENTS (return text, NO Spotify action) ===
 • chat - General music discussion ("what do you think of this artist", "how's the song")
 • ask_question - Questions about collaborations, facts ("did he collaborate with X", "has she ever worked with Y")
-• get_info - Information requests ("tell me about this song", "what's this album about")
+• get_playback_info - Get information about what's currently playing ("what's playing", "current song", "what song is this")
 
 CONVERSATIONAL TRIGGERS (these are NOT music actions):
 - Questions starting with: "did", "does", "has", "tell me about", "what do you think", "how is", "what's"
-- Information requests: "tell me about", "what about", "info on"
+- Playback info requests: "what's playing", "what song is this", "current track"
 - General discussion: "what do you think", "how do you feel", "your opinion"
 
 === SONG INTENTS (require specific song recommendations) ===
@@ -251,7 +239,7 @@ CONVERSATIONAL TRIGGERS (these are NOT music actions):
 • play/resume - Resume playback (no parameters needed)
 • skip/next - Skip to next track
 • previous/back - Go to previous track
-• set_volume - Set volume level (requires volume_level field)
+• set_volume - Set volume level (requires volume_level field between 0-100)
 • get_current_track - Get currently playing track info
 • set_shuffle - Enable/disable shuffle (requires enabled field)
 • set_repeat - Enable/disable repeat (requires enabled field)
@@ -287,14 +275,15 @@ CRITICAL DISTINCTIONS:
    - Questions starting with "did", "does", "has", "tell me about", "what do you think" → conversational intents
    - Commands requesting action "play", "queue", "skip" → action intents
    - "did he ever collaborate with X" → ask_question (return text, don't play music)
-   - "tell me about this song" → get_info (return info, don't play music)
+   - "tell me about this song" → ask_question (return info, don't play music)
    - "what do you think of this artist" → chat (return opinion, don't play music)
 
 4. KEY DISTINCTION:
    - If asking for A SONG (even by name) → use play_specific_song/queue_specific_song
    - If asking for MULTIPLE SONGS → use queue_multiple_songs
    - If asking for A PLAYLIST → use play_playlist/queue_playlist
-   - If asking QUESTIONS → use conversational intents (chat/ask_question/get_info)
+   - If asking QUESTIONS → use conversational intents (chat/ask_question)
+   - If asking "what's playing" or "current song" → use get_playback_info
    - The word "playlist" in the command is a strong indicator for playlist intents
    - Words like "multiple", "many", "several", "more songs", "a few songs" indicate queue_multiple_songs
 
@@ -309,11 +298,13 @@ For specific song requests (both play and queue):
   "reasoning": "Why this specific song matches their request",
   "alternatives": [
     "Artist Name - Song Title",
-    "Artist Name - Song Title",
+    "Artist Name - Song Title", 
     "Artist Name - Song Title",
     "Artist Name - Song Title",
     "Artist Name - Song Title"
   ]
+  
+  IMPORTANT: Always provide 4-5 alternative song suggestions in the alternatives array. These should be similar songs by the same artist or related artists that the user might also enjoy.
 }
 
 For multiple song requests:
@@ -347,14 +338,45 @@ For playlist requests:
 
 For conversational requests:
 {
-  "intent": "chat" or "ask_question" or "get_info",
+  "intent": "chat" or "ask_question",
   "confidence": 0.8-1.0,
-  "reasoning": "explain why this is conversational and what information to provide"
+  "reasoning": "explain why this is conversational and what information to provide",
+  "responseMessage": "The actual answer to the user's question about the artist/music. For 'this artist' questions, use the currently playing context to provide information about the specific artist. Include interesting facts, notable achievements, genre influences, and career highlights. Keep it 2-4 sentences."
 }
 
-Other intents remain the same: pause, skip, volume, get_current_track, etc.
+For control intents:
+{
+  "intent": "set_volume",
+  "volume_level": 75,
+  "confidence": 0.9,
+  "reasoning": "setting volume to specified level"
+}
 
-Command: "${command}"`;
+{
+  "intent": "pause" or "play" or "skip" or "previous",
+  "confidence": 0.9,
+  "reasoning": "basic playback control"
+}
+
+{
+  "intent": "set_shuffle",
+  "enabled": true,
+  "confidence": 0.9,
+  "reasoning": "enabling or disabling shuffle"
+}
+
+{
+  "intent": "set_repeat",
+  "enabled": true,
+  "confidence": 0.9,
+  "reasoning": "enabling or disabling repeat"
+}
+
+Other intents: clear_queue, get_current_track, get_devices, get_playlists, get_recently_played, search
+
+Command: "${command}"
+
+${musicContext || ''}`;
 
   try {
     // Add timeout to prevent hanging
@@ -364,16 +386,20 @@ Command: "${command}"`;
     
     const responsePromise = llmOrchestrator.complete({
       messages: [
-        { role: 'system', content: 'Respond with valid JSON. Be helpful and specific. Include confidence scores. CRITICAL: You must use the discriminated union pattern - when intent is "play_specific_song" or "queue_specific_song", you MUST include artist, track, and alternatives fields. When intent is "play_playlist" or "queue_playlist", use query field. Never use generic search queries for specific song requests - always recommend exact songs using your music knowledge. Distinguish between playing (immediate) and queuing (add to queue) for both songs and playlists.' },
+        { role: 'system', content: 'Respond with valid JSON. Be helpful and specific. Include confidence scores. CRITICAL: You must use the discriminated union pattern - when intent is "play_specific_song" or "queue_specific_song", you MUST include artist, track, and alternatives fields. ALWAYS provide 4-5 alternative song suggestions in the alternatives array using the format "Artist Name - Song Title". When intent is "play_playlist" or "queue_playlist", use query field. Never use generic search queries for specific song requests - always recommend exact songs using your music knowledge. Distinguish between playing (immediate) and queuing (add to queue) for both songs and playlists. For conversational intents (chat, ask_question), include the actual answer in the responseMessage field.' },
         { role: 'user', content: prompt }
       ],
       model: preferredModel || OPENROUTER_MODELS.GEMINI_2_5_FLASH,
       temperature: 0.7,
-      response_format: { type: 'json_object' }
+      response_format: { type: 'json_object' },
+      conversationContext: contextBlock.length > 0 ? contextBlock : undefined
     });
     
     const response = await Promise.race([responsePromise, timeoutPromise]) as any;
     const normalized = normalizeResponse(response.content);
+    
+    // Add model information to the normalized response
+    normalized.model = response.model || preferredModel || 'unknown';
     
     // Validate we got something useful
     if (normalized.intent === 'unknown' && retryCount < MAX_RETRIES) {
@@ -458,12 +484,28 @@ async function handleConversationalQuery(
   intent: string, 
   conversationHistory: ConversationEntry[],
   dialogState: DialogState | null,
-  preferredModel?: string
+  preferredModel?: string,
+  spotifyControl?: SpotifyControl
 ): Promise<string> {
   try {
     // Build context about recent music if available
     let musicContext = '';
-    if (dialogState?.last_action) {
+    
+    // First, try to get actual current playback state
+    if (spotifyControl) {
+      try {
+        const currentTrack = await spotifyControl.getCurrentTrack();
+        if (currentTrack.success && currentTrack.track) {
+          const track = currentTrack.track;
+          musicContext = `\nCurrently playing: "${track.name}" by ${track.artist} from the album "${track.album}"`;
+        }
+      } catch (e) {
+        console.log('Could not fetch current track for context:', e);
+      }
+    }
+    
+    // Fall back to dialog state if we couldn't get current track
+    if (!musicContext && dialogState?.last_action) {
       const lastAction = dialogState.last_action;
       musicContext = `\nRecent music context: ${lastAction.type === 'play' ? 'Currently playing' : 'Recently queued'} "${lastAction.track || lastAction.query}" by ${lastAction.artist || 'Unknown Artist'}`;
     }
@@ -479,18 +521,35 @@ ${recentContext ? `Recent conversation:\n${recentContext}` : ''}${musicContext}
 
 User's question: "${command}"
 
-Provide a helpful, informative response. If the question is about music history, collaborations, facts, or seeking information, give accurate details. If asking about the current/recent music, use the context provided. Keep the response concise but informative.`;
+Provide a helpful, informative response. If the question is about music history, collaborations, facts, or seeking information, give accurate details. If asking about the current/recent music, use the context provided. Keep the response concise but informative.
+
+${!musicContext && (command.toLowerCase().includes('this artist') || command.toLowerCase().includes('this song') || command.toLowerCase().includes('this track')) ? 
+  'NOTE: The user is asking about "this" artist/song but no music is currently playing. Politely mention that you need them to play something first.' : ''}`;
 
     const response = await llmOrchestrator.complete({
       messages: [
-        { role: 'system', content: 'You are a friendly and knowledgeable music assistant. Provide accurate, helpful information about music, artists, and songs. Keep responses concise but informative.' },
+        { role: 'system', content: 'You are a friendly and knowledgeable music assistant with deep expertise about artists, their history, musical style, collaborations, and achievements. Provide accurate, engaging information about music, artists, and songs. Include interesting facts, notable achievements, genre influences, and career highlights when relevant. Keep responses concise but informative (2-4 sentences). IMPORTANT: Respond with plain text, not JSON.' },
         { role: 'user', content: conversationalPrompt }
       ],
       model: preferredModel || OPENROUTER_MODELS.GEMINI_2_5_FLASH,
-      temperature: 0.7
+      temperature: 0.7,
+      // Don't request JSON format for conversational responses
+      response_format: undefined
     });
 
-    return response.content || "I'd be happy to help! Could you clarify what you'd like to know?";
+    // Handle both plain text and JSON responses
+    let content = response.content;
+    if (typeof content === 'string' && content.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(content);
+        // If it's JSON, try to extract a sensible response
+        content = parsed.response || parsed.message || parsed.answer || content;
+      } catch (e) {
+        // Not JSON, use as is
+      }
+    }
+
+    return content || "I'd be happy to help! Could you clarify what you'd like to know?";
   } catch (error) {
     console.error('Conversational query error:', error);
     return "I'm having trouble processing that question right now. Could you try rephrasing it?";
@@ -505,7 +564,7 @@ function canonicalizeIntent(raw: string | undefined): string | null {
   const exact = [
     'play_specific_song', 'queue_specific_song', 'queue_multiple_songs',
     'pause', 'play', 'resume', 'skip', 'next', 'previous', 'back',
-    'set_volume', 'get_current_track',
+    'set_volume', 'get_current_track', 'get_playback_info',
     'set_shuffle', 'set_repeat', 'get_devices', 'search',
     'get_recommendations', 'get_playlists', 'get_playlist_tracks',
     'play_playlist', 'queue_playlist',
@@ -589,19 +648,45 @@ simpleLLMInterpreterRouter.get('/history', ensureValidToken, async (req, res) =>
     }
     
     // Get up to 100 most recent conversation entries
-    const history = await conversationManager.getHistory(userId, 100);
+    const history = await conversationManager.getConversationHistory(userId, 100);
     
     // Format history to match client's expected structure
-    const formattedHistory = history.map(entry => ({
-      command: entry.command,
-      response: entry.response?.message || '',
-      confidence: entry.interpretation?.confidence,
-      isEnhanced: true,
-      timestamp: entry.timestamp,
-      alternatives: entry.interpretation?.alternatives || [],
-      interpretation: entry.interpretation,
-      model: undefined // Model info not stored in conversation history
-    }));
+    const formattedHistory = history.map((entry: any) => {
+      // Debug log for conversational entries
+      if (entry.interpretation?.intent === 'chat' || entry.interpretation?.intent === 'ask_question') {
+        console.log('📝 Formatting conversational history entry:', {
+          command: entry.command,
+          responseType: typeof entry.response,
+          response: entry.response,
+          interpretationIntent: entry.interpretation?.intent
+        });
+      }
+      
+      // Handle response field properly
+      let responseText = '';
+      if (typeof entry.response === 'string') {
+        responseText = entry.response;
+      } else if (entry.response && typeof entry.response === 'object') {
+        // Response is an object with success and message fields
+        responseText = entry.response.message || '';
+      } else {
+        // Fallback
+        responseText = '';
+      }
+      
+      return {
+        command: entry.command,
+        response: responseText,
+        confidence: entry.interpretation?.confidence,
+        isEnhanced: entry.interpretation?.isEnhanced || false,
+        timestamp: entry.timestamp,
+        alternatives: entry.interpretation?.alternatives || [],
+        interpretation: entry.interpretation,
+        model: entry.interpretation?.model || undefined,
+        intent: entry.interpretation?.intent,
+        reasoning: entry.interpretation?.reasoning
+      };
+    });
     
     res.json({
       history: formattedHistory,
@@ -627,7 +712,7 @@ simpleLLMInterpreterRouter.post('/clear-history', ensureValidToken, async (req, 
     if (userId && conversationManager) {
       // Clear both conversation history and dialog state
       await Promise.all([
-        conversationManager.clear(userId),
+        conversationManager.clearConversationHistory(userId),
         conversationManager.updateDialogState(userId, {
           last_action: null,
           last_candidates: [],
@@ -691,13 +776,33 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
       }
     }
     
+    // Build music context before interpretation
+    let musicContext = '';
+    let spotifyControl = new SpotifyControl(
+      req.spotifyTokens!,
+      (tokens) => { 
+        req.spotifyTokens = tokens; 
+      }
+    );
+    
+    try {
+      const currentTrack = await spotifyControl.getCurrentTrack();
+      if (currentTrack.success && currentTrack.track) {
+        const track = currentTrack.track;
+        musicContext = `\nCurrently playing: "${track.name}" by ${track.artist} from the album "${track.album}"`;
+      }
+    } catch (e) {
+      console.log('Could not fetch current track for context:', e);
+    }
+    
     // Use userId for conversation history instead of sessionId
-    const interpretation = await interpretCommand(command, userId || undefined, 0, preferredModel);
+    const interpretation = await interpretCommand(command, userId || undefined, 0, preferredModel, musicContext);
     console.log('LLM interpretation:', interpretation);
 
     let refreshedTokens: SpotifyAuthTokens | null = null;
     
-    const spotifyControl = new SpotifyControl(
+    // Re-initialize to capture token refresh
+    spotifyControl = new SpotifyControl(
       req.spotifyTokens!,
       (tokens) => { 
         // Store refreshed tokens to include in response
@@ -728,7 +833,7 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
           confidence: interpretation.confidence,
           searchQuery: buildSearchQuery(interpretation),
           ...(interpretation.reasoning && { reasoning: interpretation.reasoning }),
-          model: 'unknown'
+          model: interpretation.model || preferredModel || 'unknown'
         },
         timestamp: new Date().toISOString()
       });
@@ -740,32 +845,48 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
     const intent = interpretation.intent || interpretation.action;
     
     // Handle conversational intents (return text, no Spotify action)
-    if (intent === 'chat' || intent === 'ask_question' || intent === 'get_info') {
-      // Get conversation history for context
-      let conversationHistory: ConversationEntry[] = [];
-      let dialogState: DialogState | null = null;
-      
-      if (userId && conversationManager) {
-        [conversationHistory, dialogState] = await Promise.all([
-          conversationManager.getHistory(userId, 5),
-          conversationManager.getDialogState(userId)
-        ]);
+    if (intent === 'chat' || intent === 'ask_question') {
+      // Check if Gemini already provided the response in responseMessage field
+      if (interpretation.responseMessage) {
+        // Gemini provided the answer directly in the structured output
+        result = {
+          success: true,
+          message: interpretation.responseMessage,
+          conversational: true // Flag to indicate no Spotify action
+        };
+        
+        console.log('📝 Using Gemini responseMessage:', interpretation.responseMessage);
+      } else {
+        // OpenRouter path or Gemini without responseMessage - get answer separately
+        // Get conversation history for context
+        let conversationHistory: ConversationEntry[] = [];
+        let dialogState: DialogState | null = null;
+        
+        if (userId && conversationManager) {
+          [conversationHistory, dialogState] = await Promise.all([
+            conversationManager.getConversationHistory(userId, 5),
+            conversationManager.getDialogState(userId)
+          ]);
+        }
+        
+        // Get actual answer from LLM
+        const answer = await handleConversationalQuery(
+          command,
+          intent,
+          conversationHistory,
+          dialogState,
+          preferredModel,
+          spotifyControl
+        );
+        
+        result = {
+          success: true,
+          message: answer,
+          conversational: true // Flag to indicate no Spotify action
+        };
+        
+        console.log('📝 Conversational answer from separate query:', answer);
       }
-      
-      // Get actual answer from LLM
-      const answer = await handleConversationalQuery(
-        command,
-        intent,
-        conversationHistory,
-        dialogState,
-        preferredModel
-      );
-      
-      result = {
-        success: true,
-        message: answer,
-        conversational: true // Flag to indicate no Spotify action
-      };
     } else {
       // Use canonicalized intent for clean switch handling
       const canonicalIntent = canonicalizeIntent(intent);
@@ -814,21 +935,21 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
               await spotifyControl.queueTrackByUri(track.uri);
               result = {
                 success: true,
-                message: `Added to queue: ${track.name} by ${track.artists.map(a => a.name).join(', ')}`
+                message: `Added to queue: ${track.name} by ${track.artists.map((a: any) => a.name).join(', ')}`
               };
             } else {
               await spotifyControl.playTrack(track.uri);
               result = {
                 success: true,
-                message: `Playing: ${track.name} by ${track.artists.map(a => a.name).join(', ')}`
+                message: `Playing: ${track.name} by ${track.artists.map((a: any) => a.name).join(', ')}`
               };
             }
 
             // Add alternatives if we found multiple good matches
             if (ranked.length > 1) {
-              (result as any).alternatives = ranked.slice(1, 5).map(t => ({
+              (result as any).alternatives = ranked.slice(1, 5).map((t: any) => ({
                 name: t.name,
-                artists: t.artists.map(a => a.name).join(', '),
+                artists: t.artists.map((a: any) => a.name).join(', '),
                 popularity: t.popularity,
                 uri: t.uri
               }));
@@ -941,6 +1062,142 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
           break;
         }
 
+        case 'play_playlist': {
+          const playlistUri = interpretation.playlist_uri || interpretation.playlistUri;
+          const searchQuery = interpretation.query || interpretation.search_query;
+          
+          console.log(`[DEBUG] play_playlist intent detected. URI: ${playlistUri}, Query: ${searchQuery}`);
+          console.log(`[DEBUG] Full interpretation object:`, JSON.stringify(interpretation, null, 2));
+          
+          if (playlistUri) {
+            // Play playlist by URI (extract ID from URI)
+            const playlistId = playlistUri.split(':').pop() || playlistUri.split('/').pop();
+            console.log(`[DEBUG] Playing playlist by URI/ID: ${playlistId}`);
+            result = await spotifyControl.playPlaylistWithTracks(playlistId);
+          } else if (searchQuery) {
+            // Search for playlist and play it
+            console.log(`[DEBUG] Searching and playing playlist: ${searchQuery}`);
+            result = await spotifyControl.searchAndPlayPlaylist(searchQuery);
+            console.log(`[DEBUG] searchAndPlayPlaylist result:`, JSON.stringify(result, null, 2));
+          } else {
+            console.log(`[DEBUG] No playlist URI or query provided for play`);
+            result = { success: false, message: "I need a playlist name or URI to play" };
+          }
+          break;
+        }
+
+        case 'pause': {
+          result = await spotifyControl.pause();
+          break;
+        }
+
+        case 'play':
+        case 'resume': {
+          result = await spotifyControl.play();
+          break;
+        }
+
+        case 'skip':
+        case 'next': {
+          result = await spotifyControl.skip();
+          break;
+        }
+
+        case 'previous':
+        case 'back': {
+          result = await spotifyControl.previous();
+          break;
+        }
+
+        case 'get_playback_info':
+        case 'get_current_track': {
+          result = await spotifyControl.getCurrentTrack();
+          
+          // Format the response nicely if we have track info
+          if (result.success && result.track) {
+            const track = result.track;
+            const formatTime = (seconds: number) => {
+              const mins = Math.floor(seconds / 60);
+              const secs = seconds % 60;
+              return `${mins}:${secs.toString().padStart(2, '0')}`;
+            };
+            
+            result.message = `🎵 Currently playing:\n\n🎤 ${track.name}\n👤 ${track.artist}\n💿 ${track.album}\n\n⏱️ ${formatTime(track.position)} / ${formatTime(track.duration)}`;
+          }
+          break;
+        }
+
+        case 'set_volume': {
+          const volumeLevel = interpretation.volume || interpretation.volume_level || interpretation.value;
+          
+          if (typeof volumeLevel !== 'number' || volumeLevel < 0 || volumeLevel > 100) {
+            result = {
+              success: false,
+              message: 'Volume must be a number between 0 and 100'
+            };
+          } else {
+            result = await spotifyControl.setVolume(volumeLevel);
+          }
+          break;
+        }
+
+        case 'set_shuffle': {
+          const enabled = interpretation.enabled !== undefined ? interpretation.enabled : true;
+          result = await spotifyControl.setShuffle(enabled);
+          break;
+        }
+
+        case 'set_repeat': {
+          const enabled = interpretation.enabled !== undefined ? interpretation.enabled : true;
+          result = await spotifyControl.setRepeat(enabled);
+          break;
+        }
+
+        case 'clear_queue': {
+          result = await spotifyControl.clearQueue();
+          break;
+        }
+
+        case 'get_devices': {
+          result = await spotifyControl.getDevices();
+          break;
+        }
+
+        case 'get_playlists': {
+          result = await spotifyControl.getPlaylists();
+          break;
+        }
+
+        case 'get_recently_played': {
+          result = await spotifyControl.getRecentlyPlayed();
+          break;
+        }
+
+        case 'search': {
+          const searchQuery = interpretation.query || interpretation.search_query || interpretation.q || '';
+          
+          if (!searchQuery) {
+            result = {
+              success: false,
+              message: 'No search query provided'
+            };
+          } else {
+            const tracks = await spotifyControl.search(searchQuery);
+            result = {
+              success: true,
+              message: `Found ${tracks.length} tracks for "${searchQuery}"`,
+              tracks: tracks.slice(0, 10).map(t => ({
+                name: t.name,
+                artists: t.artists.map((a: any) => a.name).join(', '),
+                album: t.album.name,
+                uri: t.uri,
+                popularity: t.popularity
+              }))
+            };
+          }
+          break;
+        }
+
         default:
           result = { 
             success: false, 
@@ -959,12 +1216,21 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
         searchQuery: buildSearchQuery(interpretation),
         ...(interpretation.reasoning && { reasoning: interpretation.reasoning }),
         ...(interpretation.alternatives && { alternatives: interpretation.alternatives }),
-        model: 'unknown' // Add model info
+        model: interpretation.model || preferredModel || 'unknown' // Fix model info
       },
       timestamp: new Date().toISOString(),
       // Include refreshed tokens if they were updated
       ...(refreshedTokens ? { refreshedTokens } : {})
     };
+    
+    // Debug logging for conversational responses
+    if (interpretation.intent === 'chat' || interpretation.intent === 'ask_question') {
+      console.log('📝 Sending conversational response:', {
+        success: responseData.success,
+        message: responseData.message,
+        conversational: (responseData as any).conversational
+      });
+    }
     
     res.json(responseData);
     
@@ -987,6 +1253,15 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
         }
       };
       
+      // Debug log for conversational responses
+      if (interpretation.intent === 'chat' || interpretation.intent === 'ask_question') {
+        console.log('📝 Storing conversational entry:', {
+          command: conversationEntry.command,
+          intent: conversationEntry.interpretation.intent,
+          responseMessage: conversationEntry.response?.message
+        });
+      }
+      
       // Update dialog state based on the action
       const updatedDialogState = conversationManager.updateDialogStateFromAction(
         currentDialogState,
@@ -996,7 +1271,7 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
       
       // Save both conversation and dialog state
       await Promise.all([
-        conversationManager.append(userId, conversationEntry),
+        conversationManager.addConversationEntry(userId, conversationEntry),
         conversationManager.updateDialogState(userId, updatedDialogState)
       ]);
       
@@ -1112,7 +1387,7 @@ simpleLLMInterpreterRouter.post('/test-interpret', async (req, res) => {
       
       // Save both conversation and dialog state
       await Promise.all([
-        conversationManager.append(userId, conversationEntry),
+        conversationManager.addConversationEntry(userId, conversationEntry),
         conversationManager.updateDialogState(userId, updatedDialogState)
       ]);
       

@@ -377,7 +377,7 @@ export class RedisConversation {
         interaction_mode: 'music',
         updated_at: Date.now()
       };
-    } else if (['chat', 'ask_question', 'get_info'].includes(intent)) {
+    } else if (['chat', 'ask_question'].includes(intent)) {
       // For conversational intents, just update interaction mode
       return {
         ...dialogState,

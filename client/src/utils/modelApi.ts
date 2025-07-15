@@ -42,8 +42,10 @@ export interface ModelCapabilities {
 
 export class ModelAPI {
   static async getModelPreferences(): Promise<ModelPreferencesResponse> {
+    console.log('here fails?');
     const response = await authenticatedFetch('/api/preferences/models');
-    
+    console.log(response);
+    console.log('no');
     if (!response.ok) {
       throw new Error('Failed to fetch model preferences');
     }

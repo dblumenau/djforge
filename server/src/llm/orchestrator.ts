@@ -26,6 +26,7 @@ export interface LLMRequest {
   max_tokens?: number;
   response_format?: { type: 'json_object' } | undefined;
   schema?: z.ZodSchema;
+  conversationContext?: string; // Added for conversation history integration
 }
 
 export interface LLMResponse {
@@ -239,6 +240,9 @@ export class LLMOrchestrator {
           this.validateAndLogResponse(response, 'gemini-direct', model);
         }
         
+        // Log the actual model response
+        console.log(`📤 ${model} response:`, response.content);
+        
         return response;
       } catch (error) {
         console.error(`Google AI Direct failed for ${model}:`, error);
@@ -310,6 +314,9 @@ export class LLMOrchestrator {
         this.validateAndLogResponse(llmResponse, 'openrouter', model);
       }
 
+      // Log the actual model response
+      console.log(`📤 ${model} response:`, llmResponse.content);
+
       return llmResponse;
     } catch (error) {
       if (axios.isAxiosError(error)) {
@@ -327,9 +334,28 @@ export class LLMOrchestrator {
   }
 
   private prepareRequest(provider: LLMProvider, model: string, request: LLMRequest) {
+    let messages = [...request.messages];
+    
+    // Add conversation context to system message if provided
+    if (request.conversationContext) {
+      const systemMessageIndex = messages.findIndex(m => m.role === 'system');
+      if (systemMessageIndex >= 0) {
+        messages[systemMessageIndex] = {
+          ...messages[systemMessageIndex],
+          content: messages[systemMessageIndex].content + request.conversationContext
+        };
+      } else {
+        // No system message exists, add one with context
+        messages.unshift({
+          role: 'system',
+          content: 'You are a helpful assistant.' + request.conversationContext
+        });
+      }
+    }
+    
     const baseRequest: any = {
       model,
-      messages: request.messages,
+      messages,
       temperature: request.temperature ?? 0.7,
       max_tokens: request.max_tokens ?? 2000,
     };

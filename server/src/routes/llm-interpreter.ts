@@ -12,43 +12,29 @@ import {
   type MusicCommand
 } from '../llm/schemas';
 import { buildSpotifySearchQuery, extractEssentialFields } from '../llm/normalizer';
-import { verifyJWT, extractTokenFromHeader } from '../utils/jwt';
+import { ConversationManager, getConversationManager } from '../services/ConversationManager';
+import { ConversationEntry, DialogState } from '../utils/redisConversation';
 
 export const llmInterpreterRouter = Router();
 
-// Redis client reference for model preferences
-let redisClient: any = null;
+// Shared conversation manager instance
+let conversationManager: ConversationManager;
 
 export function setRedisClient(client: any) {
-  redisClient = client;
+  conversationManager = getConversationManager(client);
+  console.log('✅ Shared ConversationManager initialized for llm-interpreter');
 }
 
 // Helper to get user ID from JWT
 function getUserIdFromRequest(req: any): string | null {
-  const authHeader = req.headers.authorization;
-  const jwtToken = extractTokenFromHeader(authHeader);
-  
-  if (!jwtToken) return null;
-  
-  const payload = verifyJWT(jwtToken);
-  if (!payload) return null;
-  
-  // Return the stable Spotify user ID from JWT
-  return payload.sub || payload.spotify_user_id || null;
+  if (!conversationManager) return null;
+  return conversationManager.getUserIdFromRequest(req);
 }
 
 // Get user's model preference from Redis
 async function getUserModelPreference(userId: string): Promise<string | null> {
-  if (!redisClient) return null;
-  
-  try {
-    const key = `user:${userId}:model_preference`;
-    const preference = await redisClient.get(key);
-    return preference;
-  } catch (error) {
-    console.error('Error getting model preference from Redis:', error);
-    return null;
-  }
+  if (!conversationManager) return null;
+  return await conversationManager.getUserModelPreference(userId);
 }
 
 interface TrackWithScore extends SpotifyTrack {
@@ -56,13 +42,30 @@ interface TrackWithScore extends SpotifyTrack {
 }
 
 // Interpret command using LLM orchestrator
-async function interpretCommand(command: string, preferredModel?: string): Promise<MusicCommand> {
+async function interpretCommand(command: string, userId?: string, preferredModel?: string): Promise<MusicCommand> {
+  let conversationContext = '';
+  
+  // Get conversation context if available
+  if (userId && conversationManager) {
+    const [history, dialogState] = await Promise.all([
+      conversationManager.getConversationHistory(userId, 3),
+      conversationManager.getDialogState(userId)
+    ]);
+    
+    conversationContext = conversationManager.formatContextForLLM(command, history, dialogState);
+  }
+  
   const request = createSchemaRequest(
     SYSTEM_PROMPTS.MUSIC_INTERPRETER,
     command,
     MusicCommandSchema,
     preferredModel || OPENROUTER_MODELS.GPT_4O // Use preferred model or default
   );
+  
+  // Add conversation context to request
+  if (conversationContext) {
+    request.conversationContext = conversationContext;
+  }
 
   try {
     const response = await llmOrchestrator.complete(request);
@@ -76,7 +79,8 @@ async function interpretCommand(command: string, preferredModel?: string): Promi
         messages: request.messages,
         model: request.model,
         temperature: 0.7,
-        response_format: { type: 'json_object' as const }
+        response_format: { type: 'json_object' as const },
+        conversationContext: request.conversationContext
       };
       
       const rawResponse = await llmOrchestrator.complete(rawRequest);
@@ -256,7 +260,7 @@ llmInterpreterRouter.post('/command', ensureValidToken, async (req, res) => {
       }
     }
     
-    const interpretation = await interpretCommand(command, preferredModel);
+    const interpretation = await interpretCommand(command, userId || undefined, preferredModel);
     console.log('LLM interpretation:', interpretation);
 
     const spotifyControl = new SpotifyControl(
@@ -332,7 +336,7 @@ llmInterpreterRouter.post('/command', ensureValidToken, async (req, res) => {
               name: t.name,
               artists: t.artists.map(a => a.name).join(', '),
               popularity: t.popularity,
-              relevanceScore: t.relevanceScore
+              uri: t.uri
             }))
           };
         }
@@ -356,15 +360,143 @@ llmInterpreterRouter.post('/command', ensureValidToken, async (req, res) => {
         break;
         
       case 'volume':
-        if (interpretation.value !== undefined) {
-          result = await spotifyControl.setVolume(interpretation.value);
+      case 'set_volume':
+        const volumeLevel = interpretation.value || interpretation.volume_level;
+        if (volumeLevel !== undefined && typeof volumeLevel === 'number') {
+          result = await spotifyControl.setVolume(volumeLevel);
         } else {
           result = { success: false, message: 'No volume level specified' };
         }
         break;
         
-      case 'get_info':
+      case 'resume':
+        result = await spotifyControl.play();
+        break;
+        
+      case 'next':
+        result = await spotifyControl.skip();
+        break;
+        
+      case 'back':
+        result = await spotifyControl.previous();
+        break;
+        
+      case 'get_playback_info':
+      case 'get_current_track':
         result = await spotifyControl.getCurrentTrack();
+        break;
+        
+      case 'set_shuffle':
+        const shuffleEnabled = interpretation.enabled !== undefined ? interpretation.enabled : true;
+        result = await spotifyControl.setShuffle(shuffleEnabled);
+        break;
+        
+      case 'set_repeat':
+        const repeatEnabled = interpretation.enabled !== undefined ? interpretation.enabled : true;
+        result = await spotifyControl.setRepeat(repeatEnabled);
+        break;
+        
+      case 'clear_queue':
+        result = await spotifyControl.clearQueue();
+        break;
+        
+      case 'get_devices':
+        result = await spotifyControl.getDevices();
+        break;
+        
+      case 'get_playlists':
+        result = await spotifyControl.getPlaylists();
+        break;
+        
+      case 'get_recently_played':
+        result = await spotifyControl.getRecentlyPlayed();
+        break;
+        
+      case 'search':
+        const searchQuery = interpretation.query;
+        if (searchQuery) {
+          const tracks = await spotifyControl.search(searchQuery);
+          result = {
+            success: true,
+            message: `Found ${tracks.length} tracks for "${searchQuery}"`,
+            tracks: tracks.slice(0, 10).map(t => ({
+              name: t.name,
+              artists: t.artists.map((a: any) => a.name).join(', '),
+              album: t.album.name,
+              uri: t.uri,
+              popularity: t.popularity
+            }))
+          };
+        } else {
+          result = { success: false, message: 'No search query provided' };
+        }
+        break;
+        
+      case 'play_playlist':
+        const playPlaylistQuery = interpretation.query;
+        if (playPlaylistQuery) {
+          result = await spotifyControl.searchAndPlayPlaylist(playPlaylistQuery);
+        } else {
+          result = { success: false, message: 'No playlist query provided' };
+        }
+        break;
+        
+      case 'queue_playlist':
+        const queuePlaylistQuery = interpretation.query;
+        if (queuePlaylistQuery) {
+          result = await spotifyControl.searchAndQueuePlaylist(queuePlaylistQuery);
+        } else {
+          result = { success: false, message: 'No playlist query provided' };
+        }
+        break;
+        
+      case 'queue_multiple_songs':
+        const songs = interpretation.songs || [];
+        if (songs.length > 0) {
+          const queueResults = [];
+          const failures = [];
+          
+          for (const song of songs) {
+            try {
+              let searchQuery = `artist:"${song.artist}" track:"${song.track}"`;
+              if (song.album) {
+                searchQuery += ` album:"${song.album}"`;
+              }
+              
+              const tracks = await spotifyControl.search(searchQuery);
+              if (tracks.length > 0) {
+                await spotifyControl.queueTrackByUri(tracks[0].uri);
+                queueResults.push({
+                  name: tracks[0].name,
+                  artists: tracks[0].artists.map((a: any) => a.name).join(', '),
+                  success: true
+                });
+              } else {
+                failures.push(`${song.artist} - ${song.track}`);
+              }
+            } catch (error) {
+              failures.push(`${song.artist} - ${song.track}`);
+            }
+          }
+          
+          const successCount = queueResults.length;
+          const failureCount = failures.length;
+          
+          if (successCount === 0) {
+            result = {
+              success: false,
+              message: `Failed to queue any songs. ${failureCount} songs not found.`
+            };
+          } else {
+            result = {
+              success: true,
+              message: `Queued ${successCount} songs${interpretation.theme ? ` (${interpretation.theme})` : ''}${failureCount > 0 ? `. ${failureCount} songs not found.` : ''}`,
+              queuedSongs: queueResults
+            };
+          }
+        } else {
+          result = { success: false, message: 'No songs provided for multiple queue request' };
+        }
         break;
         
       default:

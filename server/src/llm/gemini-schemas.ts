@@ -36,10 +36,9 @@ export const MusicCommandIntentSchema = {
         'previous',
         'volume',
         'clear_queue',
-        'get_info',
+        'get_playback_info',
         'chat',
         'ask_question',
-        'get_info',
         'unknown'
       ]
     },
@@ -115,6 +114,10 @@ export const MusicCommandIntentSchema = {
     enhancedQuery: {
       type: Type.STRING,
       description: 'Enhanced Spotify search query with proper operators'
+    },
+    responseMessage: {
+      type: Type.STRING,
+      description: 'For conversational intents (chat, ask_question), include the actual response text here'
     }
   },
   required: ['intent', 'confidence', 'reasoning'],
@@ -129,7 +132,8 @@ export const MusicCommandIntentSchema = {
     'confidence',
     'reasoning',
     'alternatives',
-    'enhancedQuery'
+    'enhancedQuery',
+    'responseMessage'
   ]
 };
 
@@ -318,6 +322,7 @@ Key guidelines:
 - For unclear requests, suggest alternatives
 - Use enhanced Spotify search queries when possible
 - Be creative in interpreting vague requests while maintaining accuracy
+- IMPORTANT: For conversational intents (chat, ask_question), you MUST include the actual answer in the responseMessage field
 
 Your response will be automatically validated against a strict schema.`,
 

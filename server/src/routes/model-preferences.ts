@@ -246,7 +246,31 @@ function getGroupedModels() {
     });
   });
   
-  return grouped;
+  // Reorder providers to put Google first (preferred due to grounding support)
+  const providerOrder = ['Google', 'Anthropic', 'OpenAI', 'Mistral', 'DeepSeek', 'X.AI', 'Meta', 'Qwen'];
+  const orderedGrouped: Record<string, Array<{ 
+    id: string; 
+    name: string; 
+    description: string; 
+    supportsJSON: boolean;
+    providerInfo: { provider: string; isDirect: boolean; supportsGrounding: boolean };
+  }>> = {};
+  
+  // Add providers in the specified order
+  providerOrder.forEach(provider => {
+    if (grouped[provider]) {
+      orderedGrouped[provider] = grouped[provider];
+    }
+  });
+  
+  // Add any remaining providers that weren't in the order list
+  Object.keys(grouped).forEach(provider => {
+    if (!orderedGrouped[provider]) {
+      orderedGrouped[provider] = grouped[provider];
+    }
+  });
+  
+  return orderedGrouped;
 }
 
 // Get available models and current preference

@@ -158,11 +158,11 @@ async function initializeAndStart() {
   const { code, error, state } = req.query;
   
   if (error) {
-    return res.redirect(`${clientUrl}?error=${error}`);
+    return res.redirect(`${clientUrl}/?error=${error}`);
   }
   
   if (!code || typeof code !== 'string') {
-    return res.redirect(`${clientUrl}?error=no_code`);
+    return res.redirect(`${clientUrl}/?error=no_code`);
   }
   
   // Try to get codeVerifier from state parameter first (production)
@@ -181,7 +181,7 @@ async function initializeAndStart() {
   }
   
   if (!codeVerifier) {
-    return res.redirect(`${clientUrl}?error=no_verifier`);
+    return res.redirect(`${clientUrl}/?error=no_verifier`);
   }
   
   try {
@@ -215,7 +215,7 @@ async function initializeAndStart() {
       console.log('Spotify user ID retrieved:', spotifyUserId);
     } catch (error) {
       console.error('Failed to get user info from Spotify:', error);
-      return res.redirect(`${clientUrl}?error=user_info_failed`);
+      return res.redirect(`${clientUrl}/?error=user_info_failed`);
     }
     
     // Generate JWT token with Spotify tokens and user ID
@@ -227,10 +227,10 @@ async function initializeAndStart() {
     console.log('Auth successful, JWT generated with user ID');
     
     // Redirect with JWT token for all environments
-    res.redirect(`${clientUrl}?success=true&token=${encodeURIComponent(jwtToken)}`);
+    res.redirect(`${clientUrl}/callback?success=true&token=${encodeURIComponent(jwtToken)}`);
   } catch (error) {
     console.error('Token exchange error:', error);
-    res.redirect(`${clientUrl}?error=token_exchange_failed`);
+    res.redirect(`${clientUrl}/?error=token_exchange_failed`);
   }
 });
 

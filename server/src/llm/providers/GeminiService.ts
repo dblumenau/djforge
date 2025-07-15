@@ -49,7 +49,12 @@ export class GeminiService {
       // Determine schema based on request context
       const intentType = this.determineIntentType(request);
       const schema = getSchemaForIntent(intentType);
-      const systemPrompt = getSystemPromptForIntent(intentType);
+      let systemPrompt = getSystemPromptForIntent(intentType);
+      
+      // Add conversation context if available
+      if (request.conversationContext) {
+        systemPrompt += request.conversationContext;
+      }
       
       console.log(`🎯 Using @google/genai API with native responseSchema for intent: ${intentType}`);
       

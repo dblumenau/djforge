@@ -79,16 +79,16 @@ authRouter.get('/callback', async (req, res) => {
   const { code, error } = req.query;
   
   if (error) {
-    return res.redirect('http://localhost:5173?error=' + error);
+    return res.redirect('http://localhost:5173/?error=' + error);
   }
   
   if (!code || typeof code !== 'string') {
-    return res.redirect('http://localhost:5173?error=no_code');
+    return res.redirect('http://localhost:5173/?error=no_code');
   }
   
   const codeVerifier = req.session.codeVerifier;
   if (!codeVerifier) {
-    return res.redirect('http://localhost:5173?error=no_verifier');
+    return res.redirect('http://localhost:5173/?error=no_verifier');
   }
   
   try {
@@ -114,10 +114,10 @@ authRouter.get('/callback', async (req, res) => {
     // Clear the code verifier
     delete req.session.codeVerifier;
     
-    res.redirect('http://localhost:5173?success=true');
+    res.redirect('http://localhost:5173/callback?success=true');
   } catch (error) {
     console.error('Token exchange error:', error);
-    res.redirect('http://localhost:5173?error=token_exchange_failed');
+    res.redirect('http://localhost:5173/?error=token_exchange_failed');
   }
 });
 

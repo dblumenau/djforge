@@ -1,11 +1,27 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { apiEndpoint } from '../config/api';
 
 const LandingPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<'success' | 'error' | ''>('');
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  // Check for auth error in URL params
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const error = urlParams.get('error');
+    if (error) {
+      setAuthError(decodeURIComponent(error));
+      // Clean URL
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+  }, []);
+
+  const handleLogin = () => {
+    window.location.href = apiEndpoint('/api/auth/login');
+  };
 
   const handleWaitlistSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,12 +66,12 @@ const LandingPage: React.FC = () => {
             </div>
             <h1 className="text-xl font-bold">Spotify Claude</h1>
           </div>
-          <Link 
-            to="/" 
+          <button 
+            onClick={handleLogin}
             className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors"
           >
             Login
-          </Link>
+          </button>
         </div>
       </nav>
 
@@ -71,18 +87,27 @@ const LandingPage: React.FC = () => {
             Just say "play some jazz" or "skip to the next song" - powered by Claude AI, 
             your Spotify becomes as natural as conversation.
           </p>
+          
+          {/* Auth Error Display */}
+          {authError && (
+            <div className="mb-6 p-4 bg-red-900 text-red-100 border border-red-700 rounded-lg max-w-md mx-auto">
+              <p className="font-semibold">Authentication Error:</p>
+              <p className="text-sm">{authError}</p>
+            </div>
+          )}
+          
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <a 
-              href="#waitlist" 
+            <button 
+              onClick={handleLogin}
               className="px-8 py-4 bg-green-500 hover:bg-green-400 text-black font-bold rounded-full text-lg transition-all transform hover:scale-105"
             >
-              Join Waitlist
-            </a>
+              Try It Now
+            </button>
             <a 
-              href="#demo" 
+              href="#waitlist" 
               className="px-8 py-4 bg-zinc-800 hover:bg-zinc-700 text-white font-semibold rounded-full text-lg transition-all transform hover:scale-105"
             >
-              See Demo
+              Join Waitlist
             </a>
           </div>
         </div>

@@ -28,8 +28,8 @@ const MusicLoader: React.FC<MusicLoaderProps> = ({ modelName = 'AI' }) => {
   const displayName = getDisplayName(modelName.toLowerCase());
 
   return (
-    <div className="music-loader">
-      <div className="thought-bubble">
+    <div className="floating-thought-bubble">
+      <div className="bubble-content">
         <div className="music-notes">
           <span className="note note-1">♪</span>
           <span className="note note-2">♫</span>
@@ -37,6 +37,11 @@ const MusicLoader: React.FC<MusicLoaderProps> = ({ modelName = 'AI' }) => {
           <span className="note note-4">♬</span>
         </div>
         <div className="thinking-text">{displayName} is thinking...</div>
+      </div>
+      <div className="thought-bubbles">
+        <div className="thought-bubble-small"></div>
+        <div className="thought-bubble-medium"></div>
+        <div className="thought-bubble-large"></div>
       </div>
     </div>
   );

@@ -24,7 +24,7 @@ export type IntentType =
   | 'previous'
   | 'volume'
   | 'clear_queue'
-  | 'get_info'
+  | 'get_playback_info'
   | 'chat'
   | 'ask_question'
   | 'unknown';
@@ -196,7 +196,7 @@ export const VALID_INTENTS: IntentType[] = [
   'previous',
   'volume',
   'clear_queue',
-  'get_info',
+  'get_playback_info',
   'chat',
   'ask_question',
   'unknown'
