@@ -11,6 +11,7 @@ import { simpleLLMInterpreterRouter, setRedisClient } from './routes/simple-llm-
 import { llmInterpreterRouter, setRedisClient as setLLMRedisClient } from './routes/llm-interpreter';
 import { sessionManagementRouter, setRedisUtils } from './routes/session-management';
 import { modelPreferencesRouter, setRedisClient as setModelPrefsRedisClient } from './routes/model-preferences';
+import { waitlistRouter } from './routes/waitlist';
 import { createRedisClient, checkRedisHealth } from './config/redis';
 import { RedisUtils } from './utils/redis-utils';
 
@@ -145,6 +146,8 @@ async function initializeAndStart() {
     app.use('/api/sessions', sessionManagementRouter);
     // Model preferences endpoints
     app.use('/api/preferences', modelPreferencesRouter);
+    // Waitlist endpoints
+    app.use('/api/waitlist', waitlistRouter);
 
     // Determine client URL based on environment
     const clientUrl = process.env.CLIENT_URL || 'http://127.0.0.1:5173';
