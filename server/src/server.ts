@@ -198,13 +198,30 @@ async function initializeAndStart() {
       }
     );
     
-    // Generate JWT token with Spotify tokens
+    // Get user info from Spotify
+    const { SpotifyWebAPI } = require('./spotify/api');
+    const spotifyApi = new SpotifyWebAPI(
+      response.data,
+      () => {} // No token refresh callback needed for this one-time call
+    );
+    
+    let spotifyUserId: string;
+    try {
+      const userInfo = await spotifyApi.getCurrentUser();
+      spotifyUserId = userInfo.id;
+      console.log('Spotify user ID retrieved:', spotifyUserId);
+    } catch (error) {
+      console.error('Failed to get user info from Spotify:', error);
+      return res.redirect(`${clientUrl}?error=user_info_failed`);
+    }
+    
+    // Generate JWT token with Spotify tokens and user ID
     const { generateJWT } = require('./utils/jwt');
-    const jwtToken = generateJWT(response.data);
+    const jwtToken = generateJWT(response.data, spotifyUserId);
     
     delete req.session.codeVerifier;
     
-    console.log('Auth successful, JWT generated');
+    console.log('Auth successful, JWT generated with user ID');
     
     // Redirect with JWT token for all environments
     res.redirect(`${clientUrl}?success=true&token=${encodeURIComponent(jwtToken)}`);
@@ -213,6 +230,86 @@ async function initializeAndStart() {
     res.redirect(`${clientUrl}?error=token_exchange_failed`);
   }
 });
+
+    // Temporary endpoint to clear Redis (REMOVE AFTER USE)
+    app.post('/api/admin/clear-redis', async (req, res) => {
+      // Simple protection - check for a secret header
+      if (req.headers['x-admin-key'] !== 'temporary-clear-key-2024') {
+        return res.status(403).json({ error: 'Unauthorized' });
+      }
+      
+      if (!redisClient) {
+        return res.status(500).json({ error: 'Redis not available' });
+      }
+      
+      try {
+        const keys = await redisClient.keys('*');
+        console.log(`Clearing ${keys.length} Redis keys...`);
+        
+        if (keys.length > 0) {
+          await redisClient.del(keys);
+        }
+        
+        res.json({ 
+          success: true, 
+          message: `Cleared ${keys.length} keys from Redis`,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        console.error('Error clearing Redis:', error);
+        res.status(500).json({ error: 'Failed to clear Redis' });
+      }
+    });
+
+    // Temporary endpoint to check Redis contents (REMOVE AFTER USE)
+    app.get('/api/admin/redis-debug/:userId', async (req, res) => {
+      // Simple protection - check for a secret header
+      if (req.headers['x-admin-key'] !== 'temporary-clear-key-2024') {
+        return res.status(403).json({ error: 'Unauthorized' });
+      }
+      
+      if (!redisClient) {
+        return res.status(500).json({ error: 'Redis not available' });
+      }
+      
+      try {
+        const { userId } = req.params;
+        const conversationKey = `djforge:conv:${userId}`;
+        const stateKey = `djforge:state:${userId}`;
+        const prefsKey = `user:${userId}:model_preference`;
+        
+        const [conversationData, stateData, prefsData] = await Promise.all([
+          redisClient.lRange(conversationKey, 0, -1),
+          redisClient.get(stateKey),
+          redisClient.get(prefsKey)
+        ]);
+        
+        res.json({ 
+          userId,
+          keys: {
+            conversation: conversationKey,
+            state: stateKey,
+            preferences: prefsKey
+          },
+          data: {
+            conversationEntries: conversationData.length,
+            conversation: conversationData.map((entry: string) => {
+              try {
+                return JSON.parse(entry);
+              } catch {
+                return entry;
+              }
+            }),
+            state: stateData ? JSON.parse(stateData) : null,
+            preferences: prefsData
+          },
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        console.error('Error checking Redis:', error);
+        res.status(500).json({ error: 'Failed to check Redis' });
+      }
+    });
 
     // Health check with Redis status (inside initializeAndStart)
     app.get('/api/health', async (req, res) => {

@@ -92,33 +92,16 @@ function App() {
   }, []); // This runs FIRST
 
   useEffect(() => {
-    // Load command history from localStorage
-    try {
-      const savedHistory = localStorage.getItem('spotifyCommandHistory');
-      if (savedHistory) {
-        const parsed = JSON.parse(savedHistory);
-        // Keep only last 100 commands
-        setCommandHistory(parsed.slice(-100));
-      }
-    } catch (error) {
-      console.error('Failed to load command history:', error);
-    }
-
     checkConnection();
   }, []); // This runs SECOND
 
-  // Save command history to localStorage whenever it changes
+  // Fetch history when authenticated
   useEffect(() => {
-    if (commandHistory.length > 0) {
-      try {
-        // Keep only last 100 commands to avoid localStorage limits
-        const historyToSave = commandHistory.slice(-100);
-        localStorage.setItem('spotifyCommandHistory', JSON.stringify(historyToSave));
-      } catch (error) {
-        console.error('Failed to save command history:', error);
-      }
+    if (isAuthenticated) {
+      fetchHistory();
     }
-  }, [commandHistory]);
+  }, [isAuthenticated]);
+
 
   const checkConnection = async () => {
     try {
@@ -151,6 +134,18 @@ function App() {
     setWebPlayerDeviceId(deviceId);
     // Optionally auto-transfer playback to web player
     // transferPlayback(deviceId);
+  };
+
+  const fetchHistory = async () => {
+    try {
+      const response = await authenticatedFetch('/api/claude/history');
+      if (response.ok) {
+        const data = await response.json();
+        setCommandHistory(data.history || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch command history:', error);
+    }
   };
 
   // Will be used for device selection UI
@@ -199,6 +194,8 @@ function App() {
         model: currentModel
       }]);
       setCommand('');
+      // Fetch fresh history from server to ensure sync
+      await fetchHistory();
     } catch (error) {
       console.error('Command failed:', error);
       setCommandHistory(prev => [...prev, { 
@@ -225,7 +222,9 @@ function App() {
       const data = await response.json();
       
       if (data.success) {
-        // Clear local command history too
+        // Fetch fresh (empty) history from server
+        await fetchHistory();
+        // Add success message
         setCommandHistory([{
           command: '[System]',
           response: 'Conversation history cleared successfully',
@@ -291,6 +290,8 @@ function App() {
         model: currentModel
       }]);
       setCommand('');
+      // Fetch fresh history from server to ensure sync
+      await fetchHistory();
     } catch (error) {
       console.error('Command failed:', error);
       setCommandHistory(prev => [...prev, { 
@@ -444,7 +445,6 @@ function App() {
                   <button
                     onClick={() => {
                       setCommandHistory([]);
-                      localStorage.removeItem('spotifyCommandHistory');
                     }}
                     className="text-xs text-gray-400 hover:text-red-400 transition-colors"
                   >

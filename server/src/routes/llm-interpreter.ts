@@ -13,7 +13,6 @@ import {
 } from '../llm/schemas';
 import { buildSpotifySearchQuery, extractEssentialFields } from '../llm/normalizer';
 import { verifyJWT, extractTokenFromHeader } from '../utils/jwt';
-import crypto from 'crypto';
 
 export const llmInterpreterRouter = Router();
 
@@ -34,9 +33,8 @@ function getUserIdFromRequest(req: any): string | null {
   const payload = verifyJWT(jwtToken);
   if (!payload) return null;
   
-  // Create a stable user ID from the Spotify refresh token
-  const refreshToken = payload.spotifyTokens.refresh_token;
-  return crypto.createHash('sha256').update(refreshToken).digest('hex').substring(0, 16);
+  // Return the stable Spotify user ID from JWT
+  return payload.sub || payload.spotify_user_id || null;
 }
 
 // Get user's model preference from Redis
@@ -432,7 +430,7 @@ llmInterpreterRouter.get('/models', (req, res) => {
       fast: OPENROUTER_MODELS.GPT_4O,
       balanced: OPENROUTER_MODELS.CLAUDE_HAIKU_4,
       quality: OPENROUTER_MODELS.GPT_4O,
-      knowledge: OPENROUTER_MODELS.CLAUDE_SONNET_4
+      knowledge: OPENROUTER_MODELS.GEMINI_2_5_FLASH
     }
   });
 });

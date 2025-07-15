@@ -45,7 +45,7 @@ export class RedisConversation {
   private readonly prefix = 'djforge:conv:';
   private readonly statePrefix = 'djforge:state:';
   private readonly maxEntries = 8; // Keep last 8 interactions
-  private readonly ttl = 1800; // 30 minutes in seconds
+  private readonly ttl = 2592000; // 30 days in seconds (matches session TTL)
   
   constructor(client: any) {
     this.client = client;

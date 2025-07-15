@@ -5,6 +5,11 @@ export interface ModelInfo {
   name: string;
   description: string;
   supportsJSON: boolean;
+  providerInfo?: {
+    provider: string;
+    isDirect: boolean;
+    supportsGrounding: boolean;
+  };
 }
 
 export interface GroupedModels {
@@ -25,6 +30,13 @@ export interface ModelCapabilities {
   capabilities: {
     supportsJSON: boolean;
     contextWindow: string;
+    supportsGrounding?: boolean;
+    isDirect?: boolean;
+  };
+  providerInfo?: {
+    provider: string;
+    isDirect: boolean;
+    supportsGrounding: boolean;
   };
 }
 

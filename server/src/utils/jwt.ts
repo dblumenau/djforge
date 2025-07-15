@@ -5,14 +5,18 @@ const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET || 'spot
 const JWT_EXPIRES_IN = '30d'; // 30 days
 
 export interface JWTPayload {
+  sub: string; // The user's stable Spotify ID (standard JWT claim)
+  spotify_user_id: string; // Keep for clarity and backward compatibility
   spotifyTokens: SpotifyAuthTokens;
   tokenTimestamp: number;
   iat?: number;
   exp?: number;
 }
 
-export function generateJWT(spotifyTokens: SpotifyAuthTokens): string {
+export function generateJWT(spotifyTokens: SpotifyAuthTokens, spotifyUserId: string): string {
   const payload: JWTPayload = {
+    sub: spotifyUserId,
+    spotify_user_id: spotifyUserId,
     spotifyTokens,
     tokenTimestamp: Date.now()
   };

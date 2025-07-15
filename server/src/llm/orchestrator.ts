@@ -1,6 +1,7 @@
 import axios, { AxiosError } from 'axios';
 import { z } from 'zod';
 import { normalizeLLMResponse } from './normalizer';
+import { GeminiService } from './providers/GeminiService';
 
 // LLM Provider Configuration
 export interface LLMProvider {
@@ -122,13 +123,14 @@ export class LLMOrchestrator {
   private defaultModel: string;
   private fallbackChain: string[] = [];
   private initialized = false;
+  private geminiService: GeminiService | null = null;
   
   constructor() {
-    this.defaultModel = OPENROUTER_MODELS.CLAUDE_SONNET_4;
+    this.defaultModel = OPENROUTER_MODELS.GEMINI_2_5_FLASH;
     // Optimized fallback chain: fast -> capable -> cost-effective
     this.fallbackChain = [
-      OPENROUTER_MODELS.CLAUDE_SONNET_4,  // Primary: excellent balance
-      OPENROUTER_MODELS.GEMINI_2_5_FLASH, // Fast and reliable
+      OPENROUTER_MODELS.GEMINI_2_5_FLASH, // Primary: fast and reliable
+      OPENROUTER_MODELS.CLAUDE_SONNET_4,  // High quality fallback
       OPENROUTER_MODELS.O3_PRO,           // High capability
       OPENROUTER_MODELS.DEEPSEEK_R1_0528, // Cost-effective with good performance
       OPENROUTER_MODELS.GROK_3_MINI,      // Lightweight fallback
@@ -143,6 +145,17 @@ export class LLMOrchestrator {
   }
 
   private setupProviders() {
+    // Google AI Direct (for Gemini models with native grounding)
+    if (process.env.GOOGLE_API_KEY && process.env.ENABLE_GEMINI_DIRECT === 'true') {
+      this.geminiService = new GeminiService({
+        apiKey: process.env.GOOGLE_API_KEY,
+        enableGrounding: process.env.GEMINI_SEARCH_GROUNDING === 'true',
+        timeout: 30000,
+        maxRetries: 3
+      });
+      console.log('✅ Google AI Direct API initialized with grounding enabled');
+    }
+
     // OpenRouter (supports all models)
     if (process.env.OPENROUTER_API_KEY) {
       this.providers.push({
@@ -214,6 +227,17 @@ export class LLMOrchestrator {
   }
 
   private async callModel(model: string, request: LLMRequest): Promise<LLMResponse> {
+    // Check if this is a Gemini model that should use direct API
+    if (this.isGeminiModel(model) && this.geminiService) {
+      console.log(`🔄 Routing ${model} to Google AI Direct API`);
+      try {
+        return await this.geminiService.complete(request);
+      } catch (error) {
+        console.error(`Google AI Direct failed for ${model}:`, error);
+        // Fall through to OpenRouter if direct API fails
+      }
+    }
+
     // Find provider that supports this model
     const provider = this.providers.find(p => 
       p.models.some(m => m === model || model.includes(m))
@@ -222,6 +246,8 @@ export class LLMOrchestrator {
     if (!provider) {
       throw new Error(`No provider found for model: ${model}`);
     }
+
+    console.log(`🔄 Routing ${model} to ${provider.name}`);
 
     // Prepare request based on provider
     const requestBody = this.prepareRequest(provider, model, request);
@@ -386,6 +412,37 @@ export class LLMOrchestrator {
   // Check if a model ID is valid
   isValidModel(modelId: string): boolean {
     return Object.values(OPENROUTER_MODELS).includes(modelId);
+  }
+
+  // Check if a model is a Gemini model
+  private isGeminiModel(model: string): boolean {
+    return model.includes('gemini') || model.includes('google/gemini');
+  }
+
+  // Check if a model supports grounding
+  supportsGrounding(model: string): boolean {
+    return this.isGeminiModel(model) && this.geminiService !== null;
+  }
+
+  // Get provider info for a model
+  getProviderInfo(model: string): { provider: string; isDirect: boolean; supportsGrounding: boolean } {
+    if (this.isGeminiModel(model) && this.geminiService) {
+      return {
+        provider: 'google-direct',
+        isDirect: true,
+        supportsGrounding: true
+      };
+    }
+
+    const provider = this.providers.find(p => 
+      p.models.some(m => m === model || model.includes(m))
+    );
+
+    return {
+      provider: provider?.name || 'unknown',
+      isDirect: false,
+      supportsGrounding: false
+    };
   }
 }
 

@@ -6,7 +6,6 @@ import { llmOrchestrator, OPENROUTER_MODELS } from '../llm/orchestrator';
 import { llmMonitor } from '../llm/monitoring';
 import { RedisConversation, createConversationManager, ConversationEntry, DialogState } from '../utils/redisConversation';
 import { verifyJWT, extractTokenFromHeader } from '../utils/jwt';
-import crypto from 'crypto';
 
 export const simpleLLMInterpreterRouter = Router();
 
@@ -34,9 +33,8 @@ function getUserIdFromRequest(req: any): string | null {
   const payload = verifyJWT(jwtToken);
   if (!payload) return null;
   
-  // Create a stable user ID from the Spotify refresh token
-  const refreshToken = payload.spotifyTokens.refresh_token;
-  return crypto.createHash('sha256').update(refreshToken).digest('hex').substring(0, 16);
+  // Return the stable Spotify user ID from JWT
+  return payload.sub || payload.spotify_user_id || null;
 }
 
 // Get user's model preference from Redis
@@ -230,6 +228,7 @@ AVAILABLE INTENTS - Choose the most appropriate one:
 === SONG INTENTS (require specific song recommendations) ===
 • play_specific_song - Play a specific song based on vague/mood/cultural descriptions
 • queue_specific_song - Queue a specific song based on vague/mood/cultural descriptions
+• queue_multiple_songs - Queue multiple songs (5-10) based on similarity, mood, or theme
 
 === PLAYLIST INTENTS (use search queries) ===
 • play_playlist - Search and play a playlist immediately
@@ -260,7 +259,7 @@ AVAILABLE INTENTS - Choose the most appropriate one:
 
 CRITICAL DISTINCTIONS:
 
-1. SPECIFIC SONG REQUESTS (use play_specific_song or queue_specific_song):
+1. SPECIFIC SONG REQUESTS (use play_specific_song, queue_specific_song, or queue_multiple_songs):
    - "play something for assassins creed" → play_specific_song with "Ezio's Family" by Jesper Kyd
    - "queue the most obscure Taylor Swift song" → queue_specific_song with "I'd Lie"
    - "play taylor swift" → play_specific_song with a popular Taylor Swift song
@@ -268,6 +267,9 @@ CRITICAL DISTINCTIONS:
    - "add something melancholy to queue" → queue_specific_song with specific sad song
    - "play bohemian rhapsody" → play_specific_song (even though it's specific, still use this intent)
    - "queue bohemian rhapsody" → queue_specific_song (for consistency)
+   - "queue up many more songs like heaven by beyonce" → queue_multiple_songs with multiple obscure Beyoncé tracks
+   - "add several upbeat songs to queue" → queue_multiple_songs with 5-10 upbeat songs
+   - "queue multiple taylor swift deep cuts" → queue_multiple_songs with multiple lesser-known Taylor Swift songs
 
 2. PLAYLIST REQUESTS (use play_playlist or queue_playlist):
    - "play my workout playlist" → play_playlist with query: "workout"
@@ -284,9 +286,11 @@ CRITICAL DISTINCTIONS:
 
 4. KEY DISTINCTION:
    - If asking for A SONG (even by name) → use play_specific_song/queue_specific_song
+   - If asking for MULTIPLE SONGS → use queue_multiple_songs
    - If asking for A PLAYLIST → use play_playlist/queue_playlist
    - If asking QUESTIONS → use conversational intents (chat/ask_question/get_info)
    - The word "playlist" in the command is a strong indicator for playlist intents
+   - Words like "multiple", "many", "several", "more songs", "a few songs" indicate queue_multiple_songs
 
 RESPONSE FORMAT:
 For specific song requests (both play and queue):
@@ -304,6 +308,27 @@ For specific song requests (both play and queue):
     "Artist Name - Song Title",
     "Artist Name - Song Title"
   ]
+}
+
+For multiple song requests:
+{
+  "intent": "queue_multiple_songs",
+  "songs": [
+    {
+      "artist": "Artist Name",
+      "track": "Song Title",
+      "album": "Album Name (optional)"
+    },
+    {
+      "artist": "Artist Name",
+      "track": "Song Title",
+      "album": "Album Name (optional)"
+    },
+    ... (5-10 songs total)
+  ],
+  "confidence": 0.8-1.0,
+  "reasoning": "Why these songs match the request theme/mood/similarity",
+  "theme": "Brief description of the common theme (e.g., 'obscure Beyoncé tracks', 'upbeat indie songs')"
 }
 
 For playlist requests:
@@ -336,7 +361,7 @@ Command: "${command}"`;
         { role: 'system', content: 'Respond with valid JSON. Be helpful and specific. Include confidence scores. CRITICAL: You must use the discriminated union pattern - when intent is "play_specific_song" or "queue_specific_song", you MUST include artist, track, and alternatives fields. When intent is "play_playlist" or "queue_playlist", use query field. Never use generic search queries for specific song requests - always recommend exact songs using your music knowledge. Distinguish between playing (immediate) and queuing (add to queue) for both songs and playlists.' },
         { role: 'user', content: prompt }
       ],
-      model: preferredModel || OPENROUTER_MODELS.CLAUDE_SONNET_4,
+      model: preferredModel || OPENROUTER_MODELS.GEMINI_2_5_FLASH,
       temperature: 0.7,
       response_format: { type: 'json_object' }
     });
@@ -357,7 +382,7 @@ Command: "${command}"`;
     // Retry with a different model if we haven't exhausted retries
     if (retryCount < MAX_RETRIES) {
       const fallbackModels = [
-        OPENROUTER_MODELS.GEMINI_2_5_FLASH,
+        OPENROUTER_MODELS.CLAUDE_SONNET_4,
         OPENROUTER_MODELS.O3_PRO
       ];
       
@@ -455,7 +480,7 @@ Provide a helpful, informative response. If the question is about music history,
         { role: 'system', content: 'You are a friendly and knowledgeable music assistant. Provide accurate, helpful information about music, artists, and songs. Keep responses concise but informative.' },
         { role: 'user', content: conversationalPrompt }
       ],
-      model: preferredModel || OPENROUTER_MODELS.CLAUDE_SONNET_4,
+      model: preferredModel || OPENROUTER_MODELS.GEMINI_2_5_FLASH,
       temperature: 0.7
     });
 
@@ -472,7 +497,7 @@ function canonicalizeIntent(raw: string | undefined): string | null {
 
   // 1. Exact, high-priority matches first
   const exact = [
-    'play_specific_song', 'queue_specific_song',
+    'play_specific_song', 'queue_specific_song', 'queue_multiple_songs',
     'pause', 'play', 'resume', 'skip', 'next', 'previous', 'back',
     'set_volume', 'get_current_track',
     'set_shuffle', 'set_repeat', 'get_devices', 'search', 'queue_add',
@@ -545,6 +570,49 @@ simpleLLMInterpreterRouter.get('/health', (req, res) => {
   });
 });
 
+// Get conversation history endpoint
+simpleLLMInterpreterRouter.get('/history', ensureValidToken, async (req, res) => {
+  try {
+    const userId = getUserIdFromRequest(req);
+    
+    if (!userId || !conversationManager) {
+      return res.json({ 
+        history: [],
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    // Get up to 100 most recent conversation entries
+    const history = await conversationManager.getHistory(userId, 100);
+    
+    // Format history to match client's expected structure
+    const formattedHistory = history.map(entry => ({
+      command: entry.command,
+      response: entry.response?.message || '',
+      confidence: entry.interpretation?.confidence,
+      isEnhanced: true,
+      timestamp: entry.timestamp,
+      alternatives: entry.interpretation?.alternatives || [],
+      interpretation: entry.interpretation,
+      model: undefined // Model info not stored in conversation history
+    }));
+    
+    res.json({
+      history: formattedHistory,
+      count: formattedHistory.length,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('Error fetching conversation history:', error);
+    res.status(500).json({
+      error: 'Failed to fetch conversation history',
+      history: [],
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // Clear conversation history endpoint
 simpleLLMInterpreterRouter.post('/clear-history', ensureValidToken, async (req, res) => {
   try {
@@ -607,7 +675,7 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
     console.log('User ID:', userId);
     
     // Get user's preferred model from Redis
-    let preferredModel = OPENROUTER_MODELS.CLAUDE_SONNET_4;
+    let preferredModel = OPENROUTER_MODELS.GEMINI_2_5_FLASH;
     
     if (userId) {
       const savedPreference = await getUserModelPreference(userId);
@@ -759,6 +827,86 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
                 uri: t.uri
               }));
             }
+          }
+          break;
+        }
+
+        case 'queue_multiple_songs': {
+          const songs = interpretation.songs || [];
+          
+          if (!songs || songs.length === 0) {
+            result = {
+              success: false,
+              message: "No songs provided for multiple queue request"
+            };
+            break;
+          }
+
+          console.log(`[DEBUG] Queuing ${songs.length} songs from interpretation`);
+          
+          const queueResults = [];
+          const failures = [];
+          
+          // Process songs sequentially to avoid overwhelming Spotify API
+          for (let i = 0; i < songs.length; i++) {
+            const song = songs[i];
+            try {
+              // Build search query for this specific song
+              let searchQuery = `artist:"${song.artist}" track:"${song.track}"`;
+              if (song.album) {
+                searchQuery += ` album:"${song.album}"`;
+              }
+              
+              console.log(`[DEBUG] Searching for song ${i + 1}: "${searchQuery}"`);
+              const tracks = await spotifyControl.search(searchQuery);
+              
+              if (tracks.length > 0) {
+                const track = tracks[0]; // Use first result
+                await spotifyControl.queueTrackByUri(track.uri);
+                queueResults.push({
+                  name: track.name,
+                  artists: track.artists.map((a: any) => a.name).join(', '),
+                  success: true
+                });
+                console.log(`[DEBUG] Successfully queued: ${track.name} by ${track.artists[0]?.name}`);
+              } else {
+                failures.push(`${song.artist} - ${song.track}`);
+                console.log(`[DEBUG] No tracks found for: ${song.artist} - ${song.track}`);
+              }
+              
+              // Small delay to avoid rate limiting
+              if (i < songs.length - 1) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+              }
+            } catch (error) {
+              console.error(`[DEBUG] Error queuing song ${i + 1}:`, error);
+              failures.push(`${song.artist} - ${song.track}`);
+            }
+          }
+          
+          // Build result message
+          const successCount = queueResults.length;
+          const failureCount = failures.length;
+          
+          if (successCount === 0) {
+            result = {
+              success: false,
+              message: `Failed to queue any songs. ${failureCount} songs not found.`,
+              failures
+            };
+          } else if (failureCount === 0) {
+            result = {
+              success: true,
+              message: `Successfully queued ${successCount} songs${interpretation.theme ? ` (${interpretation.theme})` : ''}`,
+              queuedSongs: queueResults
+            };
+          } else {
+            result = {
+              success: true,
+              message: `Queued ${successCount} songs${interpretation.theme ? ` (${interpretation.theme})` : ''}. ${failureCount} songs not found.`,
+              queuedSongs: queueResults,
+              failures
+            };
           }
           break;
         }
@@ -922,7 +1070,7 @@ simpleLLMInterpreterRouter.post('/test-interpret', async (req, res) => {
     const userId = getUserIdFromRequest(req);
     
     // Get user's preferred model
-    let preferredModel = OPENROUTER_MODELS.CLAUDE_SONNET_4;
+    let preferredModel = OPENROUTER_MODELS.GEMINI_2_5_FLASH;
     if (userId) {
       const savedPreference = await getUserModelPreference(userId);
       if (savedPreference) {

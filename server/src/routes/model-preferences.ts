@@ -2,7 +2,6 @@ import { Router } from 'express';
 import { ensureValidToken } from '../spotify/auth';
 import { llmOrchestrator, OPENROUTER_MODELS } from '../llm/orchestrator';
 import { verifyJWT, extractTokenFromHeader } from '../utils/jwt';
-import crypto from 'crypto';
 
 export const modelPreferencesRouter = Router();
 
@@ -23,9 +22,8 @@ function getUserIdFromRequest(req: any): string | null {
   const payload = verifyJWT(jwtToken);
   if (!payload) return null;
   
-  // Create a stable user ID from the Spotify refresh token
-  const refreshToken = payload.spotifyTokens.refresh_token;
-  return crypto.createHash('sha256').update(refreshToken).digest('hex').substring(0, 16);
+  // Return the stable Spotify user ID from JWT
+  return payload.sub || payload.spotify_user_id || null;
 }
 
 // Get model preference from Redis
@@ -90,12 +88,12 @@ const MODEL_DISPLAY_INFO: Record<string, { name: string; provider: string; descr
   [OPENROUTER_MODELS.GEMINI_2_5_PRO]: { 
     name: 'Gemini 2.5 Pro', 
     provider: 'Google',
-    description: 'Google\'s most capable model (Limited JSON support)'
+    description: 'Google\'s most capable model with native search grounding (Direct API when available)'
   },
   [OPENROUTER_MODELS.GEMINI_2_5_FLASH]: { 
     name: 'Gemini 2.5 Flash', 
     provider: 'Google',
-    description: 'Fast and reliable (Limited JSON support)'
+    description: 'Fast and reliable with native search grounding (Direct API when available)'
   },
   
   // Mistral Models
@@ -224,17 +222,27 @@ const MODEL_DISPLAY_INFO: Record<string, { name: string; provider: string; descr
 
 // Group models by provider
 function getGroupedModels() {
-  const grouped: Record<string, Array<{ id: string; name: string; description: string; supportsJSON: boolean }>> = {};
+  const grouped: Record<string, Array<{ 
+    id: string; 
+    name: string; 
+    description: string; 
+    supportsJSON: boolean;
+    providerInfo: { provider: string; isDirect: boolean; supportsGrounding: boolean };
+  }>> = {};
   
   Object.entries(MODEL_DISPLAY_INFO).forEach(([id, info]) => {
     if (!grouped[info.provider]) {
       grouped[info.provider] = [];
     }
+    
+    const providerInfo = llmOrchestrator.getProviderInfo(id);
+    
     grouped[info.provider].push({
       id,
       name: info.name,
       description: info.description,
-      supportsJSON: llmOrchestrator.isJSONCapable(id)
+      supportsJSON: llmOrchestrator.isJSONCapable(id),
+      providerInfo
     });
   });
   
@@ -248,7 +256,7 @@ modelPreferencesRouter.get('/models', ensureValidToken, async (req, res) => {
     
     // Get user preference from Redis
     const userId = getUserIdFromRequest(req);
-    let currentPreference = OPENROUTER_MODELS.CLAUDE_SONNET_4;
+    let currentPreference = OPENROUTER_MODELS.GEMINI_2_5_FLASH;
     
     if (userId) {
       const savedPreference = await getUserModelPreference(userId);
@@ -260,7 +268,7 @@ modelPreferencesRouter.get('/models', ensureValidToken, async (req, res) => {
     res.json({
       models: availableModels,
       currentModel: currentPreference,
-      defaultModel: OPENROUTER_MODELS.CLAUDE_SONNET_4
+      defaultModel: OPENROUTER_MODELS.GEMINI_2_5_FLASH
     });
   } catch (error) {
     console.error('Error fetching model preferences:', error);
@@ -315,13 +323,18 @@ modelPreferencesRouter.get('/models/:modelId/capabilities', ensureValidToken, as
     
     const isJSONCapable = llmOrchestrator.isJSONCapable(modelId);
     
+    const providerInfo = llmOrchestrator.getProviderInfo(modelId);
+    
     res.json({
       modelId,
       ...MODEL_DISPLAY_INFO[modelId],
       capabilities: {
         supportsJSON: isJSONCapable,
-        contextWindow: getContextWindow(modelId)
-      }
+        contextWindow: getContextWindow(modelId),
+        supportsGrounding: providerInfo.supportsGrounding,
+        isDirect: providerInfo.isDirect
+      },
+      providerInfo
     });
   } catch (error) {
     console.error('Error fetching model capabilities:', error);

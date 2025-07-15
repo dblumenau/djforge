@@ -103,6 +103,19 @@ export class SpotifyWebAPI {
     return response.data.tracks || [];
   }
 
+  async getCurrentUser(): Promise<{ id: string; display_name?: string; email?: string }> {
+    try {
+      const response = await this.api.get('/me');
+      return {
+        id: response.data.id,
+        display_name: response.data.display_name,
+        email: response.data.email
+      };
+    } catch (error: any) {
+      console.error('Failed to get current user:', error.response?.data || error.message);
+      throw new Error('Failed to fetch user profile from Spotify');
+    }
+  }
 
   async getDevices() {
     const response = await this.api.get('/me/player/devices');

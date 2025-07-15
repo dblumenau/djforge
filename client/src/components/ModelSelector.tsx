@@ -107,6 +107,16 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange }) => {
             JSON
           </span>
         )}
+        {selectedModelInfo?.providerInfo?.supportsGrounding && (
+          <span className="hidden sm:inline text-xs text-blue-400 bg-blue-900/30 px-2 py-0.5 rounded">
+            🔍 Grounding
+          </span>
+        )}
+        {selectedModelInfo?.providerInfo?.isDirect && (
+          <span className="hidden sm:inline text-xs text-yellow-400 bg-yellow-900/30 px-2 py-0.5 rounded">
+            Direct
+          </span>
+        )}
         <svg 
           className={`w-4 h-4 text-gray-400 transition-transform ${showDropdown ? 'rotate-180' : ''}`} 
           fill="none" 
@@ -178,6 +188,24 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange }) => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                           </svg>
                           <span className="text-xs ml-1">JSON</span>
+                        </div>
+                      )}
+                      
+                      {model.providerInfo?.supportsGrounding && (
+                        <div className="flex items-center text-blue-400" title="Supports native Google Search grounding">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                          </svg>
+                          <span className="text-xs ml-1">Search</span>
+                        </div>
+                      )}
+                      
+                      {model.providerInfo?.isDirect && (
+                        <div className="flex items-center text-yellow-400" title="Uses direct API (not OpenRouter)">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                          </svg>
+                          <span className="text-xs ml-1">Direct</span>
                         </div>
                       )}
                     </div>
