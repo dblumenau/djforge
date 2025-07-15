@@ -378,5 +378,8 @@ process.on('SIGINT', async () => {
   process.exit(0);
 });
 
+// Export app for testing
+export { app };
+
 // Call the initialization function
 initializeAndStart();

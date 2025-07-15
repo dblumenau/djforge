@@ -226,7 +226,6 @@ export class RedisConversation {
       'queue_specific_song',
       'play_playlist',
       'queue_playlist',
-      'search_and_play'
     ];
     
     return destructiveIntents.includes(intent) || intent.includes('play') || intent.includes('queue');

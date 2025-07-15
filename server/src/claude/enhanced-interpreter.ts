@@ -53,10 +53,10 @@ async function interpretCommand(command: string): Promise<InterpretationResult> 
   
   Return JSON with:
   {
-    "intent": "play|pause|skip|previous|volume|search_and_play|get_current_track|queue_add",
+    "intent": "play|pause|skip|previous|volume|play_specific_song|get_current_track|queue_specific_song",
     "query": "full search query for backwards compatibility",
-    "artist": "artist name for precise search (if search_and_play/queue_add)",
-    "track": "track name for precise search (if search_and_play/queue_add)",
+    "artist": "artist name for precise search (if play_specific_song/queue_specific_song)",
+    "track": "track name for precise search (if play_specific_song/queue_specific_song)",
     "value": "volume level if applicable",
     "modifiers": {
       "obscurity": "obscure|rare|deep_cut|popular|mainstream",
@@ -181,7 +181,7 @@ enhancedClaudeRouter.post('/command', ensureValidToken, async (req, res) => {
     let result;
 
     switch (interpretation.intent) {
-      case 'search_and_play':
+      case 'play_specific_song':
         if (interpretation.query || (interpretation.artist && interpretation.track)) {
           // Use precise Spotify search syntax if we have artist and track
           let searchQuery = interpretation.query || '';
@@ -228,7 +228,7 @@ enhancedClaudeRouter.post('/command', ensureValidToken, async (req, res) => {
         }
         break;
         
-      case 'queue_add':
+      case 'queue_specific_song':
         if (interpretation.query || (interpretation.artist && interpretation.track)) {
           // Use precise Spotify search syntax if we have artist and track
           let searchQuery = interpretation.query || '';

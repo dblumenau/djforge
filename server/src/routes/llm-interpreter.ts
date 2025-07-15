@@ -88,7 +88,7 @@ async function interpretCommand(command: string, preferredModel?: string): Promi
       console.log('Using essential fields fallback:', essential);
       
       return {
-        intent: (essential.intent || 'search_and_play') as MusicCommand['intent'],
+        intent: (essential.intent || 'play_specific_song') as MusicCommand['intent'],
         query: essential.query,
         artist: essential.artist,
         track: essential.track,
@@ -104,7 +104,7 @@ async function interpretCommand(command: string, preferredModel?: string): Promi
       const lowerCommand = command.toLowerCase();
       if (lowerCommand.includes('play')) {
         return {
-          intent: 'search_and_play',
+          intent: 'play_specific_song',
           query: command.replace(/^play\s+/i, ''),
           confidence: 0.5,
           reasoning: 'Basic keyword matching fallback',
@@ -266,8 +266,8 @@ llmInterpreterRouter.post('/command', ensureValidToken, async (req, res) => {
     let result;
 
     switch (interpretation.intent) {
-      case 'search_and_play':
-      case 'search_and_queue': {
+      case 'play_specific_song':
+      case 'queue_specific_song': {
         // Build precise search query first
         let searchQuery = buildSpotifySearchQuery(interpretation);
         
@@ -311,7 +311,7 @@ llmInterpreterRouter.post('/command', ensureValidToken, async (req, res) => {
         } else {
           const topTrack = rankedTracks[0];
           
-          if (interpretation.intent === 'search_and_play') {
+          if (interpretation.intent === 'play_specific_song') {
             await spotifyControl.playTrack(topTrack.uri);
             result = {
               success: true,

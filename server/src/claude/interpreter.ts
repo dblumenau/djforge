@@ -33,8 +33,8 @@ claudeRouter.post('/command', ensureValidToken, async (req, res) => {
     - Preserve modifiers: demo, alternate, extended, radio edit, explicit, clean
     - Keep the artist and song names exactly as specified
     
-    Possible intents: play, pause, skip, previous, volume, search_and_play, get_current_track, queue_add
-    For search_and_play or queue_add, include a "query" parameter.
+    Possible intents: play, pause, skip, previous, volume, play_specific_song, get_current_track, queue_specific_song
+    For play_specific_song or queue_specific_song, include a "query" parameter.
     For volume, include a "value" parameter (0-100).
     
     Command: "${command}"`;
@@ -95,14 +95,14 @@ claudeRouter.post('/command', ensureValidToken, async (req, res) => {
       case 'get_current_track':
         result = await spotifyControl.getCurrentTrack();
         break;
-      case 'search_and_play':
+      case 'play_specific_song':
         if (interpretation.query) {
           result = await spotifyControl.searchAndPlay(interpretation.query);
         } else {
           result = { success: false, message: 'No search query provided' };
         }
         break;
-      case 'queue_add':
+      case 'queue_specific_song':
         if (interpretation.query) {
           result = await spotifyControl.queueTrack(interpretation.query);
         } else {

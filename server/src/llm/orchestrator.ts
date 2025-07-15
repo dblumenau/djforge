@@ -2,6 +2,7 @@ import axios, { AxiosError } from 'axios';
 import { z } from 'zod';
 import { normalizeLLMResponse } from './normalizer';
 import { GeminiService } from './providers/GeminiService';
+import { validateIntent, ValidationOptions } from './intent-validator';
 
 // LLM Provider Configuration
 export interface LLMProvider {
@@ -229,9 +230,16 @@ export class LLMOrchestrator {
   private async callModel(model: string, request: LLMRequest): Promise<LLMResponse> {
     // Check if this is a Gemini model that should use direct API
     if (this.isGeminiModel(model) && this.geminiService) {
-      console.log(`🔄 Routing ${model} to Google AI Direct API`);
+      console.log(`🔄 Routing ${model} to Google AI Direct API (Native Structured Output)`);
       try {
-        return await this.geminiService.complete(request);
+        const response = await this.geminiService.complete(request);
+        
+        // Validate structured output if JSON format was requested
+        if (request.response_format?.type === 'json_object') {
+          this.validateAndLogResponse(response, 'gemini-direct', model);
+        }
+        
+        return response;
       } catch (error) {
         console.error(`Google AI Direct failed for ${model}:`, error);
         // Fall through to OpenRouter if direct API fails
@@ -290,12 +298,19 @@ export class LLMOrchestrator {
         }
       }
 
-      return {
+      const llmResponse = {
         content,
         usage: response.data.usage,
         model: response.data.model || model,
         provider: provider.name,
       };
+
+      // Validate structured output if JSON format was requested
+      if (request.response_format?.type === 'json_object') {
+        this.validateAndLogResponse(llmResponse, 'openrouter', model);
+      }
+
+      return llmResponse;
     } catch (error) {
       if (axios.isAxiosError(error)) {
         const axiosError = error as AxiosError;
@@ -388,9 +403,21 @@ export class LLMOrchestrator {
   getAvailableModels(): string[] {
     this.ensureInitialized();
     const models = new Set<string>();
+    
+    // Add models from registered providers
     this.providers.forEach(provider => {
       provider.models.forEach(model => models.add(model));
     });
+    
+    // Add Gemini models if direct API is available
+    if (this.geminiService) {
+      // Add the Gemini models that we support via direct API
+      models.add(OPENROUTER_MODELS.GEMINI_2_5_PRO);
+      models.add(OPENROUTER_MODELS.GEMINI_2_5_PRO_PREVIEW);
+      models.add(OPENROUTER_MODELS.GEMINI_2_5_FLASH);
+      models.add(OPENROUTER_MODELS.GEMINI_2_5_FLASH_LITE);
+    }
+    
     return Array.from(models);
   }
 
@@ -417,6 +444,45 @@ export class LLMOrchestrator {
   // Check if a model is a Gemini model
   private isGeminiModel(model: string): boolean {
     return model.includes('gemini') || model.includes('google/gemini');
+  }
+
+  /**
+   * Validate and log structured output from both paths
+   */
+  private validateAndLogResponse(
+    response: LLMResponse, 
+    source: 'openrouter' | 'gemini-direct',
+    model: string
+  ): void {
+    try {
+      const parsed = JSON.parse(response.content);
+      
+      const validationOptions: ValidationOptions = {
+        strict: false,
+        normalize: false,
+        logErrors: true,
+        context: {
+          source,
+          model,
+          timestamp: Date.now(),
+          rawResponse: response.content
+        }
+      };
+
+      const result = validateIntent(parsed, validationOptions);
+      
+      if (result.isValid) {
+        console.log(`✅ ${source} validation passed for ${model} (${result.intentType})`);
+      } else {
+        console.warn(`❌ ${source} validation failed for ${model}:`, result.errors);
+      }
+      
+      if (result.warnings.length > 0) {
+        console.warn(`⚠️  ${source} validation warnings for ${model}:`, result.warnings);
+      }
+    } catch (error) {
+      console.error(`🔥 JSON parsing failed for ${source} ${model}:`, error);
+    }
   }
 
   // Check if a model supports grounding

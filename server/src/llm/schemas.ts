@@ -3,19 +3,20 @@ import { z } from 'zod';
 // Music command interpretation schema
 export const MusicCommandSchema = z.object({
   intent: z.enum([
+    'play_specific_song',
+    'queue_specific_song',
+    'queue_multiple_songs',
+    'play_playlist',
+    'queue_playlist',
     'play',
     'pause',
     'skip',
     'previous',
     'volume',
-    'queue',
-    'search_and_play',
-    'search_and_queue',
-    'play_playlist',
-    'queue_playlist',
     'clear_queue',
     'get_info',
-    'control_playback',
+    'chat',
+    'ask_question',
     'unknown'
   ]),
   
@@ -164,7 +165,7 @@ You have deep knowledge of music history, artists, albums, and can understand:
 - Version preferences ("acoustic version", "original not remaster")
 
 You must respond with a JSON object containing these fields:
-- intent: one of "play", "pause", "skip", "previous", "volume", "queue", "search_and_play", "search_and_queue", "get_info", "control_playback", "unknown"
+- intent: one of "play_specific_song", "queue_specific_song", "queue_multiple_songs", "play_playlist", "queue_playlist", "play", "pause", "skip", "previous", "volume", "clear_queue", "get_info", "chat", "ask_question", "unknown"
 - query (optional): search query string
 - artist (optional): artist name
 - track (optional): track name

@@ -223,7 +223,19 @@ IMPORTANT: If the user is referencing something from the conversation above (lik
 ${contextBlock}
 [DEBUG: Relevant context entries: ${relevantContext.length}]
 
+CRITICAL FIRST STEP: Determine if this is a QUESTION/CONVERSATION or a MUSIC ACTION command.
+
 AVAILABLE INTENTS - Choose the most appropriate one:
+
+=== CONVERSATIONAL INTENTS (return text, NO Spotify action) ===
+• chat - General music discussion ("what do you think of this artist", "how's the song")
+• ask_question - Questions about collaborations, facts ("did he collaborate with X", "has she ever worked with Y")
+• get_info - Information requests ("tell me about this song", "what's this album about")
+
+CONVERSATIONAL TRIGGERS (these are NOT music actions):
+- Questions starting with: "did", "does", "has", "tell me about", "what do you think", "how is", "what's"
+- Information requests: "tell me about", "what about", "info on"
+- General discussion: "what do you think", "how do you feel", "your opinion"
 
 === SONG INTENTS (require specific song recommendations) ===
 • play_specific_song - Play a specific song based on vague/mood/cultural descriptions
@@ -245,17 +257,11 @@ AVAILABLE INTENTS - Choose the most appropriate one:
 • set_repeat - Enable/disable repeat (requires enabled field)
 • clear_queue - Clear the playback queue
 
-=== CONVERSATIONAL INTENTS (return text, no Spotify action) ===
-• chat - General music discussion ("what do you think of this artist")
-• ask_question - Questions about collaborations, facts ("did he collaborate with X")
-• get_info - Information about current/previous songs ("tell me about this song")
-
 === OTHER INTENTS ===
 • search - Search without playing (requires query)
 • get_devices - List available devices
 • get_playlists - Get user's playlists
 • get_recently_played - Get recently played tracks
-• queue_add - Generic queue add (DEPRECATED - use queue_specific_song for songs)
 
 CRITICAL DISTINCTIONS:
 
@@ -406,7 +412,7 @@ Command: "${command}"`;
     // Final fallback - basic keyword matching
     const lowerCommand = command.toLowerCase();
     return {
-      intent: lowerCommand.includes('play') ? 'search_and_play' : 
+      intent: lowerCommand.includes('play') ? 'play_specific_song' : 
               lowerCommand.includes('pause') ? 'pause' :
               lowerCommand.includes('skip') || lowerCommand.includes('next') ? 'skip' :
               lowerCommand.includes('volume') ? 'volume' : 'unknown',
@@ -500,7 +506,7 @@ function canonicalizeIntent(raw: string | undefined): string | null {
     'play_specific_song', 'queue_specific_song', 'queue_multiple_songs',
     'pause', 'play', 'resume', 'skip', 'next', 'previous', 'back',
     'set_volume', 'get_current_track',
-    'set_shuffle', 'set_repeat', 'get_devices', 'search', 'queue_add',
+    'set_shuffle', 'set_repeat', 'get_devices', 'search',
     'get_recommendations', 'get_playlists', 'get_playlist_tracks',
     'play_playlist', 'queue_playlist',
     'get_recently_played', 'transfer_playback', 'seek', 'clear_queue'
@@ -526,7 +532,7 @@ function canonicalizeIntent(raw: string | undefined): string | null {
   if (intent.includes('playlist')) return 'get_playlists';
 
   // Generic fallbacks
-  if (intent.includes('queue')) return 'queue_add';
+  if (intent.includes('queue')) return 'queue_specific_song';
   if (intent.includes('play') || intent.includes('search')) return 'play_specific_song';
 
   return null; // unknown

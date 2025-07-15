@@ -1,5 +1,11 @@
-import { GoogleGenerativeAI, GenerativeModel, Part, FunctionCallingMode } from '@google/generative-ai';
+import { GoogleGenAI, Type } from "@google/genai";
 import { LLMRequest, LLMResponse } from '../orchestrator';
+import { 
+  getSchemaForIntent, 
+  getSystemPromptForIntent, 
+  GEMINI_SCHEMAS 
+} from '../gemini-schemas';
+import { validateIntent, ValidationOptions } from '../intent-validator';
 
 export interface GeminiServiceOptions {
   apiKey: string;
@@ -25,249 +31,157 @@ export interface GroundedResponse extends LLMResponse {
 }
 
 export class GeminiService {
-  private client: GoogleGenerativeAI;
+  private client: GoogleGenAI;
   private enableGrounding: boolean;
   private timeout: number;
   private maxRetries: number;
 
   constructor(options: GeminiServiceOptions) {
-    this.client = new GoogleGenerativeAI(options.apiKey);
+    // FIXED: Use proper API key initialization for @google/genai v1.9.0
+    this.client = new GoogleGenAI({ apiKey: options.apiKey });
     this.enableGrounding = options.enableGrounding ?? true;
     this.timeout = options.timeout ?? 30000;
     this.maxRetries = options.maxRetries ?? 2;
   }
 
   async complete(request: LLMRequest): Promise<LLMResponse> {
-    const model = this.getModel(request.model || 'gemini-2.5-flash');
-    
     try {
-      // Check if grounding is requested and enabled
-      const useGrounding = this.enableGrounding && this.shouldUseGrounding(request);
+      // Determine schema based on request context
+      const intentType = this.determineIntentType(request);
+      const schema = getSchemaForIntent(intentType);
+      const systemPrompt = getSystemPromptForIntent(intentType);
       
-      if (useGrounding) {
-        return await this.completeWithGrounding(model, request);
-      } else {
-        return await this.completeStandard(model, request);
+      console.log(`🎯 Using @google/genai API with native responseSchema for intent: ${intentType}`);
+      
+      // Convert messages to Gemini format
+      const contents = this.formatMessagesForGemini(request.messages);
+      
+      // Use the @google/genai API with proper message format and system instruction
+      const response = await this.client.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents,
+        config: {
+          systemInstruction: systemPrompt,
+          responseMimeType: "application/json",
+          responseSchema: schema,
+          temperature: request.temperature ?? 0.7,
+          maxOutputTokens: request.max_tokens ?? 2000
+        }
+      });
+      
+      // Extract content from the response
+      const content = this.extractContentFromResponse(response);
+      
+      // Validate the response
+      if (request.response_format?.type === 'json_object') {
+        const validationResult = this.validateStructuredOutput(content, request);
+        if (!validationResult.isValid) {
+          console.warn('Gemini API structured output validation failed:', validationResult.errors);
+        }
       }
+      
+      return {
+        content,
+        usage: {
+          prompt_tokens: (response as any).usage?.promptTokens || 0,
+          completion_tokens: (response as any).usage?.completionTokens || 0,
+          total_tokens: (response as any).usage?.totalTokens || 0
+        },
+        model: request.model || 'gemini-2.5-flash',
+        provider: 'google-genai-direct'
+      };
+      
     } catch (error) {
       console.error('GeminiService error:', error);
       throw new Error(`Gemini API error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
-  private async completeWithGrounding(model: GenerativeModel, request: LLMRequest): Promise<GroundedResponse> {
-    const tools = [
-      {
-        googleSearchRetrieval: {
-          // Enable Google Search grounding
-        }
-      }
-    ];
-
-    const result = await model.generateContent({
-      contents: this.formatMessages(request.messages),
-      tools,
-      toolConfig: {
-        functionCallingConfig: {
-          mode: FunctionCallingMode.AUTO
-        }
-      },
-      generationConfig: {
-        temperature: request.temperature ?? 0.7,
-        maxOutputTokens: request.max_tokens ?? 2000,
-        responseMimeType: request.response_format?.type === 'json_object' ? 'application/json' : 'text/plain'
-      }
-    });
-
-    const response = result.response;
-    const content = response.text();
-    
-    // Extract grounding metadata from response
-    const { sources, searchQueries, groundingMetadata } = this.extractGroundingMetadata(response);
-
-    return {
-      content,
-      usage: {
-        prompt_tokens: result.response.usageMetadata?.promptTokenCount || 0,
-        completion_tokens: result.response.usageMetadata?.candidatesTokenCount || 0,
-        total_tokens: result.response.usageMetadata?.totalTokenCount || 0
-      },
-      model: request.model || 'gemini-2.5-flash',
-      provider: 'google-direct',
-      isGrounded: sources.length > 0,
-      sources,
-      searchQueries,
-      groundingMetadata
-    };
-  }
-
-  private async completeStandard(model: GenerativeModel, request: LLMRequest): Promise<LLMResponse> {
-    const result = await model.generateContent({
-      contents: this.formatMessages(request.messages),
-      generationConfig: {
-        temperature: request.temperature ?? 0.7,
-        maxOutputTokens: request.max_tokens ?? 2000,
-        responseMimeType: request.response_format?.type === 'json_object' ? 'application/json' : 'text/plain'
-      }
-    });
-
-    const response = result.response;
-    const content = response.text();
-
-    return {
-      content,
-      usage: {
-        prompt_tokens: result.response.usageMetadata?.promptTokenCount || 0,
-        completion_tokens: result.response.usageMetadata?.candidatesTokenCount || 0,
-        total_tokens: result.response.usageMetadata?.totalTokenCount || 0
-      },
-      model: request.model || 'gemini-2.5-flash',
-      provider: 'google-direct'
-    };
-  }
-
-  private getModel(modelName: string): GenerativeModel {
-    // Map OpenRouter model names to Google API model names
-    const modelMap: Record<string, string> = {
-      'google/gemini-2.5-pro': 'gemini-2.5-pro',
-      'google/gemini-2.5-flash': 'gemini-2.5-flash',
-      'google/gemini-2.5-pro-preview': 'gemini-2.5-pro-preview',
-      'google/gemini-2.5-flash-lite-preview-06-17': 'gemini-2.5-flash-lite-preview-0617',
-      'gemini-2.5-pro': 'gemini-2.5-pro',
-      'gemini-2.5-flash': 'gemini-2.5-flash',
-      'gemini-2.5-pro-preview': 'gemini-2.5-pro-preview',
-    };
-
-    const actualModelName = modelMap[modelName] || modelName;
-    return this.client.getGenerativeModel({ model: actualModelName });
-  }
-
-  private formatMessages(messages: LLMRequest['messages']): Array<{ role: string; parts: Part[] }> {
-    return messages.map(msg => ({
-      role: msg.role === 'assistant' ? 'model' : msg.role,
-      parts: [{ text: msg.content }]
-    }));
-  }
-
-  private shouldUseGrounding(request: LLMRequest): boolean {
-    // Only use grounding for certain types of queries
+  private determineIntentType(request: LLMRequest): string {
+    // Simple heuristic based on request content
     const content = request.messages[request.messages.length - 1]?.content || '';
     
-    // Enable grounding for questions, searches, and knowledge queries
-    const groundingTriggers = [
-      'what is',
-      'who is',
-      'when did',
-      'where is',
-      'how to',
-      'tell me about',
-      'search for',
-      'find information',
-      'latest',
-      'recent',
-      'current',
-      'news',
-      'update'
-    ];
-
-    return groundingTriggers.some(trigger => 
-      content.toLowerCase().includes(trigger)
-    );
-  }
-
-  private extractGroundingMetadata(response: any): {
-    sources: GroundedSource[];
-    searchQueries: string[];
-    groundingMetadata: {
-      searchResultsCount: number;
-      groundingScore: number;
-    };
-  } {
-    const sources: GroundedSource[] = [];
-    const searchQueries: string[] = [];
-    
-    // Extract grounding metadata from response
-    // This is a simplified implementation - actual structure depends on Google's API response format
-    try {
-      const metadata = response.usageMetadata?.groundingMetadata;
-      if (metadata) {
-        // Extract sources from grounding metadata
-        if (metadata.searchEntryPoint?.searchResults) {
-          metadata.searchEntryPoint.searchResults.forEach((result: any) => {
-            sources.push({
-              title: result.title || 'Unknown',
-              url: result.url || '',
-              snippet: result.snippet || ''
-            });
-          });
-        }
-
-        // Extract search queries
-        if (metadata.searchQueries) {
-          searchQueries.push(...metadata.searchQueries);
-        }
-      }
-    } catch (error) {
-      console.warn('Failed to extract grounding metadata:', error);
+    // Most music commands should use the default MusicCommandIntent schema
+    if (content.includes('play') || content.includes('queue') || content.includes('music') || 
+        content.includes('pause') || content.includes('skip') || content.includes('volume')) {
+      return 'music_command'; // Use default schema
     }
-
-    return {
-      sources,
-      searchQueries,
-      groundingMetadata: {
-        searchResultsCount: sources.length,
-        groundingScore: sources.length > 0 ? 1.0 : 0.0
-      }
-    };
+    
+    // Only use music_knowledge for specific knowledge questions
+    if (content.includes('who') || content.includes('what') || content.includes('when') || 
+        content.includes('where') || content.includes('why') || content.includes('how')) {
+      return 'music_knowledge';
+    }
+    
+    return 'conversational';
   }
 
-  // Validation method to check if API key is valid
-  async validateConnection(): Promise<{ isValid: boolean; error?: string }> {
-    try {
-      const model = this.getModel('gemini-2.5-flash');
-      const result = await model.generateContent({
-        contents: [{ role: 'user', parts: [{ text: 'Hello' }] }],
-        generationConfig: {
-          maxOutputTokens: 10
-        }
-      });
 
-      const response = result.response;
-      return {
-        isValid: !!response.text(),
+  /**
+   * Convert LLMRequest messages to Gemini format
+   */
+  private formatMessagesForGemini(messages: LLMRequest['messages']): any[] {
+    return messages
+      .filter(message => message.role !== 'system') // System messages go to systemInstruction
+      .map(message => ({
+        role: message.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: message.content }]
+      }));
+  }
+
+  /**
+   * Extract content from Gemini response
+   */
+  private extractContentFromResponse(response: any): string {
+    try {
+      // For structured output, the response should be in the candidates array
+      if (response.candidates && response.candidates.length > 0) {
+        const candidate = response.candidates[0];
+        if (candidate.content && candidate.content.parts && candidate.content.parts.length > 0) {
+          return candidate.content.parts[0].text || '';
+        }
+      }
+      
+      // Fallback to response.text if available
+      if (response.text) {
+        return response.text;
+      }
+      
+      console.warn('Unexpected response format:', response);
+      return '';
+    } catch (error) {
+      console.error('Error extracting content from response:', error);
+      return '';
+    }
+  }
+
+  private validateStructuredOutput(content: string, request: LLMRequest): { isValid: boolean; errors: string[] } {
+    try {
+      const parsed = JSON.parse(content);
+      
+      const validationOptions: ValidationOptions = {
+        strict: false,
+        normalize: false,
+        logErrors: true,
+        context: {
+          source: 'gemini-direct' as const,
+          model: request.model || 'gemini-2.5-flash',
+          timestamp: Date.now(),
+          rawResponse: content
+        }
       };
+
+      const result = validateIntent(parsed, validationOptions);
+      return {
+        isValid: result.isValid,
+        errors: result.errors
+      };
+      
     } catch (error) {
       return {
         isValid: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        errors: [`JSON parsing failed: ${error}`]
       };
     }
-  }
-
-  // Helper method to check supported models
-  static getSupportedModels(): string[] {
-    return [
-      'google/gemini-2.5-pro',
-      'google/gemini-2.5-flash',
-      'google/gemini-2.5-pro-preview',
-      'google/gemini-2.5-flash-lite-preview-06-17',
-      'gemini-2.5-pro',
-      'gemini-2.5-flash',
-      'gemini-2.5-pro-preview'
-    ];
-  }
-
-  // Helper method to check if a model supports grounding
-  static supportsGrounding(model: string): boolean {
-    const groundingCapableModels = [
-      'google/gemini-2.5-pro',
-      'google/gemini-2.5-flash',
-      'google/gemini-2.5-pro-preview',
-      'gemini-2.5-pro',
-      'gemini-2.5-flash',
-      'gemini-2.5-pro-preview'
-    ];
-
-    return groundingCapableModels.includes(model);
   }
 }
