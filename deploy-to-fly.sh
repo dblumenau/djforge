@@ -74,32 +74,57 @@ case $ACTION in
         echo ""
         echo "Enter your production secrets:"
         
+        # Required secrets
         read -p "SPOTIFY_CLIENT_ID: " SPOTIFY_CLIENT_ID
-        read -p "SPOTIFY_CLIENT_SECRET: " SPOTIFY_CLIENT_SECRET
         read -p "OPENROUTER_API_KEY: " OPENROUTER_API_KEY
         read -p "SESSION_SECRET (leave blank to generate): " SESSION_SECRET
+        read -p "JWT_SECRET (leave blank to generate): " JWT_SECRET
         
+        # Generate secrets if not provided
         if [ -z "$SESSION_SECRET" ]; then
             SESSION_SECRET=$(openssl rand -base64 32)
             echo "Generated SESSION_SECRET: $SESSION_SECRET"
         fi
         
-        read -p "REDIS_HOST (leave blank for local): " REDIS_HOST
+        if [ -z "$JWT_SECRET" ]; then
+            JWT_SECRET=$(openssl rand -base64 32)
+            echo "Generated JWT_SECRET: $JWT_SECRET"
+        fi
+        
+        # Optional secrets
+        read -p "GOOGLE_API_KEY (optional): " GOOGLE_API_KEY
+        read -p "ANTHROPIC_API_KEY (optional): " ANTHROPIC_API_KEY
+        read -p "OPENAI_API_KEY (optional): " OPENAI_API_KEY
+        read -p "ENABLE_GEMINI_DIRECT (true/false, default: false): " ENABLE_GEMINI_DIRECT
+        read -p "GEMINI_SEARCH_GROUNDING (true/false, default: false): " GEMINI_SEARCH_GROUNDING
+        read -p "REDIS_HOST (leave blank for localhost): " REDIS_HOST
         read -p "REDIS_PORT (default 6379): " REDIS_PORT
         read -s -p "REDIS_PASSWORD: " REDIS_PASSWORD
         echo ""
+        read -p "REDIS_DB (default 0): " REDIS_DB
+        read -p "ALLOWED_ORIGINS (comma-separated, leave blank for default): " ALLOWED_ORIGINS
         
         # Set server secrets
         cd server
         flyctl secrets set \
             SPOTIFY_CLIENT_ID="$SPOTIFY_CLIENT_ID" \
-            SPOTIFY_CLIENT_SECRET="$SPOTIFY_CLIENT_SECRET" \
             SPOTIFY_REDIRECT_URI="https://djforge-server.fly.dev/callback" \
             SESSION_SECRET="$SESSION_SECRET" \
+            JWT_SECRET="$JWT_SECRET" \
             OPENROUTER_API_KEY="$OPENROUTER_API_KEY" \
+            NODE_ENV="production" \
+            PORT="8080" \
+            CLIENT_URL="https://djforge-client.fly.dev" \
+            ${GOOGLE_API_KEY:+GOOGLE_API_KEY="$GOOGLE_API_KEY"} \
+            ${ANTHROPIC_API_KEY:+ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY"} \
+            ${OPENAI_API_KEY:+OPENAI_API_KEY="$OPENAI_API_KEY"} \
+            ${ENABLE_GEMINI_DIRECT:+ENABLE_GEMINI_DIRECT="$ENABLE_GEMINI_DIRECT"} \
+            ${GEMINI_SEARCH_GROUNDING:+GEMINI_SEARCH_GROUNDING="$GEMINI_SEARCH_GROUNDING"} \
             REDIS_HOST="${REDIS_HOST:-localhost}" \
             REDIS_PORT="${REDIS_PORT:-6379}" \
-            REDIS_PASSWORD="$REDIS_PASSWORD" \
+            ${REDIS_PASSWORD:+REDIS_PASSWORD="$REDIS_PASSWORD"} \
+            REDIS_DB="${REDIS_DB:-0}" \
+            ${ALLOWED_ORIGINS:+ALLOWED_ORIGINS="$ALLOWED_ORIGINS"} \
             -a djforge-server
         cd ..
         
