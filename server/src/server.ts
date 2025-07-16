@@ -108,6 +108,9 @@ app.use(cors({
 
 app.use(express.json());
 
+// Track server readiness
+let isServerReady = false;
+
 // Initialize and start server
 async function initializeAndStart() {
   try {
@@ -318,6 +321,15 @@ async function initializeAndStart() {
 
     // Health check with Redis status (inside initializeAndStart)
     app.get('/api/health', async (req, res) => {
+      // Return 503 if server is not ready yet
+      if (!isServerReady) {
+        return res.status(503).json({
+          status: 'starting',
+          timestamp: new Date().toISOString(),
+          message: 'Server is starting up'
+        });
+      }
+
       const health: any = {
         status: 'ok',
         timestamp: new Date().toISOString(),
@@ -340,11 +352,17 @@ async function initializeAndStart() {
     // Listen on all interfaces to ensure both localhost and 127.0.0.1 work
     const host = '0.0.0.0';
     const port = typeof PORT === 'string' ? parseInt(PORT) : PORT;
-    app.listen(port, host, () => {
+    const server = app.listen(port, host, () => {
       const displayHost = process.env.NODE_ENV === 'production' ? host : 'localhost';
       console.log(`🎵 Spotify Controller server running on http://${displayHost}:${port}`);
       console.log(`🤖 Ready to receive commands!`);
       console.log(`📦 Session storage: ${redisClient ? 'Redis' : 'File-based'}`);
+      
+      // Mark server as ready after a short delay to ensure full initialization
+      setTimeout(() => {
+        isServerReady = true;
+        console.log(`✅ Server is fully ready to accept requests`);
+      }, 100);
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);
