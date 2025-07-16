@@ -137,8 +137,8 @@ case $ACTION in
             echo -e "${GREEN}📦 Deploying server...${NC}"
             cd server
             
-            # Deploy with no-cache to ensure fresh build
-            flyctl deploy -a djforge-server --no-cache
+            # Deploy server
+            flyctl deploy -a djforge-server
             cd ..
         fi
         
@@ -146,8 +146,8 @@ case $ACTION in
             echo -e "${GREEN}📦 Deploying client...${NC}"
             cd client
             
-            # Deploy with API URL and no-cache
-            flyctl deploy -a djforge-client --build-arg VITE_API_URL=https://djforge-server.fly.dev --no-cache
+            # Deploy with API URL
+            flyctl deploy -a djforge-client --build-arg VITE_API_URL=https://djforge-server.fly.dev
             cd ..
         fi
         
