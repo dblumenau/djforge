@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { SpotifyAuthTokens } from '../types';
 
-const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET || 'spotify-claude-jwt-secret';
+export const getJWTSecret = () => process.env.JWT_SECRET || process.env.SESSION_SECRET || 'spotify-claude-jwt-secret';
 const JWT_EXPIRES_IN = '30d'; // 30 days
 
 export interface JWTPayload {
@@ -21,15 +21,16 @@ export function generateJWT(spotifyTokens: SpotifyAuthTokens, spotifyUserId: str
     tokenTimestamp: Date.now()
   };
   
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+  return jwt.sign(payload, getJWTSecret(), { expiresIn: JWT_EXPIRES_IN });
 }
 
 export function verifyJWT(token: string): JWTPayload | null {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
+    const decoded = jwt.verify(token, getJWTSecret()) as JWTPayload;
     return decoded;
   } catch (error) {
     console.error('JWT verification failed:', error);
+    console.error('JWT_SECRET being used:', getJWTSecret());
     return null;
   }
 }

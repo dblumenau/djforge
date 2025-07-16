@@ -19,6 +19,8 @@ import { RedisUtils } from './utils/redis-utils';
 const FileStore = require('session-file-store')(session);
 
 dotenv.config({ path: '../.env' });
+console.log('🔐 JWT_SECRET loaded:', process.env.JWT_SECRET ? 'Yes' : 'No');
+console.log('🔐 SESSION_SECRET loaded:', process.env.SESSION_SECRET ? 'Yes' : 'No');
 
 const app = express();
 const PORT = process.env.PORT || 3001;

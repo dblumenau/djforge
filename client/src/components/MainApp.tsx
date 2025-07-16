@@ -57,7 +57,7 @@ const MainApp: React.FC = () => {
     queuedSongs?: Array<{ name: string; artists: string; success: boolean }>;
   }>>([]);
   // Authentication
-  const { isAuthenticated, accessToken, loading: authLoading, logout, checkAuthStatus } = useSpotifyAuth();
+  const { isAuthenticated, accessToken, loading: authLoading, logout, checkAuthStatus, error: authError, login } = useSpotifyAuth();
 
   // Check server connection
   useEffect(() => {
@@ -112,14 +112,14 @@ const MainApp: React.FC = () => {
     loadCommandHistory();
   }, [isAuthenticated]);
 
-  // Redirect to landing page if not authenticated
+  // Redirect to landing page if not authenticated (but not if they have expired tokens)
   useEffect(() => {
-    console.log('🔄 MainApp: Auth redirect check -', { checking, authLoading, isAuthenticated });
-    if (!checking && !authLoading && !isAuthenticated) {
+    console.log('🔄 MainApp: Auth redirect check -', { checking, authLoading, isAuthenticated, authError });
+    if (!checking && !authLoading && !isAuthenticated && !authError) {
       console.log('⚠️ MainApp: Redirecting to landing page');
       navigate('/landing');
     }
-  }, [checking, authLoading, isAuthenticated, navigate]);
+  }, [checking, authLoading, isAuthenticated, authError, navigate]);
 
   const updateModelPreference = async (_type: string, model: string) => {
     if (!isAuthenticated) return;
@@ -328,7 +328,7 @@ const MainApp: React.FC = () => {
     );
   }
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated && !authError) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 flex items-center justify-center">
         <div className="text-center">
@@ -349,19 +349,99 @@ const MainApp: React.FC = () => {
             <p className="text-gray-400">Control your Spotify with natural language</p>
           </div>
 
+          {/* Auth Error Message */}
+          {authError && (
+            <div className="mb-6 bg-yellow-900/50 border border-yellow-600 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <span className="text-yellow-400 mr-2">⚠️</span>
+                  <span className="text-yellow-200">{authError}</span>
+                </div>
+                <button 
+                  onClick={login}
+                  className="px-4 py-2 bg-yellow-600 text-black font-semibold rounded-full hover:bg-yellow-500 transition-colors text-sm"
+                >
+                  Re-authenticate
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Model Selector and Logout */}
           <div className="mb-6 flex justify-between items-center">
             <ModelSelector 
               onModelChange={handleModelSelect}
             />
-            <button 
-              className="px-4 py-2 bg-red-600 text-white font-semibold rounded-full hover:bg-red-700 transition-colors text-sm"
-              onClick={() => {
-                logout();
-              }}
-            >
-              Logout
-            </button>
+            <div className="flex gap-2">
+              {process.env.NODE_ENV === 'development' && (
+                <>
+                  <button 
+                    className="px-3 py-2 bg-orange-600 text-white font-semibold rounded-full hover:bg-orange-700 transition-colors text-xs"
+                    onClick={async () => {
+                      const jwtToken = localStorage.getItem('spotify_jwt');
+                      if (jwtToken) {
+                        try {
+                          const response = await fetch(apiEndpoint('/api/auth/debug/simulate-expired'), {
+                            method: 'POST',
+                            headers: {
+                              'Authorization': `Bearer ${jwtToken}`,
+                              'Content-Type': 'application/json'
+                            }
+                          });
+                          const data = await response.json();
+                          if (data.success) {
+                            localStorage.setItem('spotify_jwt', data.simulatedToken);
+                            console.log('⏰ Simulated expired tokens - refresh page to test auto-refresh');
+                            alert('Tokens expired! Refresh the page to test automatic token refresh.');
+                          } else {
+                            alert(data.error);
+                          }
+                        } catch (error) {
+                          console.error('Simulate expired failed:', error);
+                        }
+                      }
+                    }}
+                  >
+                    Simulate Expired
+                  </button>
+                  <button 
+                    className="px-3 py-2 bg-red-600 text-white font-semibold rounded-full hover:bg-red-700 transition-colors text-xs"
+                    onClick={async () => {
+                      const jwtToken = localStorage.getItem('spotify_jwt');
+                      if (jwtToken) {
+                        try {
+                          const response = await fetch(apiEndpoint('/api/auth/debug/simulate-revoked'), {
+                            method: 'POST',
+                            headers: {
+                              'Authorization': `Bearer ${jwtToken}`,
+                              'Content-Type': 'application/json'
+                            }
+                          });
+                          const data = await response.json();
+                          if (data.success) {
+                            localStorage.setItem('spotify_jwt', data.revokedToken);
+                            console.log('🚫 Simulated revoked refresh token');
+                            alert('Refresh token revoked! Refresh the page to test error handling.');
+                          }
+                        } catch (error) {
+                          console.error('Simulate revoked failed:', error);
+                        }
+                      }
+                    }}
+                  >
+                    Simulate Revoked
+                  </button>
+                </>
+              )}
+              <button 
+                className="px-4 py-2 bg-red-600 text-white font-semibold rounded-full hover:bg-red-700 transition-colors text-sm"
+                onClick={() => {
+                  logout();
+                }}
+              >
+                Logout
+              </button>
+            </div>
           </div>
 
           {/* Spotify Player */}

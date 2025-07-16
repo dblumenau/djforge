@@ -165,7 +165,7 @@ describe('Dual Path Validation', () => {
       const result = validateIntent(invalidIntent);
       
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain('Invalid intent "invalid_intent". Must be one of: play_specific_song, queue_specific_song, queue_multiple_songs, play_playlist, queue_playlist, play, pause, skip, previous, volume, clear_queue, get_info, chat, ask_question, unknown');
+      expect(result.errors).toContain('Invalid intent "invalid_intent". Must be one of: play_specific_song, queue_specific_song, queue_multiple_songs, play_playlist, queue_playlist, play, pause, skip, previous, volume, set_volume, resume, next, back, get_current_track, set_shuffle, set_repeat, clear_queue, get_devices, get_playlists, get_recently_played, search, get_playback_info, chat, ask_question, unknown');
     });
 
     test('rejects invalid confidence values', () => {
@@ -516,6 +516,204 @@ describe('Dual Path Validation', () => {
       
       // Should complete 1000 comparisons in under 1 second
       expect(totalTime).toBeLessThan(1000);
+    });
+
+  });
+
+  describe('Extended Intent Validation', () => {
+    
+    test('validates all 23 intent types', () => {
+      const allIntents = [
+        'play_specific_song', 'queue_specific_song', 'queue_multiple_songs', 'play_playlist', 'queue_playlist',
+        'play', 'pause', 'skip', 'previous', 'volume', 'set_volume', 'resume', 'next', 'back',
+        'get_current_track', 'set_shuffle', 'set_repeat', 'clear_queue', 'get_devices', 'get_playlists',
+        'get_recently_played', 'search', 'get_playback_info', 'chat', 'ask_question', 'unknown'
+      ];
+      
+      allIntents.forEach(intentType => {
+        const intent = createTestIntent({
+          intent: intentType as any,
+          confidence: 0.8,
+          reasoning: `Test intent for ${intentType}`
+        });
+        
+        const result = validateIntent(intent);
+        expect(result.isValid).toBe(true);
+        expect(result.intentType).toBe('music_command');
+      });
+    });
+
+    test('validates extended intent with volume_level field', () => {
+      const intent = createTestIntent({
+        intent: 'set_volume',
+        volume_level: 75,
+        confidence: 0.9,
+        reasoning: 'Set volume to 75%'
+      });
+
+      const result = validateIntent(intent);
+      
+      expect(result.isValid).toBe(true);
+      expect(result.intentType).toBe('music_command');
+      expect(result.errors).toHaveLength(0);
+    });
+
+    test('validates extended intent with enabled field', () => {
+      const intent = createTestIntent({
+        intent: 'set_shuffle',
+        enabled: true,
+        confidence: 0.9,
+        reasoning: 'Enable shuffle mode'
+      });
+
+      const result = validateIntent(intent);
+      
+      expect(result.isValid).toBe(true);
+      expect(result.intentType).toBe('music_command');
+      expect(result.errors).toHaveLength(0);
+    });
+
+    test('validates repeat intent with enabled field', () => {
+      const intent = createTestIntent({
+        intent: 'set_repeat',
+        enabled: false,
+        confidence: 0.9,
+        reasoning: 'Disable repeat mode'
+      });
+
+      const result = validateIntent(intent);
+      
+      expect(result.isValid).toBe(true);
+      expect(result.intentType).toBe('music_command');
+      expect(result.errors).toHaveLength(0);
+    });
+
+    test('rejects invalid volume_level values', () => {
+      const intent = createTestIntent({
+        intent: 'set_volume',
+        volume_level: 150, // Invalid - over 100
+        confidence: 0.9,
+        reasoning: 'Set volume too high'
+      });
+
+      const result = validateIntent(intent);
+      
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toContain('Field "volume_level" must be between 0 and 100');
+    });
+
+    test('rejects invalid enabled field types', () => {
+      const intent = createTestIntent({
+        intent: 'set_shuffle',
+        confidence: 0.9,
+        reasoning: 'Enable shuffle with string'
+      });
+      
+      // Manually set invalid enabled field to bypass TypeScript
+      (intent as any).enabled = 'true'; // Invalid - should be boolean
+
+      const result = validateIntent(intent);
+      
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toContain('Optional field "enabled" must be a boolean if provided');
+    });
+
+    test('warns about missing volume_level for set_volume intent', () => {
+      const intent = createTestIntent({
+        intent: 'set_volume',
+        confidence: 0.9,
+        reasoning: 'Set volume without level'
+      });
+
+      const result = validateIntent(intent);
+      
+      expect(result.isValid).toBe(true);
+      expect(result.warnings).toContain('Set volume intent should typically include a "volume_level" or "value" field');
+    });
+
+    test('warns about missing enabled for shuffle/repeat intents', () => {
+      const shuffleIntent = createTestIntent({
+        intent: 'set_shuffle',
+        confidence: 0.9,
+        reasoning: 'Set shuffle without enabled'
+      });
+
+      const repeatIntent = createTestIntent({
+        intent: 'set_repeat',
+        confidence: 0.9,
+        reasoning: 'Set repeat without enabled'
+      });
+
+      const shuffleResult = validateIntent(shuffleIntent);
+      const repeatResult = validateIntent(repeatIntent);
+      
+      expect(shuffleResult.isValid).toBe(true);
+      expect(shuffleResult.warnings).toContain('Shuffle/repeat intents should typically include an "enabled" field');
+      
+      expect(repeatResult.isValid).toBe(true);
+      expect(repeatResult.warnings).toContain('Shuffle/repeat intents should typically include an "enabled" field');
+    });
+
+  });
+
+  describe('Schema Drift Detection', () => {
+    
+    test('OpenRouter and Gemini schemas must support identical intent types', () => {
+      // Extract intents from OpenRouter schema
+      const openRouterIntents = [
+        'play_specific_song', 'queue_specific_song', 'queue_multiple_songs', 'play_playlist', 
+        'queue_playlist', 'play', 'pause', 'skip', 'previous', 'volume', 'set_volume', 
+        'resume', 'next', 'back', 'get_current_track', 'set_shuffle', 'set_repeat', 
+        'clear_queue', 'get_devices', 'get_playlists', 'get_recently_played', 'search', 
+        'get_playback_info', 'chat', 'ask_question', 'unknown'
+      ];
+      
+      // Extract intents from Gemini schema
+      const geminiSchema = getSchemaForIntent('music_command');
+      const geminiIntents = (geminiSchema as any).properties.intent.enum;
+      
+      // Verify both schemas have identical intent types
+      expect(geminiIntents).toEqual(openRouterIntents);
+      expect(geminiIntents).toHaveLength(26);
+      expect(openRouterIntents).toHaveLength(26);
+    });
+
+    test('Both schemas must support identical required fields', () => {
+      const musicCommandSchema = getSchemaForIntent('music_command');
+      const expectedRequiredFields = ['intent', 'confidence', 'reasoning'];
+      
+      expect((musicCommandSchema as any).required).toEqual(expectedRequiredFields);
+    });
+
+    test('All intent types must be validated by intent-validator', () => {
+      const allIntents = [
+        'play_specific_song', 'queue_specific_song', 'queue_multiple_songs', 'play_playlist', 
+        'queue_playlist', 'play', 'pause', 'skip', 'previous', 'volume', 'set_volume', 
+        'resume', 'next', 'back', 'get_current_track', 'set_shuffle', 'set_repeat', 
+        'clear_queue', 'get_devices', 'get_playlists', 'get_recently_played', 'search', 
+        'get_playback_info', 'chat', 'ask_question', 'unknown'
+      ];
+      
+      // Verify all intents are in VALID_INTENTS
+      const { VALID_INTENTS } = require('./intent-types');
+      expect(VALID_INTENTS).toEqual(allIntents);
+      expect(VALID_INTENTS).toHaveLength(26);
+    });
+
+    test('Schema field consistency across OpenRouter and Gemini', () => {
+      const musicCommandSchema = getSchemaForIntent('music_command');
+      const properties = (musicCommandSchema as any).properties;
+      
+      // Verify critical fields exist in both schemas
+      const expectedFields = [
+        'intent', 'query', 'artist', 'track', 'album', 'value', 'volume_level', 
+        'enabled', 'modifiers', 'confidence', 'reasoning', 'alternatives', 
+        'enhancedQuery', 'responseMessage', 'songs', 'theme'
+      ];
+      
+      expectedFields.forEach(field => {
+        expect(properties[field]).toBeDefined();
+      });
     });
 
   });

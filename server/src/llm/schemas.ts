@@ -192,7 +192,7 @@ You have deep knowledge of music history, artists, albums, and can understand:
 - Version preferences ("acoustic version", "original not remaster")
 
 You must respond with a JSON object containing these fields:
-- intent: one of "play_specific_song", "queue_specific_song", "queue_multiple_songs", "play_playlist", "queue_playlist", "play", "pause", "skip", "previous", "volume", "clear_queue", "get_playback_info", "chat", "ask_question", "unknown"
+- intent: one of "play_specific_song", "queue_specific_song", "queue_multiple_songs", "play_playlist", "queue_playlist", "play", "pause", "skip", "previous", "volume", "set_volume", "resume", "next", "back", "get_current_track", "set_shuffle", "set_repeat", "clear_queue", "get_devices", "get_playlists", "get_recently_played", "search", "get_playback_info", "chat", "ask_question", "unknown"
 - query (optional): search query string
 - artist (optional): artist name
 - track (optional): track name

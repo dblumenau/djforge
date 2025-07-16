@@ -23,7 +23,18 @@ export type IntentType =
   | 'skip'
   | 'previous'
   | 'volume'
+  | 'set_volume'
+  | 'resume'
+  | 'next'
+  | 'back'
+  | 'get_current_track'
+  | 'set_shuffle'
+  | 'set_repeat'
   | 'clear_queue'
+  | 'get_devices'
+  | 'get_playlists'
+  | 'get_recently_played'
+  | 'search'
   | 'get_playback_info'
   | 'chat'
   | 'ask_question'
@@ -59,6 +70,8 @@ export interface MusicCommandIntent {
   track?: string;
   album?: string;
   value?: number;
+  volume_level?: number;
+  enabled?: boolean;
   modifiers?: MusicModifiers;
   confidence: number;
   reasoning: string;
@@ -195,7 +208,18 @@ export const VALID_INTENTS: IntentType[] = [
   'skip',
   'previous',
   'volume',
+  'set_volume',
+  'resume',
+  'next',
+  'back',
+  'get_current_track',
+  'set_shuffle',
+  'set_repeat',
   'clear_queue',
+  'get_devices',
+  'get_playlists',
+  'get_recently_played',
+  'search',
   'get_playback_info',
   'chat',
   'ask_question',

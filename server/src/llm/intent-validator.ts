@@ -210,6 +210,18 @@ export function validateMusicCommandIntent(
     }
   }
 
+  if (intent.volume_level !== undefined) {
+    if (typeof intent.volume_level !== 'number') {
+      result.errors.push('Optional field "volume_level" must be a number if provided');
+    } else if (intent.volume_level < 0 || intent.volume_level > 100) {
+      result.errors.push('Field "volume_level" must be between 0 and 100');
+    }
+  }
+
+  if (intent.enabled !== undefined && typeof intent.enabled !== 'boolean') {
+    result.errors.push('Optional field "enabled" must be a boolean if provided');
+  }
+
   if (intent.enhancedQuery !== undefined && typeof intent.enhancedQuery !== 'string') {
     result.errors.push('Optional field "enhancedQuery" must be a string if provided');
   }
@@ -228,8 +240,16 @@ export function validateMusicCommandIntent(
   }
 
   // Contextual validation
-  if (intent.intent === 'volume' && intent.value === undefined) {
-    result.warnings.push('Volume intent should typically include a "value" field');
+  if (intent.intent === 'volume' && intent.value === undefined && intent.volume_level === undefined) {
+    result.warnings.push('Volume intent should typically include a "value" or "volume_level" field');
+  }
+
+  if (intent.intent === 'set_volume' && intent.volume_level === undefined && intent.value === undefined) {
+    result.warnings.push('Set volume intent should typically include a "volume_level" or "value" field');
+  }
+
+  if (['set_shuffle', 'set_repeat'].includes(intent.intent) && intent.enabled === undefined) {
+    result.warnings.push('Shuffle/repeat intents should typically include an "enabled" field');
   }
 
   if (['play_specific_song', 'queue_specific_song'].includes(intent.intent) && 

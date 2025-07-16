@@ -35,7 +35,18 @@ export const MusicCommandIntentSchema = {
         'skip',
         'previous',
         'volume',
+        'set_volume',
+        'resume',
+        'next',
+        'back',
+        'get_current_track',
+        'set_shuffle',
+        'set_repeat',
         'clear_queue',
+        'get_devices',
+        'get_playlists',
+        'get_recently_played',
+        'search',
         'get_playback_info',
         'chat',
         'ask_question',
@@ -63,6 +74,16 @@ export const MusicCommandIntentSchema = {
       description: 'Numeric value for volume commands',
       minimum: 0,
       maximum: 100
+    },
+    volume_level: {
+      type: Type.NUMBER,
+      description: 'Volume level between 0-100',
+      minimum: 0,
+      maximum: 100
+    },
+    enabled: {
+      type: Type.BOOLEAN,
+      description: 'Boolean flag for shuffle/repeat commands'
     },
     modifiers: {
       type: Type.OBJECT,
@@ -154,6 +175,8 @@ export const MusicCommandIntentSchema = {
     'track',
     'album',
     'value',
+    'volume_level',
+    'enabled',
     'modifiers',
     'confidence',
     'reasoning',
@@ -353,6 +376,8 @@ Key guidelines:
 - IMPORTANT: For conversational intents (chat, ask_question), you MUST include the actual answer in the responseMessage field
 - IMPORTANT: For queue_multiple_songs intent, you MUST include a songs array with specific tracks (artist, track, album)
 - IMPORTANT: For queue_multiple_songs, analyze the context (current song, recent plays) to suggest similar songs
+
+Supported intents: play_specific_song, queue_specific_song, queue_multiple_songs, play_playlist, queue_playlist, play, pause, skip, previous, volume, set_volume, resume, next, back, get_current_track, set_shuffle, set_repeat, clear_queue, get_devices, get_playlists, get_recently_played, search, get_playback_info, chat, ask_question, unknown.
 
 Your response will be automatically validated against a strict schema.`,
 

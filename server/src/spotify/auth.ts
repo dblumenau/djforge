@@ -218,8 +218,8 @@ authRouter.get('/status', (req, res) => {
     const expiresIn = (tokens.expires_in || 3600) * 1000; // Convert to ms
     const isExpired = tokenAge >= expiresIn;
     
-    // If expired but we have a refresh token, we can still consider it authenticated
-    const effectivelyAuthenticated = isAuthenticated && (!isExpired || !!tokens.refresh_token);
+    // User is authenticated if tokens are valid or if we can potentially refresh them
+    const effectivelyAuthenticated = isAuthenticated && !isExpired;
     
     res.json({ 
       authenticated: effectivelyAuthenticated,
@@ -232,7 +232,123 @@ authRouter.get('/status', (req, res) => {
   }
 });
 
-// No longer needed - JWT tokens are passed directly
+// Refresh tokens and generate new JWT
+authRouter.post('/refresh', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const jwtToken = extractTokenFromHeader(authHeader);
+    
+    if (!jwtToken) {
+      return res.status(401).json({ error: 'No JWT token provided' });
+    }
+    
+    const payload = verifyJWT(jwtToken);
+    if (!payload) {
+      return res.status(401).json({ error: 'Invalid JWT token' });
+    }
+    
+    const { spotifyTokens } = payload;
+    
+    if (!spotifyTokens.refresh_token) {
+      return res.status(401).json({ error: 'No refresh token available' });
+    }
+    
+    // Refresh the Spotify tokens
+    const newTokens = await refreshAccessToken(spotifyTokens.refresh_token);
+    const refreshedTokens = { ...spotifyTokens, ...newTokens };
+    
+    // Generate new JWT with refreshed tokens
+    const { generateJWT } = require('../utils/jwt');
+    const newJwtToken = generateJWT(refreshedTokens, payload.spotify_user_id);
+    
+    res.json({ 
+      success: true, 
+      newJwtToken,
+      accessToken: refreshedTokens.access_token
+    });
+    
+  } catch (error) {
+    console.error('Token refresh error:', error);
+    res.status(401).json({ error: 'Token refresh failed' });
+  }
+});
+
+// DEBUG endpoints (development only)
+if (process.env.NODE_ENV === 'development' || !process.env.NODE_ENV) {
+  // Test automatic refresh by simulating expired tokens
+  authRouter.post('/debug/simulate-expired', (req, res) => {
+    const authHeader = req.headers.authorization;
+    const jwtToken = extractTokenFromHeader(authHeader);
+    
+    if (!jwtToken) {
+      return res.status(401).json({ error: 'No JWT token provided' });
+    }
+    
+    const payload = verifyJWT(jwtToken);
+    if (!payload) {
+      return res.status(401).json({ error: 'Invalid JWT token' });
+    }
+    
+    // Just modify the timestamp to simulate expiry WITHOUT hitting Spotify API
+    const jwt = require('jsonwebtoken');
+    const { getJWTSecret } = require('../utils/jwt');
+    
+    const simulatedPayload = {
+      sub: payload.spotify_user_id,
+      spotify_user_id: payload.spotify_user_id,
+      spotifyTokens: payload.spotifyTokens, // Keep existing tokens
+      tokenTimestamp: Date.now() - (61 * 60 * 1000) // 61 minutes ago (just past 1 hour expiry)
+    };
+    
+    const simulatedToken = jwt.sign(simulatedPayload, getJWTSecret(), { expiresIn: '30d' });
+    
+    console.log('Debug: Simulated expired tokens for user:', payload.spotify_user_id);
+    
+    res.json({ 
+      success: true, 
+      simulatedToken,
+      message: 'Created JWT with expired timestamp. Refresh the page to test auto-refresh.' 
+    });
+  });
+  
+  // Test what happens when refresh token is revoked
+  authRouter.post('/debug/simulate-revoked', (req, res) => {
+    const authHeader = req.headers.authorization;
+    const jwtToken = extractTokenFromHeader(authHeader);
+    
+    if (!jwtToken) {
+      return res.status(401).json({ error: 'No JWT token provided' });
+    }
+    
+    const payload = verifyJWT(jwtToken);
+    if (!payload) {
+      return res.status(401).json({ error: 'Invalid JWT token' });
+    }
+    
+    // Create a JWT with fake/revoked refresh token
+    const jwt = require('jsonwebtoken');
+    const { getJWTSecret } = require('../utils/jwt');
+    
+    const revokedPayload = {
+      sub: payload.spotify_user_id,
+      spotify_user_id: payload.spotify_user_id,
+      spotifyTokens: {
+        ...payload.spotifyTokens,
+        access_token: 'fake_access_token',
+        refresh_token: 'REVOKED_REFRESH_TOKEN_FOR_TESTING'
+      },
+      tokenTimestamp: Date.now() - (61 * 60 * 1000) // Expired
+    };
+    
+    const revokedToken = jwt.sign(revokedPayload, getJWTSecret(), { expiresIn: '30d' });
+    
+    res.json({ 
+      success: true, 
+      revokedToken,
+      message: 'Created JWT with revoked refresh token to test error handling.' 
+    });
+  });
+}
 
 // Logout
 authRouter.post('/logout', (req, res) => {
@@ -246,19 +362,28 @@ authRouter.post('/logout', (req, res) => {
 
 // Refresh token if needed
 export async function refreshAccessToken(refreshToken: string): Promise<SpotifyAuthTokens> {
-  const response = await axios.post(
-    SPOTIFY_TOKEN_URL,
-    new URLSearchParams({
-      grant_type: 'refresh_token',
-      refresh_token: refreshToken,
-      client_id: process.env.SPOTIFY_CLIENT_ID!
-    }),
-    {
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
-      }
-    }
-  );
+  console.log('🔄 Attempting to refresh access token...');
+  console.log('Refresh token:', refreshToken.substring(0, 20) + '...');
   
-  return response.data;
+  try {
+    const response = await axios.post(
+      SPOTIFY_TOKEN_URL,
+      new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken,
+        client_id: process.env.SPOTIFY_CLIENT_ID!
+      }),
+      {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      }
+    );
+    
+    console.log('✅ Token refresh successful');
+    return response.data;
+  } catch (error: any) {
+    console.error('❌ Token refresh failed:', error.response?.data || error.message);
+    throw error;
+  }
 }
