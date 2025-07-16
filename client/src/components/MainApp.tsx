@@ -373,7 +373,7 @@ const MainApp: React.FC = () => {
               onModelChange={handleModelSelect}
             />
             <div className="flex gap-2">
-              {process.env.NODE_ENV === 'development' && (
+              {import.meta.env.DEV && (
                 <>
                   <button 
                     className="px-3 py-2 bg-orange-600 text-white font-semibold rounded-full hover:bg-orange-700 transition-colors text-xs"
