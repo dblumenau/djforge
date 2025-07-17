@@ -2,7 +2,6 @@ import { Router } from 'express';
 import { ensureValidToken } from '../spotify/auth';
 import { SpotifyControl } from '../spotify/control';
 import { LLMLoggingService } from '../services/llm-logging.service';
-import { Redis } from 'ioredis';
 
 export const llmLogsRouter = Router();
 
@@ -243,7 +242,7 @@ llmLogsRouter.get('/api/llm-logs/my-logs', ensureValidToken, async (req, res) =>
 
     // Get user profile
     const spotifyControl = new SpotifyControl(
-      req.spotifyTokens,
+      req.spotifyTokens!,
       (tokens) => { req.spotifyTokens = tokens; }
     );
     const profile = await spotifyControl.getUserProfile();
