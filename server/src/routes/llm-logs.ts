@@ -45,7 +45,7 @@ const requireAdmin = async (req: any, res: any, next: any) => {
 // Initialize LLM logging service with Redis
 let loggingService: LLMLoggingService | null = null;
 
-export function setRedisClientForLogs(client: Redis) {
+export function setRedisClientForLogs(client: any) {
   loggingService = new LLMLoggingService(client);
   console.log('✅ LLM logging service initialized');
 }
