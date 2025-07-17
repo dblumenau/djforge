@@ -9,12 +9,32 @@ Implement a comprehensive logging system to capture all LLM queries and response
 - **Key Agreement**: Service Layer Pattern at orchestrator level is correct approach
 
 ## Architecture Overview
+
+### Dual-Flow LLM Architecture
+The system now implements two distinct LLM flows:
+
+1. **OpenRouter Flow** (Default)
+   - Routes through OpenRouter API for 40+ models
+   - Fallback chains for reliability
+   - JSON mode via prompt engineering
+
+2. **Gemini Direct API Flow** (Optional)
+   - Direct Google Gemini API integration
+   - Native structured output support
+   - Web search grounding capability
+
+### Logging Integration Points
 ```
 User Request → simple-llm-interpreter → llmOrchestrator
-                                              ↓
-                                    LLMLoggingService (async)
-                                              ↓
-                                           Redis
+                                             ├── OpenRouter API
+                                             ├── Gemini Direct API
+                                             └── LLMLoggingService (async)
+                                                        ↓
+                                                     Redis
+
+Flow Decision in Orchestrator:
+- If Gemini model + Direct API enabled → GeminiService
+- Otherwise → OpenRouter
 ```
 
 ## Implementation Phases
@@ -27,6 +47,8 @@ User Request → simple-llm-interpreter → llmOrchestrator
   - `async getLogs(options: QueryOptions): Promise<LogResult>`
   - `async getLogsByUser(userId: string): Promise<LogEntry[]>`
   - `async searchLogs(query: string): Promise<LogEntry[]>`
+  - `async getLogsByFlow(flow: 'openrouter' | 'gemini-direct'): Promise<LogEntry[]>`
+  - `async getLogsByProvider(provider: string): Promise<LogEntry[]>`
 
 **1.2 Redis Data Structure**
 ```typescript
@@ -45,12 +67,18 @@ Key: llm:stats:daily:YYYY-MM-DD (hash)
 
 ### Phase 2: Fix Model Tracking Bug (Priority 1)
 **2.1 Modify llmOrchestrator**
-- Update `complete()` method to include model in response
-- Change return type to include `{ content, model, provider }`
+- Update `complete()` method to include model and provider in response
+- Change return type to include `{ content, model, provider, flow }`
+- Track which flow was used: "openrouter" or "gemini-direct"
 
-**2.2 Update simple-llm-interpreter**
-- Receive model info from orchestrator response
-- Pass model through to interpretation object
+**2.2 Handle Dual-Flow Model Tracking**
+- For OpenRouter flow: Extract model from API response
+- For Gemini Direct flow: Use configured Gemini model name
+- Include provider information: "openrouter", "google", etc.
+
+**2.3 Update simple-llm-interpreter**
+- Receive model/provider info from orchestrator response
+- Pass model, provider, and flow through to interpretation object
 - Remove hardcoded "unknown" value
 
 ### Phase 3: User Authentication (Priority 2)
@@ -136,16 +164,21 @@ router.get('/api/llm-logs/by-date', ensureValidToken, requireAdmin, async (req, 
 ```
 
 ### Phase 5: Integration & Testing (Priority 3)
-**5.1 Wire Up Logging**
-- Integrate LLMLoggingService in llmOrchestrator
+**5.1 Wire Up Logging in Orchestrator**
+- Integrate LLMLoggingService in llmOrchestrator.ts
+- Log before routing to OpenRouter or Gemini Direct
+- Log after receiving response from either flow
+- Capture flow-specific metadata (fallbacks, grounding, etc.)
 - Ensure async/non-blocking operation
 - Add comprehensive error handling
 
-**5.2 Testing Strategy**
+**5.2 Dual-Flow Testing Strategy**
 - Unit tests for LLMLoggingService
-- Integration tests for full flow
-- Performance benchmarking
-- Redis failure simulation
+- Integration tests for both OpenRouter and Gemini flows
+- Test fallback chain logging in OpenRouter flow
+- Test grounding query logging in Gemini flow
+- Performance benchmarking for both paths
+- Redis failure simulation with graceful degradation
 
 ## Critical Implementation Details
 
@@ -170,18 +203,54 @@ interface LLMLogEntry {
   interpretation: object;
   llmRequest: {
     model: string;         // Fixed: actual model used
+    provider: string;      // "openrouter", "google", etc.
+    flow: string;          // "openrouter" or "gemini-direct"
     messages: any[];
     temperature: number;
+    jsonMode?: boolean;    // Whether JSON mode was requested
+    grounding?: boolean;   // Whether grounding was enabled (Gemini only)
   };
   llmResponse: {
     content: string;
     usage?: TokenUsage;
     latency: number;
+    fallbackUsed?: boolean; // Whether a fallback model was used
+    actualModel?: string;   // Actual model if different from requested
   };
   result: {
     success: boolean;
     message: string;
   };
+}
+```
+
+## Dual-Flow Specific Considerations
+
+### Logging Points by Flow
+1. **OpenRouter Flow**:
+   - Log before/after OpenRouter API call
+   - Track fallback chain execution
+   - Record JSON mode prompt engineering attempts
+   
+2. **Gemini Direct Flow**:
+   - Log before/after Gemini API call
+   - Track grounding search queries if enabled
+   - Record native schema validation results
+
+### Provider-Specific Metadata
+```typescript
+// OpenRouter specific
+interface OpenRouterMetadata {
+  fallbackChain?: string[];
+  jsonModeMethod: "prompt" | "native";
+  rateLimitRemaining?: number;
+}
+
+// Gemini specific  
+interface GeminiMetadata {
+  groundingEnabled: boolean;
+  searchQueries?: string[];
+  schemaValidation: "native" | "none";
 }
 ```
 
@@ -191,6 +260,10 @@ interface LLMLogEntry {
 # LLM Logging Configuration
 ADMIN_SPOTIFY_ID=your_spotify_user_id_here
 LOG_RETENTION_DAYS=90
+
+# Dual-flow configuration (existing)
+ENABLE_GEMINI_DIRECT=false
+GEMINI_SEARCH_GROUNDING=false
 ```
 
 ## Risk Mitigation
@@ -200,9 +273,11 @@ LOG_RETENTION_DAYS=90
 4. **Reliability**: Graceful degradation if Redis unavailable
 
 ## Success Metrics
-- ✓ All LLM interactions logged with correct model
+- ✓ All LLM interactions logged with correct model, provider, and flow
+- ✓ Both OpenRouter and Gemini Direct flows properly tracked
+- ✓ Fallback model usage clearly identified in logs
 - ✓ Zero performance degradation (<5ms added latency)
-- ✓ Admin can search/filter logs effectively
+- ✓ Admin can search/filter logs by provider/flow
 - ✓ System continues working if Redis fails
 - ✓ Admin access controlled by Spotify user ID from env
 

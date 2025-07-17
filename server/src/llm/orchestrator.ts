@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { normalizeLLMResponse } from './normalizer';
 import { GeminiService } from './providers/GeminiService';
 import { validateIntent, ValidationOptions } from './intent-validator';
+import { LLMLoggingService } from '../services/llm-logging.service';
 
 // LLM Provider Configuration
 export interface LLMProvider {
@@ -38,6 +39,9 @@ export interface LLMResponse {
   };
   model: string;
   provider: string;
+  flow?: 'openrouter' | 'gemini-direct';
+  fallbackUsed?: boolean;
+  actualModel?: string;
 }
 
 // OpenRouter Models (Updated 2025-07-12)
@@ -126,6 +130,7 @@ export class LLMOrchestrator {
   private fallbackChain: string[] = [];
   private initialized = false;
   private geminiService: GeminiService | null = null;
+  private loggingService: LLMLoggingService | null = null;
   
   constructor() {
     this.defaultModel = OPENROUTER_MODELS.GEMINI_2_5_FLASH;
@@ -205,7 +210,8 @@ export class LLMOrchestrator {
 
     // Try primary model first
     try {
-      return await this.callModel(model, request);
+      const response = await this.callModel(model, request);
+      return response;
     } catch (error) {
       errors.push({ provider: model, error: this.extractErrorMessage(error) });
       console.error(`Primary model ${model} failed:`, error);
@@ -217,7 +223,13 @@ export class LLMOrchestrator {
       
       try {
         console.log(`Trying fallback model: ${fallbackModel}`);
-        return await this.callModel(fallbackModel, request);
+        const response = await this.callModel(fallbackModel, request);
+        // Add fallback information to response
+        return {
+          ...response,
+          fallbackUsed: true,
+          actualModel: fallbackModel
+        };
       } catch (error) {
         errors.push({ provider: fallbackModel, error: this.extractErrorMessage(error) });
         console.error(`Fallback model ${fallbackModel} failed:`, error);
@@ -243,7 +255,11 @@ export class LLMOrchestrator {
         // Log the actual model response
         console.log(`📤 ${model} response:`, response.content);
         
-        return response;
+        // Add flow information
+        return {
+          ...response,
+          flow: 'gemini-direct'
+        };
       } catch (error) {
         console.error(`Google AI Direct failed for ${model}:`, error);
         // Fall through to OpenRouter if direct API fails
@@ -307,6 +323,7 @@ export class LLMOrchestrator {
         usage: response.data.usage,
         model: response.data.model || model,
         provider: provider.name,
+        flow: 'openrouter' as const
       };
 
       // Validate structured output if JSON format was requested
@@ -455,6 +472,11 @@ export class LLMOrchestrator {
   // Set default model
   setDefaultModel(model: string) {
     this.defaultModel = model;
+  }
+
+  // Set logging service
+  setLoggingService(loggingService: LLMLoggingService) {
+    this.loggingService = loggingService;
   }
 
   // Get all model IDs as a list

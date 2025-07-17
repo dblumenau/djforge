@@ -6,21 +6,34 @@ import { llmOrchestrator, OPENROUTER_MODELS } from '../llm/orchestrator';
 import { llmMonitor } from '../llm/monitoring';
 import { ConversationEntry, DialogState } from '../utils/redisConversation';
 import { ConversationManager, getConversationManager } from '../services/ConversationManager';
+import { LLMLoggingService } from '../services/llm-logging.service';
+import { createHash } from 'crypto';
 
 export const simpleLLMInterpreterRouter = Router();
 
 // Shared conversation manager instance
 let conversationManager: ConversationManager;
+let loggingService: LLMLoggingService | null = null;
 
 export function setRedisClient(client: any) {
   conversationManager = getConversationManager(client);
   console.log('✅ Shared ConversationManager initialized for contextual understanding');
+  
+  // Initialize logging service
+  loggingService = new LLMLoggingService(client);
+  llmOrchestrator.setLoggingService(loggingService);
+  console.log('✅ LLM logging service initialized in orchestrator');
 }
 
 // Helper to get user ID from JWT
 function getUserIdFromRequest(req: any): string | null {
   if (!conversationManager) return null;
   return conversationManager.getUserIdFromRequest(req);
+}
+
+// Helper to hash user ID for privacy
+function hashUserId(userId: string): string {
+  return createHash('sha256').update(userId).digest('hex').substring(0, 16);
 }
 
 // Get user's model preference from Redis
@@ -137,7 +150,7 @@ function createConfirmationResponse(interpretation: any): any {
 }
 
 // Simple, flexible interpretation with retries
-async function interpretCommand(command: string, userId?: string, retryCount = 0, preferredModel?: string, musicContext?: string): Promise<any> {
+async function interpretCommand(command: string, userId?: string, retryCount = 0, preferredModel?: string, musicContext?: string, sessionId?: string): Promise<any> {
   let conversationHistory: ConversationEntry[] = [];
   let dialogState: DialogState | null = null;
   
@@ -384,27 +397,72 @@ ${musicContext || ''}`;
       setTimeout(() => reject(new Error('LLM timeout')), INTERPRETATION_TIMEOUT)
     );
     
+    const startTime = Date.now();
+    const requestModel = preferredModel || OPENROUTER_MODELS.GEMINI_2_5_FLASH;
+    const messages = [
+      { role: 'system' as const, content: 'Respond with valid JSON. Be helpful and specific. Include confidence scores. CRITICAL: You must use the discriminated union pattern - when intent is "play_specific_song" or "queue_specific_song", you MUST include artist, track, and alternatives fields. ALWAYS provide 4-5 alternative song suggestions in the alternatives array using the format "Artist Name - Song Title". When intent is "play_playlist" or "queue_playlist", use query field. Never use generic search queries for specific song requests - always recommend exact songs using your music knowledge. Distinguish between playing (immediate) and queuing (add to queue) for both songs and playlists. For conversational intents (chat, ask_question), include the actual answer in the responseMessage field.' },
+      { role: 'user' as const, content: prompt }
+    ];
+    
     const responsePromise = llmOrchestrator.complete({
-      messages: [
-        { role: 'system', content: 'Respond with valid JSON. Be helpful and specific. Include confidence scores. CRITICAL: You must use the discriminated union pattern - when intent is "play_specific_song" or "queue_specific_song", you MUST include artist, track, and alternatives fields. ALWAYS provide 4-5 alternative song suggestions in the alternatives array using the format "Artist Name - Song Title". When intent is "play_playlist" or "queue_playlist", use query field. Never use generic search queries for specific song requests - always recommend exact songs using your music knowledge. Distinguish between playing (immediate) and queuing (add to queue) for both songs and playlists. For conversational intents (chat, ask_question), include the actual answer in the responseMessage field.' },
-        { role: 'user', content: prompt }
-      ],
-      model: preferredModel || OPENROUTER_MODELS.GEMINI_2_5_FLASH,
+      messages,
+      model: requestModel,
       temperature: 0.7,
       response_format: { type: 'json_object' },
       conversationContext: contextBlock.length > 0 ? contextBlock : undefined
     });
     
     const response = await Promise.race([responsePromise, timeoutPromise]) as any;
+    const latency = Date.now() - startTime;
     const normalized = normalizeResponse(response.content);
     
     // Add model information to the normalized response
     normalized.model = response.model || preferredModel || 'unknown';
+    normalized.provider = response.provider || 'unknown';
+    normalized.flow = response.flow || 'unknown';
+    normalized.fallbackUsed = response.fallbackUsed || false;
+    normalized.actualModel = response.actualModel || response.model;
+    
+    // Log the LLM interaction
+    if (loggingService && userId) {
+      try {
+        await loggingService.logInteraction({
+          timestamp: Date.now(),
+          userId: hashUserId(userId),
+          sessionId: sessionId || 'unknown',
+          command,
+          interpretation: normalized,
+          llmRequest: {
+            model: requestModel,
+            provider: response.provider || 'unknown',
+            flow: response.flow || 'unknown',
+            messages,
+            temperature: 0.7,
+            jsonMode: true,
+            grounding: response.flow === 'gemini-direct' && process.env.GEMINI_SEARCH_GROUNDING === 'true'
+          },
+          llmResponse: {
+            content: response.content,
+            usage: response.usage,
+            latency,
+            fallbackUsed: response.fallbackUsed,
+            actualModel: response.actualModel
+          },
+          result: {
+            success: normalized.intent !== 'unknown',
+            message: normalized.intent !== 'unknown' ? 'Interpretation successful' : 'Failed to interpret command'
+          }
+        });
+      } catch (error) {
+        console.error('Failed to log LLM interaction:', error);
+        // Don't throw - logging failure shouldn't break the request
+      }
+    }
     
     // Validate we got something useful
     if (normalized.intent === 'unknown' && retryCount < MAX_RETRIES) {
       console.log(`Retry ${retryCount + 1} for command interpretation`);
-      return interpretCommand(command, userId, retryCount + 1, preferredModel);
+      return interpretCommand(command, userId, retryCount + 1, preferredModel, musicContext, sessionId);
     }
     
     return normalized;
@@ -429,7 +487,14 @@ ${musicContext || ''}`;
           response_format: { type: 'json_object' }
         });
         
-        return normalizeResponse(response.content);
+        const normalized = normalizeResponse(response.content);
+        normalized.model = response.model || fallbackModels[retryCount] || 'unknown';
+        normalized.provider = response.provider || 'unknown';
+        normalized.flow = response.flow || 'unknown';
+        normalized.fallbackUsed = response.fallbackUsed || false;
+        normalized.actualModel = response.actualModel || response.model;
+        
+        return normalized;
       } catch (retryError) {
         console.error(`Fallback model ${fallbackModels[retryCount]} also failed:`, retryError);
       }
@@ -796,7 +861,7 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
     }
     
     // Use userId for conversation history instead of sessionId
-    const interpretation = await interpretCommand(command, userId || undefined, 0, preferredModel, musicContext);
+    const interpretation = await interpretCommand(command, userId || undefined, 0, preferredModel, musicContext, userId || 'anonymous');
     console.log('LLM interpretation:', interpretation);
 
     let refreshedTokens: SpotifyAuthTokens | null = null;
@@ -1372,7 +1437,7 @@ simpleLLMInterpreterRouter.get('/test', async (req, res) => {
   const results = [];
   for (const cmd of testCommands) {
     try {
-      const interpretation = await interpretCommand(cmd, undefined, 0, undefined);
+      const interpretation = await interpretCommand(cmd, undefined, 0, undefined, undefined, 'test');
       results.push({ command: cmd, interpretation });
     } catch (error) {
       results.push({ command: cmd, error: error instanceof Error ? error.message : 'Failed' });
@@ -1403,7 +1468,7 @@ simpleLLMInterpreterRouter.post('/test-interpret', async (req, res) => {
       }
     }
     
-    const interpretation = await interpretCommand(command, userId || undefined, 0, preferredModel);
+    const interpretation = await interpretCommand(command, userId || undefined, 0, preferredModel, undefined, userId || 'test');
     const responseTime = Date.now() - startTime;
     
     // Store conversation entry for testing (same as main endpoint)

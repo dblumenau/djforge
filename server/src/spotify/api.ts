@@ -350,4 +350,9 @@ export class SpotifyWebAPI {
       await this.seekToPosition(currentPosition);
     }
   }
+
+  async getUserProfile(): Promise<any> {
+    const response = await this.api.get('/me');
+    return response.data;
+  }
 }

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import MusicLoader from './MusicLoader';
 import SpotifyPlayer from './SpotifyPlayer';
 import ModelSelector from './ModelSelector';
+import LLMLogsViewer from './LLMLogsViewer';
 import { useSpotifyAuth } from '../hooks/useSpotifyAuth';
 import { apiEndpoint } from '../config/api';
 import { authenticatedFetch } from '../utils/api';
@@ -33,6 +34,7 @@ const ExampleList: React.FC<{ examples: string[] }> = ({ examples }) => {
 const MainApp: React.FC = () => {
   const navigate = useNavigate();
   const [showExamplesModal, setShowExamplesModal] = useState(false);
+  const [showLogs, setShowLogs] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [checking, setChecking] = useState(true);
   const [command, setCommand] = useState('');
@@ -434,6 +436,12 @@ const MainApp: React.FC = () => {
                 </>
               )}
               <button 
+                className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-full hover:bg-blue-700 transition-colors text-sm"
+                onClick={() => setShowLogs(true)}
+              >
+                View Logs
+              </button>
+              <button 
                 className="px-4 py-2 bg-red-600 text-white font-semibold rounded-full hover:bg-red-700 transition-colors text-sm"
                 onClick={() => {
                   logout();
@@ -736,6 +744,11 @@ const MainApp: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* LLM Logs Viewer */}
+      {showLogs && (
+        <LLMLogsViewer onClose={() => setShowLogs(false)} />
       )}
     </div>
   );

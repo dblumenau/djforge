@@ -542,6 +542,16 @@ export class SpotifyControl {
       return { success: false, message: `Failed to clear queue: ${error.message}` };
     }
   }
+
+  async getUserProfile(): Promise<any> {
+    try {
+      const profile = await this.webAPI.getUserProfile();
+      return profile;
+    } catch (error: any) {
+      console.error('Failed to get user profile:', error);
+      throw error;
+    }
+  }
 }
 
 // All endpoints now use ensureValidToken from auth.ts
