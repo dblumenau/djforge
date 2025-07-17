@@ -316,6 +316,15 @@ const LLMLogsViewer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                           log.llmResponse.usage?.totalTokens || 'N/A'
                         }
                       </div>
+                      
+                      {(log.interpretation as any)?.reasoning && (
+                        <div className="mt-2 text-sm">
+                          <span className="text-gray-500">Reasoning:</span>{' '}
+                          <span className="text-gray-300 italic">
+                            {(log.interpretation as any).reasoning}
+                          </span>
+                        </div>
+                      )}
                     </div>
                     
                     <button
