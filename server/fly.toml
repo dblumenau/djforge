@@ -17,6 +17,7 @@ kill_timeout = '5s'
 [env]
   NODE_ENV = 'production'
   PORT = '8080'
+  LOG_RETENTION_DAYS = '90'
 
 [[services]]
   protocol = 'tcp'
