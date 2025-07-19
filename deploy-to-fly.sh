@@ -98,6 +98,8 @@ case $ACTION in
         read -p "ENABLE_GEMINI_DIRECT (true/false, default: false): " ENABLE_GEMINI_DIRECT
         read -p "GEMINI_SEARCH_GROUNDING (true/false, default: false): " GEMINI_SEARCH_GROUNDING
         read -p "ADMIN_SPOTIFY_ID (your Spotify user ID for admin access): " ADMIN_SPOTIFY_ID
+        read -p "DMI_CLIENT_ID (for weather data): " DMI_CLIENT_ID
+        read -p "DMI_API_KEY (for weather data): " DMI_API_KEY
         read -p "REDIS_HOST (leave blank for localhost): " REDIS_HOST
         read -p "REDIS_PORT (default 6379): " REDIS_PORT
         read -s -p "REDIS_PASSWORD: " REDIS_PASSWORD
@@ -122,6 +124,8 @@ case $ACTION in
             ${ENABLE_GEMINI_DIRECT:+ENABLE_GEMINI_DIRECT="$ENABLE_GEMINI_DIRECT"} \
             ${GEMINI_SEARCH_GROUNDING:+GEMINI_SEARCH_GROUNDING="$GEMINI_SEARCH_GROUNDING"} \
             ${ADMIN_SPOTIFY_ID:+ADMIN_SPOTIFY_ID="$ADMIN_SPOTIFY_ID"} \
+            ${DMI_CLIENT_ID:+DMI_CLIENT_ID="$DMI_CLIENT_ID"} \
+            ${DMI_API_KEY:+DMI_API_KEY="$DMI_API_KEY"} \
             REDIS_HOST="${REDIS_HOST:-localhost}" \
             REDIS_PORT="${REDIS_PORT:-6379}" \
             ${REDIS_PASSWORD:+REDIS_PASSWORD="$REDIS_PASSWORD"} \

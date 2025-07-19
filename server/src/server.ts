@@ -15,6 +15,7 @@ import { waitlistRouter } from './routes/waitlist';
 import { llmLogsRouter, setRedisClientForLogs } from './routes/llm-logs';
 import { createRedisClient, checkRedisHealth } from './config/redis';
 import { RedisUtils } from './utils/redis-utils';
+import weatherRouter from './routes/weather';
 
 // Fallback to file store if Redis is unavailable
 const FileStore = require('session-file-store')(session);
@@ -157,6 +158,9 @@ async function initializeAndStart() {
     app.use('/api/preferences', modelPreferencesRouter);
     // Waitlist endpoints
     app.use('/api/waitlist', waitlistRouter);
+    
+    // Weather route
+    app.use('/api/weather', weatherRouter);
     // LLM logs endpoints
     app.use(llmLogsRouter);
 

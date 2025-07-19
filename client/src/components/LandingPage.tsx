@@ -64,7 +64,7 @@ const LandingPage: React.FC = () => {
             <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
               <span className="text-black font-bold text-lg">♪</span>
             </div>
-            <h1 className="text-xl font-bold">Spotify Claude</h1>
+            <h1 className="text-xl font-bold">DJ Forge</h1>
           </div>
           <button 
             onClick={handleLogin}
@@ -132,7 +132,7 @@ const LandingPage: React.FC = () => {
                   <div className="w-3 h-3 bg-red-500 rounded-full"></div>
                   <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
                   <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                  <span className="text-sm text-zinc-500 ml-4">Spotify Claude Controller</span>
+                  <span className="text-sm text-zinc-500 ml-4">DJ Forge Controller</span>
                 </div>
                 
                 {/* Example Conversations */}
@@ -246,7 +246,7 @@ const LandingPage: React.FC = () => {
       <section className="py-20 px-6 bg-zinc-900">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold mb-4">Why Choose Spotify Claude?</h2>
+            <h2 className="text-4xl font-bold mb-4">Why Choose DJ Forge?</h2>
             <p className="text-zinc-300 text-lg max-w-2xl mx-auto">
               Experience the future of music control with AI-powered natural language understanding.
             </p>
@@ -298,7 +298,7 @@ const LandingPage: React.FC = () => {
           <h2 className="text-4xl font-bold mb-4">Join the Waitlist</h2>
           <p className="text-zinc-300 text-lg mb-8">
             Be among the first to experience the future of music control. 
-            We'll notify you as soon as Spotify Claude is ready for early access.
+            We'll notify you as soon as DJ Forge is ready for early access.
           </p>
           
           <form onSubmit={handleWaitlistSubmit} className="space-y-4">
@@ -344,7 +344,7 @@ const LandingPage: React.FC = () => {
             <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
               <span className="text-black font-bold">♪</span>
             </div>
-            <span className="text-lg font-semibold">Spotify Claude</span>
+            <span className="text-lg font-semibold">DJ Forge</span>
           </div>
           <p className="text-zinc-400 text-sm">
             Powered by Claude AI • Made with ❤️ for music lovers

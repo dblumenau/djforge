@@ -4,6 +4,7 @@ import MusicLoader from './MusicLoader';
 import SpotifyPlayer from './SpotifyPlayer';
 import ModelSelector from './ModelSelector';
 import LLMLogsViewer from './LLMLogsViewer';
+import WeatherDisplay from './WeatherDisplay';
 import { useSpotifyAuth } from '../hooks/useSpotifyAuth';
 import { apiEndpoint } from '../config/api';
 import { authenticatedFetch } from '../utils/api';
@@ -347,7 +348,7 @@ const MainApp: React.FC = () => {
         <div className="max-w-4xl mx-auto">
           {/* Header */}
           <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold mb-2">🎵 Spotify Claude</h1>
+            <h1 className="text-4xl font-bold mb-2">🎵 DJ Forge</h1>
             <p className="text-gray-400">Control your Spotify with natural language</p>
           </div>
 
@@ -369,12 +370,21 @@ const MainApp: React.FC = () => {
             </div>
           )}
 
-          {/* Model Selector and Logout */}
-          <div className="mb-6 flex justify-between items-center">
+          {/* Model Selector, Weather, and Logout */}
+          <div className="mb-6 flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
             <ModelSelector 
               onModelChange={handleModelSelect}
             />
-            <div className="flex gap-2">
+            
+            {/* Weather Display - Mobile: new row, Desktop: same row */}
+            <div className="lg:hidden w-full flex justify-center">
+              <WeatherDisplay />
+            </div>
+            <div className="hidden lg:block lg:mx-4">
+              <WeatherDisplay />
+            </div>
+            
+            <div className="flex gap-2 ml-auto lg:ml-0">
               {import.meta.env.DEV && (
                 <>
                   <button 
