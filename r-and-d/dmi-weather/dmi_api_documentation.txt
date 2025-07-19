@@ -1,0 +1,336 @@
+DMI Open Data API - Complete API Documentation
+=============================================
+Generated: Sat Jul 19 15:15:02 CEST 2025
+Base URL: https://dmigw.govcloud.dk/v2/metObs
+
+## API Overview
+
+**Name**: DMI Open Data API - Met observation
+**Version**: 2.0
+**Standard**: OGC API - Features - Part 1: Core
+**Authentication**: Required - X-Gravitee-Api-Key header
+**Terms of Service**: https://confluence.govcloud.dk/display/FDAPI
+
+## Authentication
+
+All requests require an API key in the header:
+```
+X-Gravitee-Api-Key: your-api-key
+```
+
+## Base Endpoints
+
+### Available Endpoints
+
+#### GET /v2/metObs/conformance
+**Summary**: Get the list of conformance classes that this service implements
+
+#### GET /v2/metObs/collections
+
+#### GET /v2/metObs/collections/station
+**Summary**: Get information about the station feature collection
+
+#### GET /v2/metObs/collections/station/items
+**Summary**: Get stations
+
+**Parameters**:
+- `datetime` (query): datetime searching as specified in https://docs.opengeospatial.org/is/17-069r3/17-069r3.html#_parameter_datetime 
+an dates as specified in RFC3339 https://tools.ietf.org/html/rfc3339 [Optional]
+
+#### GET /v2/metObs/collections/station/items
+**Summary**: Get stations
+
+**Parameters**:
+- `stationId` (query): Filter by stationId [Optional]
+
+#### GET /v2/metObs/collections/station/items
+**Summary**: Get stations
+
+**Parameters**:
+- `status` (query): Filter results by station status. Status can be either Active or Inactive. See station list <a href="https://opendatadocs.dmi.govcloud.dk/Data/Meteorological_Observation_Data_Stations">here</a> [Optional]
+
+#### GET /v2/metObs/collections/station/items
+**Summary**: Get stations
+
+**Parameters**:
+- `type` (query): Filter by station type [Optional]
+
+#### GET /v2/metObs/collections/station/items
+**Summary**: Get stations
+
+**Parameters**:
+- `limit` (query): Maximum number of results to return [Optional]
+
+#### GET /v2/metObs/collections/station/items
+**Summary**: Get stations
+
+**Parameters**:
+- `offset` (query): number of results to skip before returning matching results [Optional]
+
+#### GET /v2/metObs/collections/station/items
+**Summary**: Get stations
+
+**Parameters**:
+- `bbox` (query): Select stations within bounding box. Southwesterly point (lon,lat) followed by northeasterly point (lon, lat) [Optional]
+
+#### GET /v2/metObs/collections/station/items
+**Summary**: Get stations
+
+**Parameters**:
+- `bbox-crs` (query): Which coordinate reference system to use. Only the CRS84 is supported [Optional]
+
+#### GET /v2/metObs/collections/station/items/{id}
+**Summary**: Get a single station
+
+**Parameters**:
+- `id` (path): No description [Required]
+
+#### GET /v2/metObs/collections/observation
+**Summary**: Get information about the observation feature collection
+
+#### GET /v2/metObs/collections/observation/items
+**Summary**: Get met observations
+
+**Parameters**:
+- `datetime` (query): datetime searching as specified in https://docs.opengeospatial.org/is/17-069r3/17-069r3.html#_parameter_datetime 
+an dates as specified in RFC3339 https://tools.ietf.org/html/rfc3339 [Optional]
+
+#### GET /v2/metObs/collections/observation/items
+**Summary**: Get met observations
+
+**Parameters**:
+- `period` (query): Period from which to return results. Alternative to using from/to parameters [Optional]
+
+#### GET /v2/metObs/collections/observation/items
+**Summary**: Get met observations
+
+**Parameters**:
+- `stationId` (query): Filter by stationId [Optional]
+
+#### GET /v2/metObs/collections/observation/items
+**Summary**: Get met observations
+
+**Parameters**:
+- `parameterId` (query): Filter by parameterId - see parameter list <a href="https://opendatadocs.dmi.govcloud.dk/en/Data/Meteorological_Observation_Data">here</a> [Optional]
+
+#### GET /v2/metObs/collections/observation/items
+**Summary**: Get met observations
+
+**Parameters**:
+- `limit` (query): Maximum number of results to return [Optional]
+
+#### GET /v2/metObs/collections/observation/items
+**Summary**: Get met observations
+
+**Parameters**:
+- `offset` (query): number of results to skip before returning matching results [Optional]
+
+#### GET /v2/metObs/collections/observation/items
+**Summary**: Get met observations
+
+**Parameters**:
+- `sortorder` (query): Order by which to return results. Default is not sorted [Optional]
+
+#### GET /v2/metObs/collections/observation/items
+**Summary**: Get met observations
+
+**Parameters**:
+- `bbox` (query): Select observations within bounding box. Southwesterly point (lon,lat) followed by northeasterly point (lon, lat) [Optional]
+
+#### GET /v2/metObs/collections/observation/items
+**Summary**: Get met observations
+
+**Parameters**:
+- `bbox-crs` (query): Which coordinate reference system to use. Only the CRS84 is supported [Optional]
+
+#### GET /v2/metObs/collections/observation/items/{id}
+**Summary**: Get a single met observation
+
+**Parameters**:
+- `id` (path): No description [Required]
+
+#### GET /v2/metObs/
+**Summary**: Landing page for service
+
+
+### Collections Structure
+
+#### Collection: observation
+**Title**: Get meteorological observations
+**Description**: Returns meteorological observations
+**Links**:
+- items: https://dmigw.govcloud.dk/v2/metObs/collections/observation/items
+
+#### Collection: observation
+**Title**: Get meteorological observations
+**Description**: Returns meteorological observations
+**Links**:
+- self: https://dmigw.govcloud.dk/v2/metObs/collections/observation
+
+#### Collection: station
+**Title**: Get stations
+**Description**: Returns meteorological observation stations
+**Links**:
+- items: https://dmigw.govcloud.dk/v2/metObs/collections/station/items
+
+#### Collection: station
+**Title**: Get stations
+**Description**: Returns meteorological observation stations
+**Links**:
+- self: https://dmigw.govcloud.dk/v2/metObs/collections/station
+
+
+## API Usage Guide
+
+### 1. Capabilities Endpoints
+
+#### GET /v2/metObs/
+Landing page with API metadata
+
+#### GET /v2/metObs/collections
+List all available data collections
+
+#### GET /v2/metObs/conformance
+List OGC API standards this API conforms to
+
+#### GET /v2/metObs/api
+OpenAPI 3.0 specification
+
+### 2. Met Observation Endpoints
+
+#### GET /v2/metObs/collections/observation/items
+Retrieve meteorological observations
+
+**Query Parameters**:
+- `datetime`: Time range in ISO 8601 format (e.g., `2024-01-01T00:00:00Z/2024-01-02T00:00:00Z`)
+- `parameterId`: Specific parameter to retrieve (e.g., `temp_mean_past1h`, `precip_past1h`)
+- `stationId`: Filter by station ID
+- `limit`: Maximum number of results (default: 10, max: 100000)
+- `offset`: Pagination offset
+- `bbox`: Bounding box filter (minLon,minLat,maxLon,maxLat)
+
+#### GET /v2/metObs/collections/observation/items/{id}
+Retrieve a single observation by ID
+
+### 3. Met Station Endpoints
+
+#### GET /v2/metObs/collections/station/items
+Retrieve list of meteorological stations
+
+**Query Parameters**:
+- `limit`: Maximum number of results
+- `offset`: Pagination offset
+- `bbox`: Bounding box filter
+- `datetime`: Time range when station was active
+
+#### GET /v2/metObs/collections/station/items/{id}
+Retrieve a single station by ID
+
+## Common Parameters
+
+### Parameter IDs (parameterId)
+Common meteorological parameters:
+- `temp_mean_past1h`: Mean temperature past hour (°C)
+- `temp_max_past1h`: Maximum temperature past hour (°C)
+- `temp_min_past1h`: Minimum temperature past hour (°C)
+- `humidity_past1h`: Relative humidity past hour (%)
+- `precip_past1h`: Precipitation past hour (mm)
+- `wind_speed_past1h`: Wind speed past hour (m/s)
+- `wind_dir_past1h`: Wind direction past hour (degrees)
+- `pressure_at_sea_past1h`: Atmospheric pressure at sea level (hPa)
+
+### Time Formats
+- Single time: `2024-01-01T12:00:00Z`
+- Time range: `2024-01-01T00:00:00Z/2024-01-02T00:00:00Z`
+- Open range: `2024-01-01T00:00:00Z/..` (from date to present)
+- Duration: `2024-01-01T00:00:00Z/P1D` (1 day from start)
+
+### Response Formats
+All responses are in GeoJSON format:
+- Collections return `FeatureCollection`
+- Individual items return `Feature`
+
+## Example Requests
+
+### Get stations in Copenhagen area
+```bash
+curl -H "X-Gravitee-Api-Key: YOUR_API_KEY" \
+  "https://dmigw.govcloud.dk/v2/metObs/collections/station/items?bbox=12.5,55.6,12.7,55.8"
+```
+
+### Get temperature observations for last 24 hours
+```bash
+curl -H "X-Gravitee-Api-Key: YOUR_API_KEY" \
+  "https://dmigw.govcloud.dk/v2/metObs/collections/observation/items?parameterId=temp_mean_past1h&datetime=$(date -u -v-24H '+%Y-%m-%dT%H:%M:%SZ')/$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+```
+
+### Get all parameters from specific station
+```bash
+curl -H "X-Gravitee-Api-Key: YOUR_API_KEY" \
+  "https://dmigw.govcloud.dk/v2/metObs/collections/observation/items?stationId=06074&limit=100"
+```
+
+## Response Structure
+
+### Station Feature
+```json
+{
+  "type": "Feature",
+  "id": "06074",
+  "geometry": {
+    "type": "Point",
+    "coordinates": [11.3834, 55.3178]
+  },
+  "properties": {
+    "stationId": "06074",
+    "name": "Abed",
+    "country": "DNK",
+    "owner": "DMI",
+    "parameterId": ["temp_mean_past1h", "humidity_past1h", ...],
+    "validFrom": "1953-01-01T00:00:00Z",
+    "validTo": null
+  }
+}
+```
+
+### Observation Feature
+```json
+{
+  "type": "Feature",
+  "id": "observation-id",
+  "geometry": {
+    "type": "Point",
+    "coordinates": [longitude, latitude]
+  },
+  "properties": {
+    "stationId": "06074",
+    "parameterId": "temp_mean_past1h",
+    "value": 15.2,
+    "observed": "2024-01-01T12:00:00Z"
+  }
+}
+```
+
+## Error Responses
+
+- **400**: Bad Request - Invalid parameters
+- **401**: Unauthorized - Missing or invalid API key
+- **404**: Not Found - Resource doesn't exist
+- **429**: Too Many Requests - Rate limit exceeded
+- **500**: Internal Server Error
+
+## Rate Limits
+
+Check response headers for rate limit information:
+- `X-RateLimit-Limit`: Maximum requests per window
+- `X-RateLimit-Remaining`: Remaining requests
+- `X-RateLimit-Reset`: When the limit resets
+
+
+=============================================
+Documentation extraction complete!
+
+Files created:
+- dmi_api_documentation.txt - Complete API documentation
+- dmi_openapi_spec.json - OpenAPI specification (if available)
+- dmi_api_examples.py - Python examples and documentation
