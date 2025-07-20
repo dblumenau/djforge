@@ -970,49 +970,26 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
           }
 
           console.log(`Spotify search: "${searchQuery}"`);
-          const tracks = await spotifyControl.search(searchQuery);
           
-          // Debug: Log all tracks returned by Spotify
-          console.log(`[DEBUG] Spotify returned ${tracks.length} tracks:`);
-          tracks.forEach((track, idx) => {
-            console.log(`  ${idx + 1}. "${track.name}" by ${track.artists[0]?.name} - Album: "${track.album.name}" (${track.album.release_date || 'no date'})`);
-          });
-          
-          const ranked = rankTracks(tracks, interpretation);
-          
-          // Debug: Log ranked tracks
-          console.log(`[DEBUG] After ranking:`);
-          ranked.forEach((track, idx) => {
-            console.log(`  ${idx + 1}. "${track.name}" - Album: "${track.album.name}" - Score: ${track.relevanceScore}`);
-          });
-
-          if (ranked.length === 0) {
-            result = {
-              success: false,
-              message: `No tracks found for: "${searchQuery}"`,
-            };
+          // Use the appropriate method with retry logic
+          if (canonicalIntent === 'queue_specific_song') {
+            result = await spotifyControl.queueTrack(
+              searchQuery,
+              interpretation.artist,
+              interpretation.track,
+              interpretation.album
+            );
           } else {
-            const track = ranked[0];
-            console.log(`[DEBUG] Selected track: "${track.name}" - Album: "${track.album.name}" - URI: ${track.uri}`);
+            // Use searchAndPlay with retry logic
+            result = await spotifyControl.searchAndPlay(
+              searchQuery,
+              interpretation.artist,
+              interpretation.track,
+              interpretation.album
+            );
             
-            // Check intent for queue vs play - now properly handles queue_specific_song
-            if (canonicalIntent === 'queue_specific_song') {
-              await spotifyControl.queueTrackByUri(track.uri);
-              result = {
-                success: true,
-                message: `Added to queue: ${track.name} by ${track.artists.map((a: any) => a.name).join(', ')}`
-              };
-            } else {
-              await spotifyControl.playTrack(track.uri);
-              result = {
-                success: true,
-                message: `Playing: ${track.name} by ${track.artists.map((a: any) => a.name).join(', ')}`
-              };
-            }
-
-            // Add alternatives from LLM response if provided, otherwise use search results
-            console.log(`[DEBUG] Processing alternatives from LLM: ${JSON.stringify(interpretation.alternatives)}`);
-            if (interpretation.alternatives && interpretation.alternatives.length > 0) {
+            // Add alternatives from LLM response if provided
+            if (interpretation.alternatives && interpretation.alternatives.length > 0 && result.success) {
               // Convert LLM-provided alternatives to proper format with URIs
               const alternativesWithUris = [];
               console.log(`[DEBUG] Converting ${interpretation.alternatives.length} alternatives to URI format`);
@@ -1046,17 +1023,7 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
               if (alternativesWithUris.length > 0) {
                 console.log(`[DEBUG] Successfully converted ${alternativesWithUris.length} alternatives with URIs`);
                 (result as any).alternatives = alternativesWithUris;
-              } else {
-                console.log(`[DEBUG] No alternatives were successfully converted`);
               }
-            } else if (ranked.length > 1) {
-              // Fallback to search results if no LLM alternatives
-              (result as any).alternatives = ranked.slice(1, 5).map((t: any) => ({
-                name: t.name,
-                artists: t.artists.map((a: any) => a.name).join(', '),
-                popularity: t.popularity,
-                uri: t.uri
-              }));
             }
           }
           break;

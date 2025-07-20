@@ -99,47 +99,77 @@ export class SpotifyControl {
     }
   }
 
-  async searchAndPlay(query: string) {
+  async searchAndPlay(query: string, artist?: string, track?: string, album?: string) {
     try {
-      // Search for tracks
-      const tracks = await this.webAPI.search(query);
+      // Search for tracks with retry logic
+      const { tracks, retryLevel } = await this.searchWithRetry(query, artist, track, album);
       
       if (tracks.length === 0) {
         return { success: false, message: `No tracks found for: "${query}"` };
       }
 
       // Play the first result
-      const track = tracks[0];
-      await this.webAPI.playTrack(track.uri);
+      const selectedTrack = tracks[0];
+      await this.webAPI.playTrack(selectedTrack.uri);
+      
+      // Customize message based on retry level
+      let message = '';
+      switch (retryLevel) {
+        case 0:
+          message = `Playing: ${selectedTrack.name} by ${selectedTrack.artists.map((a: { name: string }) => a.name).join(', ')}`;
+          break;
+        case 1:
+          message = `Couldn't find exact match, playing: ${selectedTrack.name} by ${selectedTrack.artists.map((a: { name: string }) => a.name).join(', ')}`;
+          break;
+        case 2:
+          message = `Couldn't find exact match, playing closest match: ${selectedTrack.name} by ${selectedTrack.artists.map((a: { name: string }) => a.name).join(', ')}`;
+          break;
+      }
       
       return { 
         success: true, 
-        message: `Playing: ${track.name} by ${track.artists.map((a: { name: string }) => a.name).join(', ')}`,
-        track,
-        alternatives: tracks.slice(1, 5) // Return other options
+        message,
+        track: selectedTrack,
+        alternatives: tracks.slice(1, 5), // Return other options
+        retryLevel
       };
     } catch (error: any) {
       return { success: false, message: `Search failed: ${error.message}` };
     }
   }
 
-  async queueTrack(query: string) {
+  async queueTrack(query: string, artist?: string, track?: string, album?: string) {
     try {
-      // Search for tracks
-      const tracks = await this.webAPI.search(query);
+      // Search for tracks with retry logic
+      const { tracks, retryLevel } = await this.searchWithRetry(query, artist, track, album);
       
       if (tracks.length === 0) {
         return { success: false, message: `No tracks found for: "${query}"` };
       }
 
       // Queue the first result
-      const track = tracks[0];
-      await this.webAPI.addToQueue(track.uri);
+      const selectedTrack = tracks[0];
+      await this.webAPI.addToQueue(selectedTrack.uri);
+      
+      // Customize message based on retry level
+      let message = '';
+      switch (retryLevel) {
+        case 0:
+          message = `Added to queue: ${selectedTrack.name} by ${selectedTrack.artists.map((a: { name: string }) => a.name).join(', ')}`;
+          break;
+        case 1:
+          message = `Couldn't find exact match, added to queue: ${selectedTrack.name} by ${selectedTrack.artists.map((a: { name: string }) => a.name).join(', ')}`;
+          break;
+        case 2:
+          message = `Couldn't find exact match, added closest match to queue: ${selectedTrack.name} by ${selectedTrack.artists.map((a: { name: string }) => a.name).join(', ')}`;
+          break;
+      }
       
       return { 
         success: true, 
-        message: `Added to queue: ${track.name} by ${track.artists.map((a: { name: string }) => a.name).join(', ')}`,
-        track
+        message,
+        track: selectedTrack,
+        retryLevel
       };
     } catch (error: any) {
       return { success: false, message: `Queue failed: ${error.message}` };
@@ -148,6 +178,39 @@ export class SpotifyControl {
 
   async search(query: string) {
     return this.webAPI.search(query);
+  }
+
+  async searchWithRetry(query: string, artist?: string, track?: string, album?: string): Promise<{ tracks: SpotifyTrack[], retryLevel: number }> {
+    // Attempt 1: Full precision search
+    console.log(`[DEBUG] Attempt 1 - Full search: ${query}`);
+    let tracks = await this.webAPI.search(query);
+    
+    if (tracks.length > 0) {
+      return { tracks, retryLevel: 0 };
+    }
+    
+    // Attempt 2: Without album
+    if (tracks.length === 0 && artist && track) {
+      const queryWithoutAlbum = `artist:"${artist}" track:"${track}"`;
+      console.log(`[DEBUG] Attempt 2 - Retry without album: ${queryWithoutAlbum}`);
+      tracks = await this.webAPI.search(queryWithoutAlbum);
+      
+      if (tracks.length > 0) {
+        return { tracks, retryLevel: 1 };
+      }
+    }
+    
+    // Attempt 3: Just track name (YOLO mode)
+    if (tracks.length === 0 && track) {
+      console.log(`[DEBUG] Attempt 3 - YOLO mode with just track: ${track}`);
+      tracks = await this.webAPI.search(track);
+      
+      if (tracks.length > 0) {
+        return { tracks, retryLevel: 2 };
+      }
+    }
+    
+    return { tracks: [], retryLevel: -1 };
   }
 
   async playTrack(uri: string) {

@@ -60,11 +60,12 @@ const LandingPage: React.FC = () => {
       {/* Navigation */}
       <nav className="relative z-10 p-6">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-              <span className="text-black font-bold text-lg">♪</span>
-            </div>
-            <h1 className="text-xl font-bold">DJ Forge</h1>
+          <div className="flex items-center">
+            <img 
+              src="/landscape_icon.png" 
+              alt="DJ Forge logo" 
+              className="h-10"
+            />
           </div>
           <button 
             onClick={handleLogin}
@@ -79,13 +80,13 @@ const LandingPage: React.FC = () => {
       <section className="relative px-6 py-20 text-center">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-linear-to-r from-green-400 to-green-600 bg-clip-text text-transparent">
-            Control Spotify
+            Control Your Music
             <br />
             With Your Voice
           </h1>
           <p className="text-xl md:text-2xl text-zinc-300 mb-8 max-w-2xl mx-auto">
-            Just say "play some jazz" or "skip to the next song" - powered by Claude AI, 
-            your Spotify becomes as natural as conversation.
+            Just say "Play something obscure by Taylor Swift" or "skip to the next song" - powered by DJ Forge, 
+            your music becomes as natural as conversation.
           </p>
           
           {/* Auth Error Display */}
@@ -119,7 +120,7 @@ const LandingPage: React.FC = () => {
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold mb-4">Natural Language Control</h2>
             <p className="text-zinc-300 text-lg max-w-2xl mx-auto">
-              No more fumbling with buttons. Just speak naturally and let Claude understand your intent.
+              No more fumbling with buttons. Just speak naturally and let our AI understand your intent.
             </p>
           </div>
           
@@ -132,19 +133,19 @@ const LandingPage: React.FC = () => {
                   <div className="w-3 h-3 bg-red-500 rounded-full"></div>
                   <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
                   <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                  <span className="text-sm text-zinc-500 ml-4">DJ Forge Controller</span>
+                  <span className="text-sm text-zinc-500 ml-4">DJ Forge</span>
                 </div>
                 
                 {/* Example Conversations */}
                 <div className="space-y-4 h-64 overflow-y-auto">
                   <div className="flex justify-end">
                     <div className="bg-green-500 text-black px-4 py-2 rounded-lg max-w-xs">
-                      Play some relaxing jazz music
+                      Play something for when I am angry at men...
                     </div>
                   </div>
                   <div className="flex justify-start">
                     <div className="bg-zinc-800 text-white px-4 py-2 rounded-lg max-w-xs">
-                      🎵 Playing Jazz Vibes playlist. Enjoy the smooth sounds!
+                      🎵 Engaging that rage!
                     </div>
                   </div>
                   
@@ -155,7 +156,7 @@ const LandingPage: React.FC = () => {
                   </div>
                   <div className="flex justify-start">
                     <div className="bg-zinc-800 text-white px-4 py-2 rounded-lg max-w-xs">
-                      ⏭️ Skipped to next track: "Take Five" by Dave Brubeck
+                      ⏭️ Skipped to next track: "The Smallest Man Who Ever Lived" by Taylor Swift
                     </div>
                   </div>
                   
@@ -195,9 +196,9 @@ const LandingPage: React.FC = () => {
                     <span className="text-2xl">♪</span>
                   </div>
                   <div>
-                    <h4 className="font-semibold">Take Five</h4>
-                    <p className="text-zinc-400">Dave Brubeck</p>
-                    <p className="text-sm text-zinc-500">Time Out • 1959</p>
+                    <h4 className="font-semibold">The Smallest Man Who Ever Lived</h4>
+                    <p className="text-zinc-400">Taylor Swift</p>
+                    <p className="text-sm text-zinc-500">The Tortured Poets Department THE ANTHOLOGY • 2024</p>
                   </div>
                 </div>
                 
@@ -261,7 +262,7 @@ const LandingPage: React.FC = () => {
               </div>
               <h3 className="text-xl font-semibold mb-2">Natural Voice Control</h3>
               <p className="text-zinc-400">
-                Speak naturally - no need to memorize commands. Just say what you want and let Claude figure it out.
+                Speak naturally - no need to memorize commands. Just say what you want and let DJ Forge figure it out.
               </p>
             </div>
             
@@ -273,7 +274,7 @@ const LandingPage: React.FC = () => {
               </div>
               <h3 className="text-xl font-semibold mb-2">Lightning Fast</h3>
               <p className="text-zinc-400">
-                Instant responses powered by Claude AI. No delays, no confusion - just immediate music control.
+                Instant responses powered by DJ Forge. No delays, no confusion - just immediate music control.
               </p>
             </div>
             
@@ -285,7 +286,7 @@ const LandingPage: React.FC = () => {
               </div>
               <h3 className="text-xl font-semibold mb-2">Smart Understanding</h3>
               <p className="text-zinc-400">
-                Claude understands context and intent, making your music experience more intuitive than ever.
+                DJ Forge understands context and intent, making your music experience more intuitive than ever.
               </p>
             </div>
           </div>
@@ -298,7 +299,7 @@ const LandingPage: React.FC = () => {
           <h2 className="text-4xl font-bold mb-4">Join the Waitlist</h2>
           <p className="text-zinc-300 text-lg mb-8">
             Be among the first to experience the future of music control. 
-            We'll notify you as soon as DJ Forge is ready for early access.
+            I'll notify you when DJ Forge is ready for early access.
           </p>
           
           <form onSubmit={handleWaitlistSubmit} className="space-y-4">
@@ -341,13 +342,14 @@ const LandingPage: React.FC = () => {
       <footer className="py-12 px-6 bg-zinc-900 border-t border-zinc-800">
         <div className="max-w-4xl mx-auto text-center">
           <div className="flex items-center justify-center space-x-2 mb-4">
-            <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-              <span className="text-black font-bold">♪</span>
-            </div>
-            <span className="text-lg font-semibold">DJ Forge</span>
+            <img 
+              src="/square_icon.png" 
+              alt="DJ Forge logo" 
+              className="h-8 w-8"
+            />
           </div>
           <p className="text-zinc-400 text-sm">
-            Powered by Claude AI • Made with ❤️ for music lovers
+            Powered by any AI model of your choice • Made with ❤️ for music lovers
           </p>
         </div>
       </footer>

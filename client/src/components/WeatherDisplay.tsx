@@ -54,16 +54,6 @@ const WeatherDisplay: React.FC = () => {
     return '🥶'; // chilly
   };
 
-  // Format observation time to local time (24-hour format)
-  const formatTime = (isoTime: string) => {
-    const date = new Date(isoTime);
-    return date.toLocaleTimeString('en-GB', { 
-      hour: '2-digit', 
-      minute: '2-digit',
-      hour12: false 
-    });
-  };
-
   if (loading) {
     return (
       <div className="flex items-center gap-3 px-4 py-2 bg-zinc-800/50 rounded-full">
