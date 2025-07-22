@@ -104,7 +104,7 @@ function normalizeResponse(raw: any): any {
     artist: raw.artist || raw.artist_name || raw.artistName || '',
     track: raw.track || raw.song || raw.track_name || raw.trackName || '',
     album: raw.album || raw.album_name || raw.albumName || '',
-    confidence: typeof raw.confidence === 'number' ? raw.confidence : 0.7,
+    confidence: typeof raw.confidence === 'number' ? raw.confidence : 7,
     reasoning: raw.reasoning || raw.explanation || '',
     modifiers: raw.modifiers || {},
     alternatives: Array.isArray(raw.alternatives) ? raw.alternatives : [],
@@ -130,7 +130,7 @@ function needsConfirmation(interpretation: any): boolean {
   const isDestructive = destructiveIntents.includes(interpretation.intent) || 
                        interpretation.intent.includes('play') || 
                        interpretation.intent.includes('queue');
-  const lowConfidence = interpretation.confidence < 0.7;
+  const lowConfidence = interpretation.confidence < 7;
   
   return isDestructive && lowConfidence;
 }
@@ -142,7 +142,7 @@ function createConfirmationResponse(interpretation: any): any {
   
   return {
     success: true,
-    message: `Are you asking me to ${action} "${target}"? (Low confidence: ${Math.round(interpretation.confidence * 100)}%)`,
+    message: `Are you asking me to ${action} "${target}"? (Low confidence: ${interpretation.confidence}/10)`,
     confirmation_needed: true,
     pending_action: interpretation,
     confidence: interpretation.confidence
@@ -307,7 +307,7 @@ For specific song requests (both play and queue):
   "artist": "Exact Artist Name",
   "track": "Exact Song Title",
   "album": "Album Name (optional)",
-  "confidence": 0.8-1.0,
+  "confidence": 8-10,
   "reasoning": "Why this specific song matches their request",
   "alternatives": [
     "Artist Name - Song Title",
@@ -336,7 +336,7 @@ For multiple song requests:
     },
     ... (5-10 songs total)
   ],
-  "confidence": 0.8-1.0,
+  "confidence": 8-10,
   "reasoning": "Why these songs match the request theme/mood/similarity",
   "theme": "Brief description of the common theme (e.g., 'obscure Beyoncé tracks', 'upbeat indie songs')"
 }
@@ -345,14 +345,14 @@ For playlist requests:
 {
   "intent": "play_playlist" or "queue_playlist",
   "query": "playlist search terms",
-  "confidence": 0.7-1.0,
+  "confidence": 7-10,
   "reasoning": "brief explanation"
 }
 
 For conversational requests:
 {
   "intent": "chat" or "ask_question",
-  "confidence": 0.8-1.0,
+  "confidence": 8-10,
   "reasoning": "explain why this is conversational and what information to provide",
   "responseMessage": "The actual answer to the user's question about the artist/music. For 'this artist' questions, use the currently playing context to provide information about the specific artist. Include interesting facts, notable achievements, genre influences, and career highlights. Keep it 2-4 sentences."
 }
@@ -361,27 +361,27 @@ For control intents:
 {
   "intent": "set_volume",
   "volume_level": 75,
-  "confidence": 0.9,
+  "confidence": 9,
   "reasoning": "setting volume to specified level"
 }
 
 {
   "intent": "pause" or "play" or "skip" or "previous",
-  "confidence": 0.9,
+  "confidence": 9,
   "reasoning": "basic playback control"
 }
 
 {
   "intent": "set_shuffle",
   "enabled": true,
-  "confidence": 0.9,
+  "confidence": 9,
   "reasoning": "enabling or disabling shuffle"
 }
 
 {
   "intent": "set_repeat",
   "enabled": true,
-  "confidence": 0.9,
+  "confidence": 9,
   "reasoning": "enabling or disabling repeat"
 }
 
@@ -400,7 +400,7 @@ ${musicContext || ''}`;
     const startTime = Date.now();
     const requestModel = preferredModel || OPENROUTER_MODELS.GEMINI_2_5_FLASH;
     const messages = [
-      { role: 'system' as const, content: 'Respond with valid JSON. Be helpful and specific. Include confidence scores. CRITICAL: You must use the discriminated union pattern - when intent is "play_specific_song" or "queue_specific_song", you MUST include artist, track, and alternatives fields. ALWAYS provide 4-5 alternative song suggestions in the alternatives array using the format "Artist Name - Song Title". When intent is "play_playlist" or "queue_playlist", use query field. Never use generic search queries for specific song requests - always recommend exact songs using your music knowledge. Distinguish between playing (immediate) and queuing (add to queue) for both songs and playlists. For conversational intents (chat, ask_question), include the actual answer in the responseMessage field.' },
+      { role: 'system' as const, content: 'Respond with valid JSON. Be helpful and specific. Include confidence scores on a 1-10 scale. CRITICAL: You must use the discriminated union pattern - when intent is "play_specific_song" or "queue_specific_song", you MUST include artist, track, and alternatives fields. ALWAYS provide 4-5 alternative song suggestions in the alternatives array using the format "Artist Name - Song Title". When intent is "play_playlist" or "queue_playlist", use query field. Never use generic search queries for specific song requests - always recommend exact songs using your music knowledge. Distinguish between playing (immediate) and queuing (add to queue) for both songs and playlists. For conversational intents (chat, ask_question), include the actual answer in the responseMessage field.' },
       { role: 'user' as const, content: prompt }
     ];
     
@@ -508,7 +508,7 @@ ${musicContext || ''}`;
               lowerCommand.includes('skip') || lowerCommand.includes('next') ? 'skip' :
               lowerCommand.includes('volume') ? 'volume' : 'unknown',
       query: command.replace(/^(play|search for|find)\s+/i, ''),
-      confidence: 0.3,
+      confidence: 3,
       reasoning: 'Basic keyword matching fallback'
     };
   }
@@ -1481,6 +1481,86 @@ simpleLLMInterpreterRouter.post('/test-interpret', async (req, res) => {
       command,
       error: error instanceof Error ? error.message : 'Failed to interpret',
       timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Direct Spotify action endpoint (bypasses LLM)
+simpleLLMInterpreterRouter.post('/direct-action', ensureValidToken, async (req, res) => {
+  const { action, uri, name } = req.body;
+  
+  if (!action || !uri) {
+    return res.status(400).json({ error: 'Missing action or uri' });
+  }
+  
+  if (!['play', 'queue'].includes(action)) {
+    return res.status(400).json({ error: 'Invalid action. Must be "play" or "queue"' });
+  }
+  
+  console.log(`Direct Spotify action: ${action} ${uri} (${name})`);
+  
+  try {
+    let refreshedTokens: SpotifyAuthTokens | null = null;
+    
+    const spotifyControl = new SpotifyControl(
+      req.spotifyTokens!,
+      (tokens) => { 
+        refreshedTokens = tokens;
+        req.spotifyTokens = tokens; 
+      }
+    );
+    
+    let result;
+    
+    if (action === 'play') {
+      // For tracks, use playTrack
+      if (uri.includes(':track:')) {
+        result = await spotifyControl.playTrack(uri);
+      } 
+      // For playlists, use playPlaylist
+      else if (uri.includes(':playlist:')) {
+        result = await spotifyControl.playPlaylist(uri);
+      }
+      // For albums, also use playPlaylist (Spotify treats albums like playlists)
+      else if (uri.includes(':album:')) {
+        result = await spotifyControl.playPlaylist(uri);
+      }
+      else {
+        result = { success: false, message: 'Unsupported URI type' };
+      }
+    } else { // queue
+      // For tracks, use queueTrackByUri
+      if (uri.includes(':track:')) {
+        result = await spotifyControl.queueTrackByUri(uri);
+      } 
+      // For playlists, use queuePlaylist
+      else if (uri.includes(':playlist:')) {
+        const playlistId = uri.split(':').pop();
+        result = await spotifyControl.queuePlaylist(playlistId || uri);
+      }
+      // For albums, also use queuePlaylist
+      else if (uri.includes(':album:')) {
+        const albumId = uri.split(':').pop();
+        result = await spotifyControl.queuePlaylist(albumId || uri);
+      }
+      else {
+        result = { success: false, message: 'Unsupported URI type' };
+      }
+    }
+    
+    const responseData = {
+      ...result,
+      timestamp: new Date().toISOString(),
+      ...(refreshedTokens ? { refreshedTokens } : {})
+    };
+    
+    res.json(responseData);
+    
+  } catch (error) {
+    console.error('Direct action error:', error);
+    res.status(500).json({ 
+      error: 'Failed to execute action',
+      details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });
