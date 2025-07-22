@@ -586,14 +586,14 @@ const MainApp: React.FC = () => {
                                 <div className="w-16 h-2 bg-zinc-700 rounded-full overflow-hidden">
                                   <div 
                                     className={`h-full transition-all ${
-                                      confidence > 0.8 ? 'bg-green-500' : 
-                                      confidence > 0.6 ? 'bg-yellow-500' : 
+                                      confidence >= 8 ? 'bg-green-500' : 
+                                      confidence >= 6 ? 'bg-yellow-500' : 
                                       'bg-orange-500'
                                     }`}
-                                    style={{ width: `${confidence * 100}%` }}
+                                    style={{ width: `${confidence * 10}%` }}
                                   />
                                 </div>
-                                <span className="text-xs text-gray-400">{Math.round(confidence * 100)}%</span>
+                                <span className="text-xs text-gray-400">{confidence}/10</span>
                               </div>
                             )}
                           </div>
