@@ -168,7 +168,7 @@ const MainApp: React.FC = () => {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data = await response.json();
+      await response.json();
       
       // Don't add to command history - these are just quick actions
       // The response is already shown in the UI feedback
