@@ -809,7 +809,7 @@ simpleLLMInterpreterRouter.get('/history', ensureValidToken, async (req, res) =>
     }));
     
     res.json({
-      history: formattedHistory,
+      history: formattedHistory.reverse(), // Reverse to show newest first
       count: formattedHistory.length,
       timestamp: new Date().toISOString()
     });
