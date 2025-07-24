@@ -13,6 +13,7 @@ import { sessionManagementRouter, setRedisUtils } from './routes/session-managem
 import { modelPreferencesRouter, setRedisClient as setModelPrefsRedisClient } from './routes/model-preferences';
 import { waitlistRouter } from './routes/waitlist';
 import { llmLogsRouter, setRedisClientForLogs } from './routes/llm-logs';
+import { directActionRouter, setRedisClient as setDirectActionRedisClient } from './routes/direct-action';
 import { createRedisClient, checkRedisHealth } from './config/redis';
 import { RedisUtils } from './utils/redis-utils';
 import weatherRouter from './routes/weather';
@@ -65,6 +66,9 @@ async function initializeSessionStore() {
       
       // Initialize Redis client for LLM logs
       setRedisClientForLogs(redisClient);
+      
+      // Initialize Redis client for direct actions
+      setDirectActionRedisClient(redisClient);
     } else {
       throw new Error('Redis health check failed');
     }
@@ -163,6 +167,8 @@ async function initializeAndStart() {
     app.use('/api/weather', weatherRouter);
     // LLM logs endpoints
     app.use(llmLogsRouter);
+    // Direct action endpoints (for bypassing LLM)
+    app.use('/api/direct', directActionRouter);
 
     // Determine client URL based on environment
     const clientUrl = process.env.CLIENT_URL || 'http://127.0.0.1:5173';

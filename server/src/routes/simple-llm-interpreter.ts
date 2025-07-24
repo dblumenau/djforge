@@ -104,7 +104,8 @@ function normalizeResponse(raw: any): any {
     artist: raw.artist || raw.artist_name || raw.artistName || '',
     track: raw.track || raw.song || raw.track_name || raw.trackName || '',
     album: raw.album || raw.album_name || raw.albumName || '',
-    confidence: typeof raw.confidence === 'number' ? raw.confidence : 7,
+    confidence: typeof raw.confidence === 'number' ? 
+      (raw.confidence > 1 ? raw.confidence / 10 : raw.confidence) : 0.7,
     reasoning: raw.reasoning || raw.explanation || '',
     modifiers: raw.modifiers || {},
     alternatives: Array.isArray(raw.alternatives) ? raw.alternatives : [],
@@ -130,7 +131,7 @@ function needsConfirmation(interpretation: any): boolean {
   const isDestructive = destructiveIntents.includes(interpretation.intent) || 
                        interpretation.intent.includes('play') || 
                        interpretation.intent.includes('queue');
-  const lowConfidence = interpretation.confidence < 7;
+  const lowConfidence = interpretation.confidence < 0.7;
   
   return isDestructive && lowConfidence;
 }
@@ -142,7 +143,7 @@ function createConfirmationResponse(interpretation: any): any {
   
   return {
     success: true,
-    message: `Are you asking me to ${action} "${target}"? (Low confidence: ${interpretation.confidence}/10)`,
+    message: `Are you asking me to ${action} "${target}"? (Low confidence: ${Math.round(interpretation.confidence * 100)}%)`,
     confirmation_needed: true,
     pending_action: interpretation,
     confidence: interpretation.confidence
@@ -307,7 +308,7 @@ For specific song requests (both play and queue):
   "artist": "Exact Artist Name",
   "track": "Exact Song Title",
   "album": "Album Name (optional)",
-  "confidence": 8-10,
+  "confidence": 0.8-1.0,
   "reasoning": "Why this specific song matches their request",
   "alternatives": [
     "Artist Name - Song Title",
@@ -336,7 +337,7 @@ For multiple song requests:
     },
     ... (5-10 songs total)
   ],
-  "confidence": 8-10,
+  "confidence": 0.8-1.0,
   "reasoning": "Why these songs match the request theme/mood/similarity",
   "theme": "Brief description of the common theme (e.g., 'obscure Beyoncé tracks', 'upbeat indie songs')"
 }
@@ -345,14 +346,14 @@ For playlist requests:
 {
   "intent": "play_playlist" or "queue_playlist",
   "query": "playlist search terms",
-  "confidence": 7-10,
+  "confidence": 0.7-1.0,
   "reasoning": "brief explanation"
 }
 
 For conversational requests:
 {
   "intent": "chat" or "ask_question",
-  "confidence": 8-10,
+  "confidence": 0.8-1.0,
   "reasoning": "explain why this is conversational and what information to provide",
   "responseMessage": "The actual answer to the user's question about the artist/music. For 'this artist' questions, use the currently playing context to provide information about the specific artist. Include interesting facts, notable achievements, genre influences, and career highlights. Keep it 2-4 sentences."
 }
@@ -361,27 +362,27 @@ For control intents:
 {
   "intent": "set_volume",
   "volume_level": 75,
-  "confidence": 9,
+  "confidence": 0.9,
   "reasoning": "setting volume to specified level"
 }
 
 {
   "intent": "pause" or "play" or "skip" or "previous",
-  "confidence": 9,
+  "confidence": 0.9,
   "reasoning": "basic playback control"
 }
 
 {
   "intent": "set_shuffle",
   "enabled": true,
-  "confidence": 9,
+  "confidence": 0.9,
   "reasoning": "enabling or disabling shuffle"
 }
 
 {
   "intent": "set_repeat",
   "enabled": true,
-  "confidence": 9,
+  "confidence": 0.9,
   "reasoning": "enabling or disabling repeat"
 }
 
@@ -400,7 +401,7 @@ ${musicContext || ''}`;
     const startTime = Date.now();
     const requestModel = preferredModel || OPENROUTER_MODELS.GEMINI_2_5_FLASH;
     const messages = [
-      { role: 'system' as const, content: 'Respond with valid JSON. Be helpful and specific. Include confidence scores on a 1-10 scale. CRITICAL: You must use the discriminated union pattern - when intent is "play_specific_song" or "queue_specific_song", you MUST include artist, track, and alternatives fields. ALWAYS provide 4-5 alternative song suggestions in the alternatives array using the format "Artist Name - Song Title". When intent is "play_playlist" or "queue_playlist", use query field. Never use generic search queries for specific song requests - always recommend exact songs using your music knowledge. Distinguish between playing (immediate) and queuing (add to queue) for both songs and playlists. For conversational intents (chat, ask_question), include the actual answer in the responseMessage field.' },
+      { role: 'system' as const, content: 'Respond with valid JSON. Be helpful and specific. Include confidence scores as a decimal between 0 and 1 (e.g., 0.95 for 95% confidence). CRITICAL: You must use the discriminated union pattern - when intent is "play_specific_song" or "queue_specific_song", you MUST include artist, track, and alternatives fields. ALWAYS provide 4-5 alternative song suggestions in the alternatives array using the format "Artist Name - Song Title". When intent is "play_playlist" or "queue_playlist", use query field. Never use generic search queries for specific song requests - always recommend exact songs using your music knowledge. Distinguish between playing (immediate) and queuing (add to queue) for both songs and playlists. For conversational intents (chat, ask_question), include the actual answer in the responseMessage field.' },
       { role: 'user' as const, content: prompt }
     ];
     
@@ -508,7 +509,7 @@ ${musicContext || ''}`;
               lowerCommand.includes('skip') || lowerCommand.includes('next') ? 'skip' :
               lowerCommand.includes('volume') ? 'volume' : 'unknown',
       query: command.replace(/^(play|search for|find)\s+/i, ''),
-      confidence: 3,
+      confidence: 0.3,
       reasoning: 'Basic keyword matching fallback'
     };
   }

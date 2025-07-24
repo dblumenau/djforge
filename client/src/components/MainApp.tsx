@@ -148,17 +148,17 @@ const MainApp: React.FC = () => {
     try {
       setIsProcessing(true);
       
-      // Use the Spotify URI to play or queue the track
-      const command = action === 'play' ? `play ${alternative.name} by ${alternative.artists}` : `queue ${alternative.name} by ${alternative.artists}`;
-      
-      const response = await authenticatedFetch(apiEndpoint('/api/claude/command'), {
+      // Use direct action endpoint to bypass LLM for known URIs
+      const response = await authenticatedFetch(apiEndpoint('/api/direct/song'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          command: command,
-          model: currentModel 
+          uri: alternative.uri,
+          action: action,
+          name: alternative.name,
+          artists: alternative.artists
         }),
       });
 
@@ -168,33 +168,17 @@ const MainApp: React.FC = () => {
 
       const data = await response.json();
       
-      if (data.success) {
-        setCommandHistory(prev => [...prev, {
-          command: command,
-          response: data.response || data.message,
-          confidence: data.interpretation?.confidence,
-          isEnhanced: data.isEnhanced,
-          timestamp: Date.now(),
-          alternatives: data.interpretation?.alternatives,
-          intent: data.interpretation?.intent,
-          reasoning: data.interpretation?.reasoning,
-          model: data.interpretation?.model || currentModel,
-          interpretation: data.interpretation,
-          queuedSongs: data.queuedSongs
-        }]);
-      } else {
-        setCommandHistory(prev => [...prev, {
-          command: command,
-          response: data.error || data.message || 'An error occurred',
-          timestamp: Date.now(),
-          confidence: data.interpretation?.confidence,
-          intent: data.interpretation?.intent,
-          reasoning: data.interpretation?.reasoning,
-          model: data.interpretation?.model || currentModel,
-          interpretation: data.interpretation,
-          queuedSongs: data.queuedSongs
-        }]);
-      }
+      // Add to command history
+      setCommandHistory(prev => [...prev, {
+        command: `${action} ${alternative.name} by ${alternative.artists}`,
+        response: data.response,
+        timestamp: Date.now(),
+        intent: action === 'play' ? 'play_specific_song' : 'queue_specific_song',
+        confidence: 1.0, // Direct action = 100% confidence
+        model: 'direct-action', // Indicate this bypassed the LLM
+        reasoning: 'Direct action - no LLM interpretation needed'
+      }]);
+      
     } catch (error) {
       console.error('Alternative click error:', error);
       setCommandHistory(prev => [...prev, {
@@ -550,8 +534,14 @@ const MainApp: React.FC = () => {
                                 </span>
                               )}
                               {item.model && (
-                                <span className="text-xs bg-gray-600/30 text-gray-400 px-2 py-0.5 rounded-full" title={item.model}>
-                                  {item.model.split('/').pop()?.split('-')[0] || item.model}
+                                <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                  item.model === 'direct-action' 
+                                    ? 'bg-blue-500/20 text-blue-400' 
+                                    : 'bg-gray-600/30 text-gray-400'
+                                }`} title={item.model}>
+                                  {item.model === 'direct-action' 
+                                    ? 'Direct' 
+                                    : item.model.split('/').pop()?.split('-')[0] || item.model}
                                 </span>
                               )}
                             </div>
@@ -586,14 +576,14 @@ const MainApp: React.FC = () => {
                                 <div className="w-16 h-2 bg-zinc-700 rounded-full overflow-hidden">
                                   <div 
                                     className={`h-full transition-all ${
-                                      confidence >= 8 ? 'bg-green-500' : 
-                                      confidence >= 6 ? 'bg-yellow-500' : 
+                                      confidence >= 0.8 ? 'bg-green-500' : 
+                                      confidence >= 0.6 ? 'bg-yellow-500' : 
                                       'bg-orange-500'
                                     }`}
-                                    style={{ width: `${confidence * 10}%` }}
+                                    style={{ width: `${confidence * 100}%` }}
                                   />
                                 </div>
-                                <span className="text-xs text-gray-400">{confidence}/10</span>
+                                <span className="text-xs text-gray-400">{Math.round(confidence * 100)}%</span>
                               </div>
                             )}
                           </div>
