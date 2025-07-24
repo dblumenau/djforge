@@ -717,7 +717,7 @@ simpleLLMInterpreterRouter.get('/history', ensureValidToken, async (req, res) =>
     const history = await conversationManager.getConversationHistory(userId, 100);
     
     // Format history to match client's expected structure
-    const formattedHistory = history.map((entry: any) => {
+    const formattedHistory = await Promise.all(history.map(async (entry: any) => {
       // Debug log for conversational entries
       if (entry.interpretation?.intent === 'chat' || entry.interpretation?.intent === 'ask_question') {
         console.log('📝 Formatting conversational history entry:', {
@@ -740,19 +740,73 @@ simpleLLMInterpreterRouter.get('/history', ensureValidToken, async (req, res) =>
         responseText = '';
       }
       
+      // Check if alternatives need to be enriched with URIs
+      let enrichedAlternatives = entry.interpretation?.alternatives || [];
+      
+      // If alternatives exist and are strings, try to enrich them with URIs
+      if (enrichedAlternatives.length > 0 && typeof enrichedAlternatives[0] === 'string') {
+        try {
+          // Only enrich if this was a play or queue intent
+          const intent = entry.interpretation?.intent;
+          if (intent === 'play_specific_song' || intent === 'queue_specific_song') {
+            // Create a temporary SpotifyControl instance to search for tracks
+            const tokens = req.spotifyTokens;
+            if (tokens) {
+              const spotifyControl = new SpotifyControl(
+                tokens,
+                (newTokens) => { req.spotifyTokens = newTokens; }
+              );
+              
+              // Convert string alternatives to objects with URIs
+              const alternativesWithUris = [];
+              for (const altString of enrichedAlternatives.slice(0, 5)) {
+                try {
+                  const parts = altString.split(' - ');
+                  if (parts.length >= 2) {
+                    const artist = parts[0].trim();
+                    const track = parts.slice(1).join(' - ').trim();
+                    
+                    const altSearchQuery = `artist:"${artist}" track:"${track}"`;
+                    const altTracks = await spotifyControl.search(altSearchQuery);
+                    
+                    if (altTracks.length > 0) {
+                      const altTrack = altTracks[0];
+                      alternativesWithUris.push({
+                        name: altTrack.name,
+                        artists: altTrack.artists.map((a: any) => a.name).join(', '),
+                        popularity: altTrack.popularity,
+                        uri: altTrack.uri
+                      });
+                    }
+                  }
+                } catch (error) {
+                  console.error('Error enriching alternative:', altString, error);
+                }
+              }
+              
+              if (alternativesWithUris.length > 0) {
+                enrichedAlternatives = alternativesWithUris;
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Error enriching alternatives:', error);
+        }
+      }
+      
       return {
         command: entry.command,
         response: responseText,
         confidence: entry.interpretation?.confidence,
         isEnhanced: entry.interpretation?.isEnhanced || false,
         timestamp: entry.timestamp,
-        alternatives: entry.interpretation?.alternatives || [],
+        alternatives: enrichedAlternatives,
         interpretation: entry.interpretation,
         model: entry.interpretation?.model || undefined,
         intent: entry.interpretation?.intent,
         reasoning: entry.interpretation?.reasoning
       };
-    });
+    }));
     
     res.json({
       history: formattedHistory,

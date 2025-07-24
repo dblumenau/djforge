@@ -104,6 +104,8 @@ const MainApp: React.FC = () => {
         if (response.ok) {
           const data = await response.json();
           if (data.history && Array.isArray(data.history)) {
+            // History from server is already in chronological order (oldest first)
+            // No need to reverse here since we reverse when displaying
             setCommandHistory(data.history);
           }
         }
