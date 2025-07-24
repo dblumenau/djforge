@@ -123,7 +123,7 @@ cd client && npx tsc --noEmit
 
 ### Critical Implementation Details
 
-1. **OAuth Redirect URI**: Must use `http://127.0.0.1:3001/callback` (NOT localhost)
+1. **OAuth Redirect URI**: Must use `http://127.0.0.1:4001/callback` (NOT localhost)
 2. **Session Handling**: Redis-backed sessions with file-based fallback
 3. **LLM Integration**: 
    - OpenRouter API key required for 30+ model support
@@ -142,10 +142,10 @@ Required `.env` file in project root:
 # Spotify OAuth
 SPOTIFY_CLIENT_ID=your_client_id_here
 SPOTIFY_CLIENT_SECRET=your_client_secret_here
-SPOTIFY_REDIRECT_URI=http://127.0.0.1:3001/callback
+SPOTIFY_REDIRECT_URI=http://127.0.0.1:4001/callback
 
 # Server Configuration
-PORT=3001
+PORT=4001
 SESSION_SECRET=your_session_secret_here
 JWT_SECRET=your_jwt_secret_here
 
@@ -252,6 +252,56 @@ The project underwent a significant refactor transitioning from Claude CLI to a 
 - New LLM code is in `services/llm/` with provider abstraction
 - API endpoints changed from `/api/claude/*` to `/api/llm/*`
 - Intent system now uses structured types with confidence scoring
+
+## LLM Integration Architecture
+
+The system provides two different interpretation endpoints with distinct approaches:
+
+### 1. **Simple LLM Interpreter** (`/api/llm/simple/command`)
+- **Located in**: `routes/simple-llm-interpreter.ts`
+- **Approach**: Flexible, prompt-based with loose JSON validation
+- **Features**:
+  - Personality system (knowledgeable music curator)
+  - Robust JSON parsing with multiple fallback strategies
+  - Sophisticated conversation context filtering
+  - Model fallback chains for reliability
+  - Uses `response_format: { type: 'json_object' }` for compatible models
+- **Best for**: Natural conversation, music discovery, handling ambiguous requests
+
+### 2. **Schema-based LLM Interpreter** (`/api/llm/command`)
+- **Located in**: `routes/llm-interpreter.ts`
+- **Approach**: Strict schema validation using Zod
+- **Features**:
+  - Enforced type safety with predefined schemas
+  - Validates all responses against expected intent types
+  - Falls back to essential field extraction on validation failure
+  - More predictable but less flexible
+- **Best for**: Structured commands, reliable intent detection
+
+### LLM Provider Flows
+
+The `LLMOrchestrator` (`services/llm/orchestrator.ts`) manages two provider flows:
+
+#### OpenRouter Flow (Most Models)
+- Routes through OpenRouter's unified API
+- Supports 30+ different models (GPT-4, Claude, Llama, etc.)
+- Uses prompt engineering to request JSON output
+- Handles JSON parsing with error recovery
+
+#### Gemini Direct Flow (Google Models)
+- Uses Google's native `@google/genai` SDK when available
+- Supports structured output with native JSON schemas
+- Can enable grounding (web search) for enhanced responses
+- Falls back to OpenRouter if direct API fails
+
+### JSON Response Handling
+
+Both interpreters ultimately produce JSON responses, but handle them differently:
+
+- **Simple Interpreter**: Normalizes various response formats, extracts JSON from markdown blocks, handles flexible field names
+- **Schema Interpreter**: Expects exact schema compliance, uses Zod for validation, has strict field requirements
+
+The system automatically selects the appropriate flow based on the model and endpoint used.
 
 ## Deployment
 

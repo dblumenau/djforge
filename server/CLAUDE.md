@@ -103,8 +103,8 @@ Required environment variables:
 ```bash
 SPOTIFY_CLIENT_ID=your_client_id
 SPOTIFY_CLIENT_SECRET=your_client_secret
-SPOTIFY_REDIRECT_URI=http://127.0.0.1:3001/callback
-PORT=3001
+SPOTIFY_REDIRECT_URI=http://127.0.0.1:4001/callback
+PORT=4001   
 SESSION_SECRET=your_session_secret
 REDIS_URL=redis://localhost:6379
 OPENROUTER_API_KEY=your_openrouter_key

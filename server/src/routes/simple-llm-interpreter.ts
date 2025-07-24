@@ -8,6 +8,12 @@ import { ConversationEntry, DialogState } from '../utils/redisConversation';
 import { ConversationManager, getConversationManager } from '../services/ConversationManager';
 import { LLMLoggingService } from '../services/llm-logging.service';
 import { createHash } from 'crypto';
+import { 
+  FULL_CURATOR_GUIDELINES,
+  ALTERNATIVES_APPROACH,
+  RESPONSE_VARIATION,
+  formatMusicHistory 
+} from '../llm/music-curator-prompts';
 
 export const simpleLLMInterpreterRouter = Router();
 
@@ -159,11 +165,19 @@ async function interpretCommand(command: string, userId?: string, retryCount = 0
   if (userId && conversationManager) {
     // Get both conversation history and dialog state
     const [history, state] = await Promise.all([
-      conversationManager.getConversationHistory(userId, 8),
+      conversationManager.getConversationHistory(userId, 50), // Fetch more entries to filter
       conversationManager.getDialogState(userId)
     ]);
     
-    conversationHistory = history;
+    // Filter to only successful music play/queue commands
+    const musicIntents = ['play_specific_song', 'queue_specific_song', 'play_playlist', 'queue_playlist'];
+    const musicHistory = history.filter(entry => 
+      musicIntents.includes(entry.interpretation?.intent) && 
+      entry.response?.success === true
+    );
+    
+    // Take last 20 successful music plays for context
+    conversationHistory = musicHistory.slice(-20);
     dialogState = state;
     
     // Check if this is a contextual reference
@@ -193,7 +207,7 @@ async function interpretCommand(command: string, userId?: string, retryCount = 0
     conversationHistory.slice(0, 2);
   
   console.log(`[DEBUG] Command: "${command}"`);
-  console.log(`[DEBUG] Full history length: ${conversationHistory.length}`);
+  console.log(`[DEBUG] Music history length (filtered): ${conversationHistory.length}`);
   console.log(`[DEBUG] Relevant context length: ${relevantContext.length}`);
   console.log(`[DEBUG] Dialog state last action:`, dialogState?.last_action?.artist, '-', dialogState?.last_action?.track);
   
@@ -205,22 +219,9 @@ async function interpretCommand(command: string, userId?: string, retryCount = 0
   }
   
   // Format conversation context for the LLM
-  const contextBlock = relevantContext.length > 0 ? `
-CONVERSATION CONTEXT:
-${relevantContext.map((entry, idx) => `
-[${idx + 1}] User: "${entry.command}"
-    Intent: ${entry.interpretation.intent}
-    ${entry.interpretation.artist ? `Artist: ${entry.interpretation.artist}` : ''}
-    ${entry.interpretation.track ? `Track: ${entry.interpretation.track}` : ''}
-    ${entry.interpretation.query ? `Query: ${entry.interpretation.query}` : ''}
-    ${entry.interpretation.alternatives && entry.interpretation.alternatives.length > 0 ? 
-      `Alternatives shown: ${entry.interpretation.alternatives.join(', ')}` : ''}
-`).join('\n')}
-
-IMPORTANT: If the user is referencing something from the conversation above (like "no the taylor swift one", "the second one", "actually play X instead"), look for it in the alternatives or context and respond with the specific song they're referring to.
-` : '';
+  const contextBlock = relevantContext.length > 0 ? formatMusicHistory(relevantContext) : '';
   
-  const prompt = `You are an advanced music command interpreter for Spotify with deep knowledge of music.
+  const prompt = `${FULL_CURATOR_GUIDELINES}
 
 ${contextBlock}
 [DEBUG: Relevant context entries: ${relevantContext.length}]
@@ -315,10 +316,11 @@ For specific song requests (both play and queue):
     "Artist Name - Song Title", 
     "Artist Name - Song Title",
     "Artist Name - Song Title",
+    "Artist Name - Song Title",
     "Artist Name - Song Title"
   ]
   
-  IMPORTANT: Always provide 4-5 alternative song suggestions in the alternatives array. These should be similar songs by the same artist or related artists that the user might also enjoy.
+  IMPORTANT: ${ALTERNATIVES_APPROACH}
 }
 
 For multiple song requests:
@@ -401,7 +403,7 @@ ${musicContext || ''}`;
     const startTime = Date.now();
     const requestModel = preferredModel || OPENROUTER_MODELS.GEMINI_2_5_FLASH;
     const messages = [
-      { role: 'system' as const, content: 'Respond with valid JSON. Be helpful and specific. Include confidence scores as a decimal between 0 and 1 (e.g., 0.95 for 95% confidence). CRITICAL: You must use the discriminated union pattern - when intent is "play_specific_song" or "queue_specific_song", you MUST include artist, track, and alternatives fields. ALWAYS provide 4-5 alternative song suggestions in the alternatives array using the format "Artist Name - Song Title". When intent is "play_playlist" or "queue_playlist", use query field. Never use generic search queries for specific song requests - always recommend exact songs using your music knowledge. Distinguish between playing (immediate) and queuing (add to queue) for both songs and playlists. For conversational intents (chat, ask_question), include the actual answer in the responseMessage field.' },
+      { role: 'system' as const, content: `Respond with valid JSON. Be helpful and specific. Include confidence scores as a decimal between 0 and 1 (e.g., 0.95 for 95% confidence). CRITICAL: You must use the discriminated union pattern - when intent is "play_specific_song" or "queue_specific_song", you MUST include artist, track, and alternatives fields. ${ALTERNATIVES_APPROACH} When intent is "play_playlist" or "queue_playlist", use query field. Never use generic search queries for specific song requests - always recommend exact songs using your music knowledge. Distinguish between playing (immediate) and queuing (add to queue) for both songs and playlists. For conversational intents (chat, ask_question), include the actual answer in the responseMessage field. ${RESPONSE_VARIATION}` },
       { role: 'user' as const, content: prompt }
     ];
     

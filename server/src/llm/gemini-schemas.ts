@@ -17,6 +17,11 @@
  */
 
 import { Type } from "@google/genai";
+import { 
+  FULL_CURATOR_GUIDELINES,
+  ALTERNATIVES_APPROACH,
+  RESPONSE_VARIATION 
+} from './music-curator-prompts';
 
 // Music Command Intent Schema - Core schema for most requests
 export const MusicCommandIntentSchema = {
@@ -357,10 +362,11 @@ export const BatchCommandSchema = {
 
 // System prompts optimized for Gemini's native structured output
 export const GEMINI_SYSTEM_PROMPTS = {
-  MUSIC_INTERPRETER: `You are an expert music command interpreter for a Spotify controller.
+  MUSIC_INTERPRETER: `${FULL_CURATOR_GUIDELINES}
+
 Your task is to understand natural language music commands and convert them to structured responses.
 
-You have deep knowledge of music history, artists, albums, and can understand:
+You can understand:
 - Vague descriptions ("that song from the movie")
 - Mood-based requests ("something melancholy")
 - Era/genre specific requests ("80s synthpop")
@@ -370,7 +376,8 @@ You have deep knowledge of music history, artists, albums, and can understand:
 Key guidelines:
 - Always provide a confidence score between 0 and 1
 - Include reasoning for your interpretation
-- For unclear requests, suggest alternatives
+- ${ALTERNATIVES_APPROACH}
+- ${RESPONSE_VARIATION}
 - Use enhanced Spotify search queries when possible
 - Be creative in interpreting vague requests while maintaining accuracy
 - IMPORTANT: For conversational intents (chat, ask_question), you MUST include the actual answer in the responseMessage field
