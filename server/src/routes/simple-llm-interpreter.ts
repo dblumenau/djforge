@@ -988,43 +988,43 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
               interpretation.track,
               interpretation.album
             );
-            
-            // Add alternatives from LLM response if provided
-            if (interpretation.alternatives && interpretation.alternatives.length > 0 && result.success) {
-              // Convert LLM-provided alternatives to proper format with URIs
-              const alternativesWithUris = [];
-              console.log(`[DEBUG] Converting ${interpretation.alternatives.length} alternatives to URI format`);
-              for (const altString of interpretation.alternatives.slice(0, 5)) {
-                try {
-                  // Parse "Artist Name - Song Title" format
-                  const parts = altString.split(' - ');
-                  if (parts.length >= 2) {
-                    const artist = parts[0].trim();
-                    const track = parts.slice(1).join(' - ').trim();
-                    
-                    // Search for this alternative on Spotify
-                    const altSearchQuery = `artist:"${artist}" track:"${track}"`;
-                    const altTracks = await spotifyControl.search(altSearchQuery);
-                    
-                    if (altTracks.length > 0) {
-                      const altTrack = altTracks[0];
-                      alternativesWithUris.push({
-                        name: altTrack.name,
-                        artists: altTrack.artists.map((a: any) => a.name).join(', '),
-                        popularity: altTrack.popularity,
-                        uri: altTrack.uri
-                      });
-                    }
+          }
+          
+          // Add alternatives from LLM response if provided (for both play and queue)
+          if (interpretation.alternatives && interpretation.alternatives.length > 0 && result.success) {
+            // Convert LLM-provided alternatives to proper format with URIs
+            const alternativesWithUris = [];
+            console.log(`[DEBUG] Converting ${interpretation.alternatives.length} alternatives to URI format`);
+            for (const altString of interpretation.alternatives.slice(0, 5)) {
+              try {
+                // Parse "Artist Name - Song Title" format
+                const parts = altString.split(' - ');
+                if (parts.length >= 2) {
+                  const artist = parts[0].trim();
+                  const track = parts.slice(1).join(' - ').trim();
+                  
+                  // Search for this alternative on Spotify
+                  const altSearchQuery = `artist:"${artist}" track:"${track}"`;
+                  const altTracks = await spotifyControl.search(altSearchQuery);
+                  
+                  if (altTracks.length > 0) {
+                    const altTrack = altTracks[0];
+                    alternativesWithUris.push({
+                      name: altTrack.name,
+                      artists: altTrack.artists.map((a: any) => a.name).join(', '),
+                      popularity: altTrack.popularity,
+                      uri: altTrack.uri
+                    });
                   }
-                } catch (error) {
-                  console.error('Error processing alternative:', altString, error);
                 }
+              } catch (error) {
+                console.error('Error processing alternative:', altString, error);
               }
-              
-              if (alternativesWithUris.length > 0) {
-                console.log(`[DEBUG] Successfully converted ${alternativesWithUris.length} alternatives with URIs`);
-                (result as any).alternatives = alternativesWithUris;
-              }
+            }
+            
+            if (alternativesWithUris.length > 0) {
+              console.log(`[DEBUG] Successfully converted ${alternativesWithUris.length} alternatives with URIs`);
+              (result as any).alternatives = alternativesWithUris;
             }
           }
           break;
