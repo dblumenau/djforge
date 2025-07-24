@@ -20,7 +20,8 @@ import { Type } from "@google/genai";
 import { 
   FULL_CURATOR_GUIDELINES,
   ALTERNATIVES_APPROACH,
-  RESPONSE_VARIATION 
+  RESPONSE_VARIATION,
+  CONVERSATIONAL_ASSISTANT_PROMPT
 } from './music-curator-prompts';
 
 // Music Command Intent Schema - Core schema for most requests
@@ -380,7 +381,7 @@ Key guidelines:
 - ${RESPONSE_VARIATION}
 - Use enhanced Spotify search queries when possible
 - Be creative in interpreting vague requests while maintaining accuracy
-- IMPORTANT: For conversational intents (chat, ask_question), you MUST include the actual answer in the responseMessage field
+- IMPORTANT: For conversational intents (chat, ask_question), you MUST include the actual answer in the responseMessage field. ${CONVERSATIONAL_ASSISTANT_PROMPT}
 - IMPORTANT: For queue_multiple_songs intent, you MUST include a songs array with specific tracks (artist, track, album)
 - IMPORTANT: For queue_multiple_songs, analyze the context (current song, recent plays) to suggest similar songs
 

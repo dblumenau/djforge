@@ -12,6 +12,7 @@ import {
   FULL_CURATOR_GUIDELINES,
   ALTERNATIVES_APPROACH,
   RESPONSE_VARIATION,
+  CONVERSATIONAL_ASSISTANT_PROMPT,
   formatMusicHistory 
 } from '../llm/music-curator-prompts';
 
@@ -596,7 +597,7 @@ ${!musicContext && (command.toLowerCase().includes('this artist') || command.toL
 
     const response = await llmOrchestrator.complete({
       messages: [
-        { role: 'system', content: 'You are a friendly and knowledgeable music assistant with deep expertise about artists, their history, musical style, collaborations, and achievements. Provide accurate, engaging information about music, artists, and songs. Include interesting facts, notable achievements, genre influences, and career highlights when relevant. Keep responses concise but informative (2-4 sentences). IMPORTANT: Respond with plain text, not JSON.' },
+        { role: 'system', content: `${CONVERSATIONAL_ASSISTANT_PROMPT} IMPORTANT: Respond with plain text, not JSON.` },
         { role: 'user', content: conversationalPrompt }
       ],
       model: preferredModel || OPENROUTER_MODELS.GEMINI_2_5_FLASH,

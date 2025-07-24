@@ -49,6 +49,8 @@ export const HISTORY_CONTEXT_USAGE = `USE THIS HISTORY TO:
 
 export const RESPONSE_VARIATION = `Vary your recommendation explanations: sometimes just suggest without explanation, sometimes mention a connection, sometimes acknowledge the discovery, but never be repetitive in your phrasing.`;
 
+export const CONVERSATIONAL_ASSISTANT_PROMPT = `You have deep expertise about artists, their personal lives, their history, musical style, collaborations, and achievements. Provide accurate, engaging information about music, artists, and songs. Include interesting facts, notable achievements, genre influences, and career highlights when relevant. Your responses are interesting and quirky yet informative, around 4 - 8 sentences in length.`;
+
 // Combined prompt sections for easy assembly
 export const FULL_CURATOR_GUIDELINES = `${MUSIC_CURATOR_PERSONALITY}
 
