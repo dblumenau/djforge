@@ -168,24 +168,12 @@ const MainApp: React.FC = () => {
 
       const data = await response.json();
       
-      // Add to command history
-      setCommandHistory(prev => [...prev, {
-        command: `${action} ${alternative.name} by ${alternative.artists}`,
-        response: data.response,
-        timestamp: Date.now(),
-        intent: action === 'play' ? 'play_specific_song' : 'queue_specific_song',
-        confidence: 1.0, // Direct action = 100% confidence
-        model: 'direct-action', // Indicate this bypassed the LLM
-        reasoning: 'Direct action - no LLM interpretation needed'
-      }]);
+      // Don't add to command history - these are just quick actions
+      // The response is already shown in the UI feedback
       
     } catch (error) {
       console.error('Alternative click error:', error);
-      setCommandHistory(prev => [...prev, {
-        command: `${action} ${alternative.name} by ${alternative.artists}`,
-        response: 'Network error. Please try again.',
-        timestamp: Date.now()
-      }]);
+      // Could show a toast notification here if needed
     } finally {
       setIsProcessing(false);
     }
