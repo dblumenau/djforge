@@ -359,6 +359,12 @@ const MainApp: React.FC = () => {
             </div>
             
             <div className="flex gap-2 ml-auto lg:ml-0">
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="px-4 py-2 bg-purple-600 text-white font-semibold rounded-full hover:bg-purple-700 transition-colors text-sm"
+              >
+                Dashboard
+              </button>
               {import.meta.env.DEV && (
                 <>
                   <button 

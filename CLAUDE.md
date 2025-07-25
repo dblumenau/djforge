@@ -134,6 +134,15 @@ cd client && npx tsc --noEmit
 6. **Refresh Token Behavior**: Spotify refresh tokens are long-lived and reusable (NOT one-time use)
 7. **Confidence Scoring**: 1-10 scale for action confidence
 8. **Intent Types**: Structured intents with alternatives support
+9. **OAuth Scopes Required for Dashboard**:
+   - `user-read-private` - User profile data
+   - `user-read-email` - User email
+   - `user-top-read` - Top artists and tracks
+   - `user-library-read` - Saved tracks and albums
+   - `user-read-recently-played` - Recently played tracks
+   - `playlist-read-private` - User playlists
+   - `user-modify-playback-state` - Playback control
+   - `streaming` - Web Playback SDK
 
 ## Environment Configuration
 
@@ -221,6 +230,7 @@ VITE_CLIENT_URL=https://yourdomain.com
 - Production deployment configured for Fly.io
 - Docker support for local and production environments
 - Basic Jest test infrastructure in place
+- Comprehensive Spotify Dashboard with data visualization
 - See `docs/TODO.md` for enhancement opportunities
 
 ## Known Issues & Solutions
@@ -235,6 +245,255 @@ VITE_CLIENT_URL=https://yourdomain.com
 - Only one refresh request is sent to Spotify at a time
 
 **Key Learning**: Spotify refresh tokens are reusable and long-lived, NOT one-time use. The 500 error was due to our race condition, not a Spotify limitation.
+
+## Spotify Dashboard Feature
+
+The dashboard provides comprehensive visualization of user's Spotify data with real-time playback controls.
+
+### Architecture Overview
+
+**Data Flow**:
+1. Client requests dashboard data via JWT-authenticated endpoint
+2. Server checks Redis cache first (5-minute TTL)
+3. If cache miss, fetches from 6 Spotify Web API endpoints in parallel
+4. Caches both complete response and individual data structures
+5. Returns aggregated data to client
+
+**Caching Strategy**:
+- **Full Dashboard Cache**: `dashboard:${userId}` - Complete response (5 min TTL)
+- **Individual Data Caches**:
+  - `profile:${userId}` - User profile (1 hour TTL)
+  - `top:artists:${userId}:${timeRange}` - Top artists by time range (10 min TTL)
+  - `top:tracks:${userId}:${timeRange}` - Top tracks by time range (10 min TTL)
+  - `saved:tracks:${userId}` - Saved tracks list (5 min TTL)
+  - `saved:albums:${userId}` - Saved albums list (5 min TTL)
+  - `recently:${userId}` - Recently played tracks (5 min TTL)
+  - `playlists:${userId}` - User playlists (10 min TTL)
+
+### Dashboard Components
+
+**Main Dashboard** (`/dashboard`):
+- 6 section navigation: Overview, Top Items, Library, Recent, Playlists, Insights
+- Real-time data refresh with progress indicator
+- Responsive grid layouts with Tailwind CSS v4
+
+**Data Visualizations**:
+1. **Genre Distribution** - Doughnut chart showing music taste breakdown
+2. **Listening Trends** - Line chart for hourly activity patterns
+3. **Popularity Trends** - Bar chart for track popularity over time
+4. **Timeline View** - Grouped recently played tracks by date/time
+
+**Interactive Features**:
+- Play/Queue buttons on all tracks with loading states
+- Searchable/sortable saved tracks table with pagination
+- Album and playlist grids with hover effects
+- Time range selectors (4 weeks, 6 months, all time)
+
+### Implementation Details
+
+**Key Files**:
+- `server/src/services/UserDataService.ts` - Redis caching and data aggregation
+- `server/src/routes/user-data.ts` - JWT-authenticated API endpoints
+- `client/src/pages/Dashboard.tsx` - Main dashboard component
+- `client/src/components/dashboard/` - Specialized visualization components
+- `server/src/types/spotify-data.ts` - TypeScript interfaces for all Spotify data
+
+**API Endpoints**:
+- `GET /api/user-data/dashboard` - Aggregated dashboard data
+- `GET /api/user-data/top-artists` - Top artists with time range
+- `GET /api/user-data/top-tracks` - Top tracks with time range
+- `GET /api/user-data/saved-tracks` - Paginated saved tracks
+- `GET /api/user-data/saved-albums` - Paginated saved albums
+- `GET /api/user-data/recently-played` - Recently played tracks
+- `GET /api/user-data/playlists` - User playlists
+
+**Performance Optimizations**:
+- Parallel API calls using Promise.all()
+- Structured Redis data types (sorted sets, lists, hashes)
+- Lazy loading for large datasets
+- Memoized data transformations
+- Loading state management to prevent spam clicks
+
+### Spotify API Data Structures
+
+**Understanding Spotify's Response Patterns**:
+
+1. **Paginated Responses** - Used for large collections:
+   ```typescript
+   {
+     items: T[],        // Array of actual data
+     total: number,     // Total items available
+     limit: number,     // Items per page
+     offset: number,    // Current offset
+     next: string | null,    // URL for next page
+     previous: string | null // URL for previous page
+   }
+   ```
+   - Found in: saved tracks, saved albums, playlists
+   - Handling: Store items array, track total for UI
+
+2. **Time-Range Based Data** - For top items:
+   ```typescript
+   // Spotify returns different data based on time_range parameter
+   time_range: 'short_term' | 'medium_term' | 'long_term'
+   // short_term: ~4 weeks
+   // medium_term: ~6 months  
+   // long_term: all time
+   ```
+   - Handling: Fetch all 3 ranges in parallel, store separately
+
+3. **Nested Object Structures**:
+   - **Track Object**: Contains nested album and artists
+   - **Album Object**: Contains nested artists and images
+   - **Playlist Object**: Contains owner info and track count
+   - **Recently Played**: Wraps track in played_at context
+
+4. **Common Data Patterns**:
+   ```typescript
+   // Image arrays (always multiple sizes)
+   images: [
+     { url: string, height: number, width: number },
+     // ... typically 3 sizes (640x640, 300x300, 64x64)
+   ]
+   
+   // Artist arrays (for collaborations)
+   artists: [
+     { id: string, name: string, uri: string }
+   ]
+   
+   // External URLs
+   external_urls: {
+     spotify: string  // Web player link
+   }
+   
+   // URIs for playback
+   uri: string  // Format: "spotify:track:id" or "spotify:album:id"
+   ```
+
+5. **Special Handling Cases**:
+
+   **Recently Played Tracks**:
+   - Returns max 50 items (Spotify limitation)
+   - Each item has `played_at` timestamp and optional `context`
+   - Sorted newest first by default
+   
+   **User Profile**:
+   - `product` field indicates free/premium
+   - `images` array may be empty
+   - `followers` object contains total count
+   
+   **Saved Items**:
+   - Wrapped with `added_at` timestamp
+   - Original item nested inside (e.g., `track` or `album`)
+   
+   **Top Items**:
+   - Returns max 50 items per time range
+   - Includes popularity scores (0-100)
+   - Artists include genre arrays
+
+### Data Transformation Strategy
+
+**Redis Storage Patterns**:
+```typescript
+// Full objects for complex data
+await redis.setex(`profile:${userId}`, 3600, JSON.stringify(profile))
+
+// Sorted sets for time-based data
+await redis.zadd(`recently:${userId}`, 
+  tracks.map(t => ({
+    score: new Date(t.played_at).getTime(),
+    member: JSON.stringify(t)
+  }))
+)
+
+// Lists for ordered collections  
+await redis.lpush(`playlists:${userId}`, 
+  ...playlists.map(p => JSON.stringify(p))
+)
+```
+
+**Key Insights for Handling Spotify Data**:
+1. Always check for existence of nested properties (many are optional)
+2. Image arrays provide multiple resolutions - pick appropriate size
+3. Use URIs for playback, IDs for API calls, external_urls for links
+4. Pagination requires recursive fetching for complete datasets
+5. Rate limits exist - batch operations where possible
+6. Some endpoints have hard limits (e.g., 50 recently played tracks)
+
+### TypeScript Interface Design
+
+**How We Structured the Types** (`server/src/types/spotify-data.ts`):
+
+```typescript
+// Example: Handling nested and optional properties
+interface SpotifyTrack {
+  id: string;
+  name: string;
+  uri: string;
+  duration_ms: number;
+  popularity: number;
+  artists: SpotifyArtist[];  // Always an array
+  album?: SpotifyAlbum;      // Optional - not on all endpoints
+}
+
+// Saved items wrapper pattern
+interface SavedTrack {
+  added_at: string;          // ISO timestamp
+  track: SpotifyTrack;       // Nested actual track
+}
+
+// Pagination response pattern
+interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  limit: number;
+  offset: number;
+  next: string | null;
+  previous: string | null;
+}
+
+// Dashboard aggregation
+interface UserDashboardData {
+  profile: UserProfile;
+  topArtists: {
+    short_term: SpotifyArtist[];
+    medium_term: SpotifyArtist[];
+    long_term: SpotifyArtist[];
+  };
+  savedTracks: PaginatedResponse<SavedTrack>;
+  recentlyPlayed: RecentlyPlayedItem[];
+  // ... etc
+}
+```
+
+**Data Processing Examples**:
+
+1. **Handling Optional Images**:
+   ```typescript
+   // Always use optional chaining and provide fallbacks
+   const albumArt = track.album?.images?.[0]?.url || '/default-album.png';
+   ```
+
+2. **Genre Aggregation** (from multiple artists):
+   ```typescript
+   const genreCounts = artists.reduce((acc, artist, index) => {
+     const weight = artists.length - index; // Higher weight for top artists
+     artist.genres.forEach(genre => {
+       acc[genre] = (acc[genre] || 0) + weight;
+     });
+     return acc;
+   }, {});
+   ```
+
+3. **Time-based Grouping** (recently played):
+   ```typescript
+   const groupedByDate = tracks.reduce((acc, track) => {
+     const date = new Date(track.played_at).toDateString();
+     if (!acc[date]) acc[date] = [];
+     acc[date].push(track);
+     return acc;
+   }, {});
+   ```
 
 ## Major Refactor Notes (2025)
 

@@ -17,6 +17,7 @@ import { directActionRouter, setRedisClient as setDirectActionRedisClient } from
 import { createRedisClient, checkRedisHealth } from './config/redis';
 import { RedisUtils } from './utils/redis-utils';
 import weatherRouter from './routes/weather';
+import userDataRouter from './routes/user-data';
 
 // Fallback to file store if Redis is unavailable
 const FileStore = require('session-file-store')(session);
@@ -165,6 +166,8 @@ async function initializeAndStart() {
     
     // Weather route
     app.use('/api/weather', weatherRouter);
+    // User data endpoints
+    app.use('/api/user-data', userDataRouter);
     // LLM logs endpoints
     app.use(llmLogsRouter);
     // Direct action endpoints (for bypassing LLM)

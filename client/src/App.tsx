@@ -2,6 +2,7 @@ import { createBrowserRouter, redirect, Outlet } from 'react-router-dom';
 import LandingPage from './components/LandingPage';
 import MainApp from './components/MainApp';
 import NotFound from './components/NotFound';
+import Dashboard from './pages/Dashboard';
 
 // Auth callback loader - handles OAuth callback without a component
 const authCallbackLoader = ({ request }: { request: Request }) => {
@@ -40,6 +41,10 @@ export const router = createBrowserRouter([
   {
     path: "/landing",
     element: <LandingPage />
+  },
+  {
+    path: "/dashboard",
+    element: <Dashboard />
   },
   {
     path: "/callback",

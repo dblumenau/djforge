@@ -355,4 +355,55 @@ export class SpotifyWebAPI {
     const response = await this.api.get('/me');
     return response.data;
   }
+
+  // New methods for user data dashboard
+  async getTopArtists(timeRange: 'short_term' | 'medium_term' | 'long_term' = 'medium_term', limit: number = 20): Promise<any[]> {
+    const response = await this.api.get('/me/top/artists', {
+      params: { 
+        time_range: timeRange, 
+        limit 
+      }
+    });
+    return response.data.items || [];
+  }
+
+  async getTopTracks(timeRange: 'short_term' | 'medium_term' | 'long_term' = 'medium_term', limit: number = 20): Promise<any[]> {
+    const response = await this.api.get('/me/top/tracks', {
+      params: { 
+        time_range: timeRange, 
+        limit 
+      }
+    });
+    return response.data.items || [];
+  }
+
+  async getSavedTracks(limit: number = 50, offset: number = 0): Promise<any> {
+    const response = await this.api.get('/me/tracks', {
+      params: { 
+        limit, 
+        offset 
+      }
+    });
+    return {
+      items: response.data.items || [],
+      total: response.data.total || 0,
+      next: response.data.next,
+      previous: response.data.previous
+    };
+  }
+
+  async getSavedAlbums(limit: number = 50, offset: number = 0): Promise<any> {
+    const response = await this.api.get('/me/albums', {
+      params: { 
+        limit, 
+        offset 
+      }
+    });
+    return {
+      items: response.data.items || [],
+      total: response.data.total || 0,
+      next: response.data.next,
+      previous: response.data.previous
+    };
+  }
 }
