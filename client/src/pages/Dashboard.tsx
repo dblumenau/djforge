@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiEndpoint } from '../config/api';
 import { authenticatedFetch } from '../utils/api';
@@ -120,7 +120,6 @@ export default function Dashboard() {
       setError(err.message || 'Failed to load dashboard data');
       setRefreshProgress('');
     } finally {
-      const totalTime = Date.now() - Date.now();
       console.log(`🏁 Dashboard ${refresh ? 'refresh' : 'load'} completed`);
       setLoading(false);
       setRefreshing(false);
@@ -418,7 +417,7 @@ export default function Dashboard() {
                     <div className="flex-1 min-w-0">
                       <h4 className="font-semibold truncate">{track.name}</h4>
                       <p className="text-sm text-zinc-400 truncate">
-                        {track.artists?.map(a => a.name).join(', ')} • {track.album?.name}
+                        {track.artists?.map((a: any) => a.name).join(', ')} • {track.album?.name}
                       </p>
                     </div>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -549,7 +548,7 @@ export default function Dashboard() {
                       const genreCounts: Record<string, number> = {};
                       dashboardData.topArtists[timeRange].forEach((artist, index) => {
                         const weight = dashboardData.topArtists[timeRange].length - index;
-                        artist.genres.forEach(genre => {
+                        artist.genres.forEach((genre: string) => {
                           genreCounts[genre] = (genreCounts[genre] || 0) + weight;
                         });
                       });

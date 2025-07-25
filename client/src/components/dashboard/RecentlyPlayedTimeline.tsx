@@ -1,4 +1,3 @@
-import React from 'react';
 
 interface RecentTrack {
   track: {
@@ -71,7 +70,7 @@ export default function RecentlyPlayedTimeline({ tracks, onPlay, onQueue, isLoad
       <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-zinc-700"></div>
 
       {/* Grouped tracks */}
-      {Object.entries(groupedTracks).map(([date, dateTracks], groupIndex) => (
+      {Object.entries(groupedTracks).map(([date, dateTracks]) => (
         <div key={date} className="mb-8">
           {/* Date header */}
           <div className="flex items-center mb-4">
