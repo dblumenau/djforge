@@ -5,12 +5,14 @@ This directory contains service classes that encapsulate business logic and exte
 ## Service Files
 
 ### UserDataService.ts
-- **Primary Purpose**: User data caching and taste profile generation
+- **Primary Purpose**: User data caching, taste profile generation, and AI feedback management
 - **Key Features**:
   - Generates music taste profiles from listening history
   - Caches all Spotify user data in Redis with appropriate TTLs
   - Provides aggregated dashboard data
   - Manages paginated data fetching
+  - Tracks AI-discovered music and user feedback
+  - Integrates feedback into taste profiles for continuous learning
 - **Redis Keys**:
   - `taste:profile:{userId}` - Generated taste profile (1 hour TTL)
   - `user:{userId}:profile` - User profile data (2 hours TTL)
@@ -18,6 +20,9 @@ This directory contains service classes that encapsulate business logic and exte
   - `user:{userId}:top_tracks:{timeRange}` - Top tracks by time range
   - `user:{userId}:saved_tracks:{limit}:{offset}` - Paginated saved tracks
   - `user:{userId}:recently_played` - Recently played tracks (30 min TTL)
+  - `user:{userId}:ai_discoveries` - AI-discovered tracks list
+  - `user:{userId}:ai_loved` - Loved AI discoveries (sorted set)
+  - `user:{userId}:ai_disliked` - Disliked AI discoveries (sorted set)
 
 ### ConversationManager.ts
 - **Primary Purpose**: Redis-backed conversation history management
@@ -77,6 +82,110 @@ This directory contains service classes that encapsulate business logic and exte
 - Strategic caching to minimize Spotify API calls
 - Paginated responses for large datasets
 - Sorted sets and lists for efficient data retrieval
+
+## AI Feedback System
+
+The system includes an intelligent feedback mechanism that learns from user preferences to improve future AI music recommendations.
+
+### How It Works
+
+1. **AI Discovery Detection**: When the LLM makes a creative choice (not an explicit user request), it sets `isAIDiscovery: true` and provides `aiReasoning`
+
+2. **Automatic Tracking**: These AI-discovered tracks are automatically tracked in Redis with user feedback capabilities
+
+3. **Individual Song Tracking**: For `queue_multiple_songs` operations, each song gets individual tracking and feedback buttons rather than treating the batch as a single discovery
+
+4. **Feedback Integration**: User feedback (loved/disliked) is included in future taste profiles sent to LLMs, creating a learning loop
+
+### Redis Data Structure
+
+```typescript
+// Current format (JSON objects)
+{
+  trackUri: string,           // Spotify URI for the track
+  trackName: string,          // Track name
+  artist: string,             // Artist name(s)
+  discoveredAt: number,       // Timestamp of discovery
+  reasoning: string,          // AI's reasoning for the choice
+  feedback?: 'loved' | 'disliked',  // User feedback
+  feedbackAt?: number,        // Feedback timestamp
+  previewUrl?: string         // 30-second preview URL
+}
+
+// Redis Keys:
+// user:${userId}:ai_discoveries - List of all discoveries
+// user:${userId}:ai_loved - Sorted set of loved tracks
+// user:${userId}:ai_disliked - Sorted set of disliked tracks
+```
+
+### Data Format Compatibility
+
+The system handles both current and legacy data formats:
+- **Current**: JSON objects (structured data with full metadata)
+- **Legacy**: Pipe-separated strings (`trackUri|trackName|artist|reasoning`)
+- The `getAIFeedback()` method automatically detects and parses both formats
+
+### Key Implementation Details
+
+**Multiple Song Tracking**: Fixed bug where `queue_multiple_songs` only tracked the first song. Now each song in a multi-song queue gets:
+- Individual discovery entry in Redis
+- Separate feedback buttons in the UI
+- Independent tracking metadata
+
+**Feedback Integration in Taste Profiles**: Fixed bug where AI feedback wasn't being included in LLM context due to data parsing issues. Now properly includes:
+- "Loved Discoveries: [song list]"
+- "Disliked Recommendations: [song list]"
+
+**Backward Compatibility**: System gracefully handles both JSON and pipe-separated data formats for smooth transitions.
+
+### API Integration
+
+The AI feedback system integrates with several key components:
+
+1. **Track Discovery** (`trackAIDiscovery` method):
+   ```typescript
+   await userDataService.trackAIDiscovery(
+     userId,
+     trackUri,
+     trackName,
+     artistName,
+     aiReasoning,
+     previewUrl
+   );
+   ```
+
+2. **Record Feedback** (`recordAIFeedback` method):
+   ```typescript
+   await userDataService.recordAIFeedback(
+     userId,
+     trackUri,
+     feedback // 'loved' | 'disliked' | 'remove'
+   );
+   ```
+
+3. **Get Feedback Dashboard** (`getAIFeedbackDashboard` method):
+   ```typescript
+   const dashboard = await userDataService.getAIFeedbackDashboard(userId);
+   // Returns: { discoveries, loved, disliked, stats }
+   ```
+
+### Debugging AI Feedback
+
+**Common Issues**:
+- AI feedback not appearing in taste profiles → Check `getAIFeedback()` parsing logic
+- Multiple songs getting single feedback button → Verify individual `trackAIDiscovery()` calls
+- Feedback not persisting → Check Redis connection and data format compatibility
+
+**Debug Commands**:
+```bash
+# Check discoveries
+redis-cli LRANGE "user:${userId}:ai_discoveries" 0 10
+
+# Check feedback
+redis-cli ZRANGE "user:${userId}:ai_loved" 0 -1
+```
+
+This creates a continuous improvement cycle where the AI learns from user preferences to provide increasingly personalized music recommendations.
 
 ## Adding New Services
 
