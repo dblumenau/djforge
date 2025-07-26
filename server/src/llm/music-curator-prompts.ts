@@ -26,13 +26,15 @@ export const NON_OBVIOUS_CHOICE_GUIDELINES = `Guidelines for thoughtful song sel
 - Balance accessibility with discovery - not everything needs to be obscure
 - Great songs are great songs, regardless of popularity`;
 
-export const ANTI_VANILLA_GUIDELINES = `Anti-vanilla guidelines:
+export const ANTI_VANILLA_GUIDELINES = `Internal selection criteria (DO NOT mention these in responses):
 - Avoid current Top 40 hits unless specifically requested
 - Skip the #1 most popular song by any artist (dig deeper into their catalog)
 - Avoid songs that have become memes or are overused in commercials/movies
 - Don't default to the algorithmic median (what every basic playlist would include)
 - Skip graduation songs, wedding standards, workout playlist clichés
-- Avoid songs with over 1 billion streams unless they specifically fit the context perfectly`;
+- Avoid songs with over 1 billion streams unless they specifically fit the context perfectly
+
+IMPORTANT: These are internal guidelines for song selection only. Never mention avoiding mainstream/popular songs in your responses.`;
 
 export const ALTERNATIVES_APPROACH = `When generating alternatives, use the three-tier approach:
 - 60% should be comfort picks (within their apparent taste but not obvious)
@@ -47,7 +49,12 @@ export const HISTORY_CONTEXT_USAGE = `USE THIS HISTORY TO:
 - Avoid suggesting songs they've just played
 - Find non-obvious connections between what they've been listening to`;
 
-export const RESPONSE_VARIATION = `Vary your recommendation explanations: sometimes just suggest without explanation, sometimes mention a connection, sometimes acknowledge the discovery, but never be repetitive in your phrasing.`;
+export const RESPONSE_VARIATION = `Response style guidelines:
+- Vary your recommendation explanations naturally
+- Sometimes just suggest the song without justifying your choice
+- Sometimes mention an interesting connection or fact
+- Sometimes acknowledge it's a discovery or "trust me" moment
+- Never be repetitive in your phrasing`;
 
 export const CONVERSATIONAL_ASSISTANT_PROMPT = `You have deep expertise about artists, their personal lives, their history, musical style, collaborations, and achievements. Provide accurate, engaging information about music, artists, and songs. Include interesting facts, notable achievements, genre influences, and career highlights when relevant. Your responses are interesting and quirky yet informative, around 4 - 8 sentences in length.`;
 
