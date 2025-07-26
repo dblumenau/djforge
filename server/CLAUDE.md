@@ -33,12 +33,18 @@ The server is a Node.js + Express + TypeScript application that provides a REST 
 The system uses these specific intent types:
 - `'play_specific_song'` - Play a specific track immediately
 - `'queue_specific_song'` - Add a specific track to queue
-- `'queue_multiple_songs'` - Add multiple tracks to queue
+- `'queue_multiple_songs'` - Add multiple tracks to queue (5-10 songs)
 - `'play_playlist'` - Play a playlist immediately
 - `'queue_playlist'` - Add playlist to queue
+- `'chat'` - General music discussion (conversational, no Spotify action)
+- `'ask_question'` - Questions about music/artists (conversational)
+- `'get_playback_info'` - Get current playback information
 - `'play'`, `'pause'`, `'skip'`, `'previous'` - Basic playback controls
-- `'volume'` - Volume control (requires value field)
-- `'get_info'` - Get current track information
+- `'set_volume'` - Volume control (requires volume_level field)
+- `'set_shuffle'`, `'set_repeat'` - Playback mode controls
+- `'clear_queue'` - Clear the playback queue
+- `'get_devices'`, `'get_playlists'`, `'get_recently_played'` - Information queries
+- `'search'` - Search without playing
 - `'unknown'` - Fallback for unparseable commands
 
 **IMPORTANT**: The following deprecated intents have been completely removed:
@@ -50,16 +56,33 @@ The system uses these specific intent types:
 ### Routes (`/src/routes/`)
 
 **Primary Endpoints**:
-- `simple-llm-interpreter.ts` - Main natural language endpoint (`/api/command`)
-- `llm-interpreter.ts` - Advanced LLM endpoint with dual-path routing
+- `simple-llm-interpreter.ts` - Main natural language endpoint (`/api/llm/simple/command`)
+  - Integrates user taste profiles for personalized recommendations
+  - Handles conversational intents (chat, ask_question)
+  - Supports queue_multiple_songs for batch queuing
+- `llm-interpreter.ts` - Advanced LLM endpoint with strict schema validation
+- `user-data.ts` - User data endpoints including taste profile (`/api/user-data/*`)
 - `model-preferences.ts` - User model preference management
-- `session-management.ts` - Session and conversation management
+- `llm-logs.ts` - LLM interaction logging and retrieval
 
 **Key Route Features**:
 - Automatic model routing (Gemini vs OpenRouter)
 - Conversation context management via Redis
 - Intent validation and normalization
 - Spotify API integration with error handling
+- User taste profile integration in LLM prompts
+
+### Services (`/src/services/`)
+
+**Key Services**:
+- `UserDataService.ts` - User data caching and taste profile generation
+  - Generates music taste profiles from top artists/tracks
+  - Manages Redis caching for all user data
+  - Provides dashboard data aggregation
+- `ConversationManager.ts` - Redis-backed conversation history
+- `llm-logging.service.ts` - Comprehensive LLM interaction logging
+  - Stores all LLM requests/responses
+  - Provides Redis client access for taste profiles
 
 ### Spotify Integration (`/src/spotify/`)
 

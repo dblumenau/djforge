@@ -67,11 +67,13 @@ cd client && npx tsc --noEmit
 **Route Organization**:
 - `routes/auth.ts` - OAuth 2.0 with PKCE, token management, JWT support
 - `routes/control.ts` - Playback control endpoints
-- `routes/llm.ts` - Multi-LLM interpretation endpoints
+- `routes/llm.ts` - Multi-LLM interpretation endpoints (schema-based)
+- `routes/simple-llm-interpreter.ts` - Flexible LLM interpreter with taste profile integration
 - `routes/direct-action.ts` - Direct action execution with confidence scoring
 - `routes/weather.ts` - DMI weather API integration
 - `routes/model-preferences.ts` - User model selection preferences
 - `routes/llm-logs.ts` - LLM interaction logging (admin only)
+- `routes/user-data.ts` - User data endpoints including taste profile
 
 **Services Organization**:
 - `services/spotify/`:
@@ -84,6 +86,7 @@ cd client && npx tsc --noEmit
   - `providers/GeminiDirectProvider.ts` - Google Gemini Direct API
   - `LLMLogger.ts` - Comprehensive logging system
 - `services/ConversationManager.ts` - Context and conversation tracking
+- `services/UserDataService.ts` - User data caching and taste profile generation
 - `services/claude/` - Legacy Claude interpreters (deprecated)
 
 **Middleware**:
@@ -103,6 +106,8 @@ cd client && npx tsc --noEmit
 - `pages/`:
   - `LandingPage.tsx` - Authentication and landing page
   - `MainApp.tsx` - Main application UI with command interface
+  - `Dashboard.tsx` - Comprehensive Spotify data visualization dashboard
+  - `TasteProfile.tsx` - User taste profile viewer showing LLM context
 - `components/`:
   - `MusicLoader.tsx` - Animated loading component
   - `SpotifyPlayer.tsx` - Web Playback SDK integration
@@ -306,6 +311,7 @@ The dashboard provides comprehensive visualization of user's Spotify data with r
 - `GET /api/user-data/saved-albums` - Paginated saved albums
 - `GET /api/user-data/recently-played` - Recently played tracks
 - `GET /api/user-data/playlists` - User playlists
+- `GET /api/user-data/taste-profile` - User's music taste profile for LLM context
 
 **Performance Optimizations**:
 - Parallel API calls using Promise.all()
@@ -494,6 +500,70 @@ interface UserDashboardData {
      return acc;
    }, {});
    ```
+
+## User Taste Profile Feature
+
+The system automatically generates and includes user taste profiles in LLM prompts for more personalized music recommendations.
+
+### How It Works
+
+1. **Profile Generation** (`UserDataService.generateTasteProfile()`):
+   - Fetches user's top artists (medium term), top tracks (medium term), and recent listening
+   - Calculates weighted genre distribution from top artists
+   - Creates a formatted string summarizing musical preferences
+   - Caches in Redis for 1 hour to minimize API calls
+
+2. **Profile Content**:
+   ```
+   User's Music Taste Profile:
+   Top Genres: indie rock, alternative rock, dream pop, ...
+   Favorite Artists: Beach House, Slowdive, The National, ...
+   Recent Favorites: "Space Song" by Beach House; "When the Sun Hits" by Slowdive; ...
+   Recent Listening: "Myth" by Beach House; "Sugar for the Pill" by Slowdive; ...
+   ```
+
+3. **LLM Integration**:
+   - Profile is automatically fetched when processing commands in `simple-llm-interpreter.ts`
+   - Combined with current playback context in the LLM prompt
+   - Enables personalized recommendations based on actual listening history
+   - Works with all LLM models (OpenRouter and Gemini)
+
+4. **User Interface**:
+   - New dedicated `/taste-profile` page for users to view their profile
+   - Shows the exact profile data that LLMs see
+   - Refresh button to update cached profile
+   - Accessible via client routing (no direct link in MainApp yet)
+
+5. **API Endpoint**:
+   - `GET /api/user-data/taste-profile` - Returns formatted taste profile
+   - JWT authenticated
+   - Returns cached data when available
+
+### Implementation Details
+
+**Key Files**:
+- `server/src/services/UserDataService.ts` - `generateTasteProfile()` method
+- `server/src/routes/simple-llm-interpreter.ts` - Integration in command processing
+- `server/src/routes/user-data.ts` - REST endpoint for taste profile
+- `client/src/pages/TasteProfile.tsx` - User interface for viewing profile
+- `client/src/App.tsx` - Route configuration
+
+**Cache Key**: `taste:profile:${userId}` (1 hour TTL)
+
+**Requirements**:
+- Active Redis connection
+- User must have listening history
+- Required OAuth scopes: `user-top-read`, `user-read-recently-played`
+
+### Performance Considerations
+
+- Redis caching prevents repeated API calls
+- Generation happens asynchronously during command processing
+- Graceful fallback if profile generation fails
+- No impact on users without sufficient listening history
+- Debug logging tracks profile fetching and inclusion in prompts
+
+This feature enhances the LLM's ability to provide personalized recommendations by understanding the user's actual music preferences rather than relying solely on the command text.
 
 ## Major Refactor Notes (2025)
 
