@@ -295,11 +295,14 @@ router.post('/refresh', async (req: Request, res: Response) => {
 router.get('/taste-profile', async (req: Request, res: Response) => {
   try {
     const userDataService = await getUserDataService(req);
-    const tasteProfile = await userDataService.generateTasteProfile();
+    // Allow optional context type via query parameter
+    const contextType = req.query.context as 'specific' | 'discovery' | 'conversational' | 'control' | 'info' | undefined;
+    const tasteProfile = await userDataService.generateTasteProfile(contextType);
     
     res.json({
       success: true,
       profile: tasteProfile,
+      contextType: contextType || 'general',
       timestamp: new Date().toISOString()
     });
   } catch (error: any) {

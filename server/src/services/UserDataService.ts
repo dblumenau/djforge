@@ -25,15 +25,15 @@ export class UserDataService {
     this.userId = userId;
   }
 
-  async generateTasteProfile(): Promise<string> {
+  async generateTasteProfile(contextType?: 'specific' | 'discovery' | 'conversational' | 'control' | 'info'): Promise<string> {
     try {
       console.log(`[TasteProfile] Starting generation for user: ${this.userId}`);
       
-      // Check cache first
-      const cacheKey = `taste:profile:${this.userId}`;
+      // Check cache first - include context type in cache key for different variants
+      const cacheKey = `taste:profile:${this.userId}${contextType ? `:${contextType}` : ''}`;
       const cachedProfile = await this.redis?.get(cacheKey);
       if (cachedProfile) {
-        console.log('[TasteProfile] Returning cached profile');
+        console.log(`[TasteProfile] Returning cached ${contextType || 'general'} profile`);
         return cachedProfile;
       }
 
@@ -74,26 +74,8 @@ export class UserDataService {
       // Get AI feedback data
       const aiFeedback = await this.getAIFeedback();
       
-      // Build taste profile string with non-directive language
-      let profile = `BACKGROUND - User's Musical Context (for inspiration, not limitation):
-• Tends to enjoy genres like: ${topGenres.length > 0 ? topGenres.join(', ') : 'varied genres'}
-• Often listens to artists such as: ${topArtistsMedium.slice(0, 10).map(a => a.name).join(', ') || 'various artists'}
-• Recent listening includes: ${topTracksMedium.slice(0, 10).map(t => `"${t.name}" by ${t.artists.map(a => a.name).join(', ')}`).join('; ') || 'varied tracks'}
-
-IMPORTANT: This context shows the user's general taste but you should feel free to recommend ANY artist that fits their request. Don't limit yourself to these artists - use this as inspiration to understand their style preferences.`;
-
-      // Add AI feedback section if available
-      if (aiFeedback.loved.length > 0 || aiFeedback.disliked.length > 0) {
-        profile += '\n\nPast AI Discovery Feedback (what worked/didn\'t work):';
-        
-        if (aiFeedback.loved.length > 0) {
-          profile += `\n• Loved these discoveries: ${aiFeedback.loved.map(t => `"${t.trackName}" by ${t.artist}`).join('; ')}`;
-        }
-        
-        if (aiFeedback.disliked.length > 0) {
-          profile += `\n• Didn't connect with: ${aiFeedback.disliked.map(t => `"${t.trackName}" by ${t.artist}`).join('; ')}`;
-        }
-      }
+      // Build context-aware taste profile
+      let profile = this.buildContextualProfile(contextType, topGenres, topArtistsMedium, topTracksMedium, aiFeedback);
 
       // Cache for 1 hour
       if (this.redis) {
@@ -726,6 +708,107 @@ IMPORTANT: This context shows the user's general taste but you should feel free 
     } catch (error) {
       console.error('Error adding track to DJ Forge playlist:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Build contextual taste profile based on request type
+   * Different request types get different emphasis and guidance
+   */
+  private buildContextualProfile(
+    contextType: 'specific' | 'discovery' | 'conversational' | 'control' | 'info' | undefined,
+    topGenres: string[],
+    topArtistsMedium: any[],
+    topTracksMedium: any[],
+    aiFeedback: { loved: any[], disliked: any[] }
+  ): string {
+    const baseData = {
+      genres: topGenres.length > 0 ? topGenres.join(', ') : 'varied genres',
+      artists: topArtistsMedium.slice(0, 10).map(a => a.name).join(', ') || 'various artists',
+      tracks: topTracksMedium.slice(0, 10).map(t => `${t.name} by ${t.artists.map((a: any) => a.name).join(', ')}`).join('; ') || 'varied tracks'
+    };
+
+    switch (contextType) {
+      case 'specific':
+        // For specific song requests - minimal taste context to avoid bias
+        return `BACKGROUND - User's Musical Context (for reference only):
+• Generally listens to: ${baseData.genres}
+• Some familiar artists: ${baseData.artists}
+
+IMPORTANT: The user is asking for a specific song. Use this context only to understand their general style, but focus on finding the exact song they requested. Don't substitute with something from their taste profile unless the specific song cannot be found.`;
+
+      case 'discovery':
+        // For discovery requests - rich taste context with discovery patterns
+        let discoveryProfile = `BACKGROUND - User's Musical Discovery Context:
+• Primary genres: ${baseData.genres}
+• Familiar artists: ${baseData.artists}
+• Recent favorites: ${baseData.tracks}`;
+
+        // Add AI feedback with discovery emphasis
+        if (aiFeedback.loved.length > 0 || aiFeedback.disliked.length > 0) {
+          discoveryProfile += '\n\nPast Discovery Patterns:';
+          
+          if (aiFeedback.loved.length > 0) {
+            discoveryProfile += `\n• Successful discoveries they loved: ${aiFeedback.loved.slice(0, 5).map(t => `${t.trackName} by ${t.artist}`).join('; ')}`;
+          }
+          
+          if (aiFeedback.disliked.length > 0) {
+            discoveryProfile += `\n• Discoveries that didn't connect: ${aiFeedback.disliked.slice(0, 3).map(t => `${t.trackName} by ${t.artist}`).join('; ')}`;
+          }
+        }
+
+        discoveryProfile += `\n\nDISCOVERY GUIDANCE: Use this context to find music that expands their horizons while respecting their taste patterns. Look for adjacent artists, similar vibes, or evolution of their favorite genres. Avoid their exact favorites unless they fit perfectly.`;
+        
+        return discoveryProfile;
+
+      case 'conversational':
+        // For chat/questions - focus on knowledge and context
+        return `BACKGROUND - User's Musical Knowledge Context:
+• Interested in genres: ${baseData.genres}
+• Listens to artists like: ${baseData.artists}
+• Recent listening: ${baseData.tracks}
+
+CONVERSATIONAL CONTEXT: This is for music discussion. Use this context to understand their perspective and provide relevant insights about artists, songs, or genres they might know or be interested in.`;
+
+      case 'control':
+        // For playback controls - minimal context needed
+        return `BACKGROUND - Basic Musical Context:
+• Generally enjoys: ${baseData.genres}
+
+CONTROL CONTEXT: This is a playback control request. Music context is minimal and mainly for potential follow-up suggestions.`;
+
+      case 'info':
+        // For info requests - broader context for helpful responses
+        return `BACKGROUND - User's Musical Library Context:
+• Preferred genres: ${baseData.genres}
+• Known artists: ${baseData.artists}
+• Recent activity: ${baseData.tracks}
+
+INFO CONTEXT: Use this context to provide relevant and personalized information responses about their music library, playlists, or suggestions.`;
+
+      default:
+        // Default general profile (backward compatibility)
+        let generalProfile = `BACKGROUND - User's Musical Context (for inspiration, not limitation):
+• Tends to enjoy genres like: ${baseData.genres}
+• Often listens to artists such as: ${baseData.artists}
+• Recent listening includes: ${baseData.tracks}
+
+IMPORTANT: This context shows the user's general taste but you should feel free to recommend ANY artist that fits their request. Don't limit yourself to these artists - use this as inspiration to understand their style preferences.`;
+
+        // Add AI feedback section if available
+        if (aiFeedback.loved.length > 0 || aiFeedback.disliked.length > 0) {
+          generalProfile += '\n\nPast AI Discovery Feedback (what worked/didn\'t work):';
+          
+          if (aiFeedback.loved.length > 0) {
+            generalProfile += `\n• Loved these discoveries: ${aiFeedback.loved.map(t => `${t.trackName} by ${t.artist}`).join('; ')}`;
+          }
+          
+          if (aiFeedback.disliked.length > 0) {
+            generalProfile += `\n• Didn't connect with: ${aiFeedback.disliked.map(t => `${t.trackName} by ${t.artist}`).join('; ')}`;
+          }
+        }
+
+        return generalProfile;
     }
   }
 }

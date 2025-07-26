@@ -16,6 +16,7 @@ import { ConversationManager, getConversationManager } from '../services/Convers
 import { ConversationEntry, DialogState } from '../utils/redisConversation';
 import { UserDataService } from '../services/UserDataService';
 import { createRedisClient } from '../config/redis';
+import { detectRequestContextType } from '../utils/requestContext';
 
 export const llmInterpreterRouter = Router();
 
@@ -70,9 +71,13 @@ async function interpretCommand(command: string, userId?: string, preferredModel
         req.spotifyTokens,
         (tokens) => { req.spotifyTokens = tokens; }
       );
+      // Detect request context type for adaptive taste profile  
+      const contextType = detectRequestContextType(command);
+      console.log(`[DEBUG] Detected request context type: ${contextType || 'general'}`);
+      
       const userDataService = new UserDataService(redisClient, spotifyControl.getApi(), userId);
-      tasteProfile = await userDataService.generateTasteProfile();
-      console.log('[DEBUG] Fetched taste profile for user in llm-interpreter');
+      tasteProfile = await userDataService.generateTasteProfile(contextType);
+      console.log(`[DEBUG] Fetched ${contextType || 'general'} taste profile for user in llm-interpreter`);
       console.log('[DEBUG] Taste Profile Content:', tasteProfile);
     } catch (error) {
       console.error('Error fetching taste profile in llm-interpreter:', error);

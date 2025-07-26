@@ -118,17 +118,17 @@ export class SpotifyControl {
       const selectedTrack = tracks[0];
       await this.webAPI.playTrack(selectedTrack.uri);
       
-      // Customize message based on retry level
+      // Customize message based on retry level to clearly explain what happened
       let message = '';
       switch (retryLevel) {
         case 0:
           message = `Playing: ${selectedTrack.name} by ${selectedTrack.artists.map((a: { name: string }) => a.name).join(', ')}`;
           break;
         case 1:
-          message = `Couldn't find exact match, playing: ${selectedTrack.name} by ${selectedTrack.artists.map((a: { name: string }) => a.name).join(', ')}`;
+          message = `The exact song wasn't found on Spotify, so I'm playing: ${selectedTrack.name} by ${selectedTrack.artists.map((a: { name: string }) => a.name).join(', ')} instead`;
           break;
         case 2:
-          message = `Couldn't find exact match, playing closest match: ${selectedTrack.name} by ${selectedTrack.artists.map((a: { name: string }) => a.name).join(', ')}`;
+          message = `The requested song doesn't exist on Spotify, so I found the closest match: ${selectedTrack.name} by ${selectedTrack.artists.map((a: { name: string }) => a.name).join(', ')}`;
           break;
       }
       
@@ -157,17 +157,17 @@ export class SpotifyControl {
       const selectedTrack = tracks[0];
       await this.webAPI.addToQueue(selectedTrack.uri);
       
-      // Customize message based on retry level
+      // Customize message based on retry level to clearly explain what happened
       let message = '';
       switch (retryLevel) {
         case 0:
           message = `Added to queue: ${selectedTrack.name} by ${selectedTrack.artists.map((a: { name: string }) => a.name).join(', ')}`;
           break;
         case 1:
-          message = `Couldn't find exact match, added to queue: ${selectedTrack.name} by ${selectedTrack.artists.map((a: { name: string }) => a.name).join(', ')}`;
+          message = `The exact song wasn't found on Spotify, so I added to queue: ${selectedTrack.name} by ${selectedTrack.artists.map((a: { name: string }) => a.name).join(', ')} instead`;
           break;
         case 2:
-          message = `Couldn't find exact match, added closest match to queue: ${selectedTrack.name} by ${selectedTrack.artists.map((a: { name: string }) => a.name).join(', ')}`;
+          message = `The requested song doesn't exist on Spotify, so I found the closest match and added to queue: ${selectedTrack.name} by ${selectedTrack.artists.map((a: { name: string }) => a.name).join(', ')}`;
           break;
       }
       

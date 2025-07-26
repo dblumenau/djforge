@@ -16,6 +16,7 @@ import {
   CONVERSATIONAL_ASSISTANT_PROMPT,
   formatMusicHistory 
 } from '../llm/music-curator-prompts';
+import { detectRequestContextType } from '../utils/requestContext';
 
 export const simpleLLMInterpreterRouter = Router();
 
@@ -715,6 +716,7 @@ function rankTracks(tracks: SpotifyTrack[], interpretation: any): TrackWithScore
   }).sort((a, b) => b.relevanceScore - a.relevanceScore);
 }
 
+
 // Health check endpoint
 simpleLLMInterpreterRouter.get('/health', (req, res) => {
   res.json({ 
@@ -948,9 +950,13 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
     
     if (userId && loggingService?.redisClient) {
       try {
+        // Detect request context type for adaptive taste profile
+        const contextType = detectRequestContextType(command);
+        console.log(`[DEBUG] Detected request context type: ${contextType || 'general'}`);
+        
         const userDataService = new UserDataService(loggingService.redisClient, spotifyControl.getApi(), userId);
-        tasteProfile = await userDataService.generateTasteProfile();
-        console.log('[DEBUG] Fetched taste profile for user');
+        tasteProfile = await userDataService.generateTasteProfile(contextType);
+        console.log(`[DEBUG] Fetched ${contextType || 'general'} taste profile for user`);
         console.log('[DEBUG] Taste Profile Content:', tasteProfile);
       } catch (error) {
         console.error('Error fetching taste profile:', error);
@@ -1252,7 +1258,7 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
           if (successCount === 0) {
             result = {
               success: false,
-              message: `Failed to queue any songs. ${failureCount} songs not found.`,
+              message: `Failed to queue any songs. None of the ${failureCount} requested songs could be found on Spotify.`,
               failures
             };
           } else if (failureCount === 0) {
@@ -1264,7 +1270,7 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
           } else {
             result = {
               success: true,
-              message: `Queued ${successCount} songs${interpretation.theme ? ` (${interpretation.theme})` : ''}. ${failureCount} songs not found.`,
+              message: `Queued ${successCount} songs${interpretation.theme ? ` (${interpretation.theme})` : ''}. ${failureCount} songs couldn't be found on Spotify.`,
               queuedSongs: queueResults,
               failures
             };
@@ -1657,11 +1663,14 @@ simpleLLMInterpreterRouter.post('/test-interpret', async (req, res) => {
           (tokens) => { req.spotifyTokens = tokens; }
         );
         
-        // Get taste profile
+        // Get contextual taste profile
+        const contextType = detectRequestContextType(command);
+        console.log(`[TEST] Detected request context type: ${contextType || 'general'}`);
+        
         const userDataService = new UserDataService(loggingService.redisClient, spotifyControl.getApi(), userId);
-        const tasteProfile = await userDataService.generateTasteProfile();
+        const tasteProfile = await userDataService.generateTasteProfile(contextType);
         musicContext = tasteProfile;
-        console.log('[TEST] Fetched taste profile for user');
+        console.log(`[TEST] Fetched ${contextType || 'general'} taste profile for user`);
       } catch (error) {
         console.error('[TEST] Error fetching taste profile:', error);
       }
