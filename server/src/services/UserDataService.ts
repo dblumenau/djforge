@@ -696,4 +696,34 @@ Recent Favorites: ${topTracksMedium.slice(0, 10).map(t => `"${t.name}" by ${t.ar
       };
     }
   }
+
+  // DJ Forge playlist management
+  async addToJDForgePlaylist(trackUri: string): Promise<void> {
+    try {
+      const playlistName = 'DJ Forge';
+      const playlistDescription = 'AI-discovered tracks that you loved - curated by your personal DJ Forge assistant';
+      
+      // Ensure the DJ Forge playlist exists
+      const playlist = await this.spotifyApi.ensurePlaylistExists(playlistName, playlistDescription);
+      
+      // Check if track is already in the playlist to avoid duplicates
+      const existingTracks = await this.spotifyApi.getPlaylistTracks(playlist.id);
+      const trackAlreadyExists = existingTracks.some((item: any) => 
+        item.track && item.track.uri === trackUri
+      );
+      
+      if (trackAlreadyExists) {
+        console.log(`Track already exists in DJ Forge playlist: ${trackUri}`);
+        return;
+      }
+      
+      // Add the track to the playlist
+      await this.spotifyApi.addTracksToPlaylist(playlist.id, [trackUri]);
+      console.log(`✅ Successfully added track to DJ Forge playlist: ${trackUri}`);
+      
+    } catch (error) {
+      console.error('Error adding track to DJ Forge playlist:', error);
+      throw error;
+    }
+  }
 }
