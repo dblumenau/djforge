@@ -106,9 +106,9 @@ export class GeminiService {
       return {
         content,
         usage: {
-          prompt_tokens: (response as any).usage?.promptTokens || 0,
-          completion_tokens: (response as any).usage?.completionTokens || 0,
-          total_tokens: (response as any).usage?.totalTokens || 0
+          prompt_tokens: response.usageMetadata?.promptTokenCount || 0,
+          completion_tokens: response.usageMetadata?.candidatesTokenCount || 0,
+          total_tokens: response.usageMetadata?.totalTokenCount || 0
         },
         model: request.model || 'gemini-2.5-flash',
         provider: 'google-genai-direct'

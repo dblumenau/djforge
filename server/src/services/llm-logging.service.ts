@@ -2,9 +2,9 @@ import { v4 as uuidv4 } from 'uuid';
 import { createHash } from 'crypto';
 
 export interface TokenUsage {
-  promptTokens?: number;
-  completionTokens?: number;
-  totalTokens?: number;
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  total_tokens?: number;
 }
 
 export interface LLMLogEntry {

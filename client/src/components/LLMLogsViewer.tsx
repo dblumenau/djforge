@@ -314,7 +314,7 @@ const LLMLogsViewer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                         } • 
                         <span className="text-gray-500"> Latency:</span> {formatLatency(log.llmResponse.latency)} • 
                         <span className="text-gray-500"> Tokens:</span> {
-                          log.llmResponse.usage?.totalTokens || 'N/A'
+                          log.llmResponse.usage?.total_tokens || 'N/A'
                         }
                       </div>
                       
