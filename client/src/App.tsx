@@ -3,6 +3,8 @@ import LandingPage from './components/LandingPage';
 import MainApp from './components/MainApp';
 import NotFound from './components/NotFound';
 import Dashboard from './pages/Dashboard';
+import TasteProfile from './pages/TasteProfile';
+import FeedbackDashboard from './pages/FeedbackDashboard';
 
 // Auth callback loader - handles OAuth callback without a component
 const authCallbackLoader = ({ request }: { request: Request }) => {
@@ -45,6 +47,14 @@ export const router = createBrowserRouter([
   {
     path: "/dashboard",
     element: <Dashboard />
+  },
+  {
+    path: "/taste-profile",
+    element: <TasteProfile />
+  },
+  {
+    path: "/feedback-dashboard",
+    element: <FeedbackDashboard />
   },
   {
     path: "/callback",

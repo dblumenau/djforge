@@ -80,8 +80,7 @@ describe('LLM Interpreter - Real API Integration Tests', () => {
     console.log('🧪 Starting LLM Integration Tests');
     console.log(`💰 Expensive tests: ${RUN_EXPENSIVE_TESTS ? 'ENABLED' : 'DISABLED'}`);
     console.log(`🔑 OpenRouter API Key: ${process.env.OPENROUTER_API_KEY ? 'CONFIGURED' : 'MISSING'}`);
-    console.log(`🔑 Google API Key: ${process.env.GOOGLE_API_KEY ? 'CONFIGURED' : 'MISSING'}`);
-    console.log(`🔑 Gemini Direct: ${process.env.ENABLE_GEMINI_DIRECT === 'true' ? 'ENABLED' : 'DISABLED'}`);
+    console.log(`🔑 Gemini API Key: ${process.env.GEMINI_API_KEY ? 'CONFIGURED' : 'MISSING'}`);
   });
 
   beforeEach(() => {
@@ -104,8 +103,7 @@ describe('LLM Interpreter - Real API Integration Tests', () => {
       
       expect(models.length).toBeGreaterThan(0);
       expect(process.env.OPENROUTER_API_KEY).toBeDefined();
-      expect(process.env.GOOGLE_API_KEY).toBeDefined();
-      expect(process.env.ENABLE_GEMINI_DIRECT).toBe('true');
+      expect(process.env.GEMINI_API_KEY).toBeDefined();
     });
 
     it('should perform basic health check', async () => {

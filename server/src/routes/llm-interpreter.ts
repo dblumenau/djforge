@@ -14,6 +14,8 @@ import {
 import { buildSpotifySearchQuery, extractEssentialFields } from '../llm/normalizer';
 import { ConversationManager, getConversationManager } from '../services/ConversationManager';
 import { ConversationEntry, DialogState } from '../utils/redisConversation';
+import { UserDataService } from '../services/UserDataService';
+import { createRedisClient } from '../config/redis';
 
 export const llmInterpreterRouter = Router();
 
@@ -42,8 +44,9 @@ interface TrackWithScore extends SpotifyTrack {
 }
 
 // Interpret command using LLM orchestrator
-async function interpretCommand(command: string, userId?: string, preferredModel?: string): Promise<MusicCommand> {
+async function interpretCommand(command: string, userId?: string, preferredModel?: string, req?: any): Promise<MusicCommand> {
   let conversationContext = '';
+  let tasteProfile = '';
   
   // Get conversation context if available
   if (userId && conversationManager) {
@@ -55,6 +58,41 @@ async function interpretCommand(command: string, userId?: string, preferredModel
     conversationContext = conversationManager.formatContextForLLM(command, history, dialogState);
   }
   
+  // Get user's taste profile if available
+  if (userId && req?.spotifyTokens) {
+    let redisClient = null;
+    try {
+      // Create a Redis client for taste profile
+      redisClient = await createRedisClient();
+      await redisClient.connect();
+      
+      const spotifyControl = new SpotifyControl(
+        req.spotifyTokens,
+        (tokens) => { req.spotifyTokens = tokens; }
+      );
+      const userDataService = new UserDataService(redisClient, spotifyControl.getApi(), userId);
+      tasteProfile = await userDataService.generateTasteProfile();
+      console.log('[DEBUG] Fetched taste profile for user in llm-interpreter');
+      console.log('[DEBUG] Taste Profile Content:', tasteProfile);
+    } catch (error) {
+      console.error('Error fetching taste profile in llm-interpreter:', error);
+    } finally {
+      // Clean up Redis connection
+      if (redisClient) {
+        await redisClient.disconnect();
+      }
+    }
+  }
+  
+  // Combine taste profile with conversation context
+  let fullContext = '';
+  if (tasteProfile) {
+    fullContext = tasteProfile + '\n\n';
+  }
+  if (conversationContext) {
+    fullContext += conversationContext;
+  }
+  
   const request = createSchemaRequest(
     SYSTEM_PROMPTS.MUSIC_INTERPRETER,
     command,
@@ -62,9 +100,13 @@ async function interpretCommand(command: string, userId?: string, preferredModel
     preferredModel || OPENROUTER_MODELS.GPT_4O // Use preferred model or default
   );
   
-  // Add conversation context to request
-  if (conversationContext) {
-    request.conversationContext = conversationContext;
+  // Add combined context to request
+  if (fullContext) {
+    request.conversationContext = fullContext;
+    console.log('[DEBUG] Full context being sent to LLM:');
+    console.log('---START OF CONTEXT---');
+    console.log(fullContext);
+    console.log('---END OF CONTEXT---');
   }
 
   try {
@@ -260,7 +302,12 @@ llmInterpreterRouter.post('/command', ensureValidToken, async (req, res) => {
       }
     }
     
-    const interpretation = await interpretCommand(command, userId || undefined, preferredModel);
+    // Create a request-like object with tokens for taste profile
+    const reqLike = {
+      spotifyTokens: req.session.spotifyTokens
+    };
+    
+    const interpretation = await interpretCommand(command, userId || undefined, preferredModel, reqLike);
     console.log('LLM interpretation:', interpretation);
 
     const spotifyControl = new SpotifyControl(
@@ -322,10 +369,12 @@ llmInterpreterRouter.post('/command', ensureValidToken, async (req, res) => {
               message: `Playing: ${topTrack.name} by ${topTrack.artists.map(a => a.name).join(', ')}`
             };
           } else {
-            await spotifyControl.queueTrackByUri(topTrack.uri);
+            const queueResult = await spotifyControl.queueTrackByUri(topTrack.uri);
             result = {
-              success: true,
-              message: `Added to queue: ${topTrack.name} by ${topTrack.artists.map(a => a.name).join(', ')}`
+              success: queueResult.success,
+              message: queueResult.success 
+                ? `Added to queue: ${topTrack.name} by ${topTrack.artists.map(a => a.name).join(', ')}`
+                : queueResult.message || 'Failed to add track to queue'
             };
           }
           
@@ -465,11 +514,12 @@ llmInterpreterRouter.post('/command', ensureValidToken, async (req, res) => {
               
               const tracks = await spotifyControl.search(searchQuery);
               if (tracks.length > 0) {
-                await spotifyControl.queueTrackByUri(tracks[0].uri);
+                const queueResult = await spotifyControl.queueTrackByUri(tracks[0].uri);
                 queueResults.push({
                   name: tracks[0].name,
                   artists: tracks[0].artists.map((a: any) => a.name).join(', '),
-                  success: true
+                  success: queueResult.success,
+                  error: queueResult.success ? undefined : queueResult.message
                 });
               } else {
                 failures.push(`${song.artist} - ${song.track}`);

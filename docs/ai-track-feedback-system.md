@@ -531,4 +531,290 @@ Before submitting:
 
 Remember: You are a code typist, not a software architect. Type what we told you, where we told you, nothing more.
 
+## Phase 2 Implementation Specs for AI Minions
+
+### CRITICAL WARNINGS (SAME AS PHASE 1)
+- DO NOT DELETE ANY EXISTING CODE
+- DO NOT REFACTOR ANYTHING OUTSIDE YOUR SPECIFIC TASK
+- DO NOT "IMPROVE" OTHER PARTS OF THE CODEBASE
+- ADD ONLY - MODIFY ONLY WHAT'S SPECIFIED
+- TEST YOUR CHANGES DON'T BREAK EXISTING FUNCTIONALITY
+
+### Task 2.0: Fix Backend to Track AI Discoveries
+
+**Problem**: Phase 1 only has feedback recording, not discovery tracking!
+
+**Files to modify:**
+1. `server/src/routes/simple-llm-interpreter.ts` - Track discoveries when they happen
+2. `server/src/services/UserDataService.ts` - Store discoveries separately from feedback
+
+**Changes needed:**
+
+In `UserDataService.ts`, ADD a new key for tracking all discoveries:
+```typescript
+// Add new Redis key for ALL AI discoveries (not just ones with feedback)
+`user:${userId}:ai_discoveries` // List of all discoveries, newest first
+```
+
+In `simple-llm-interpreter.ts`:
+- After successful playback (when `response.success === true`)
+- Check if `interpretation.isAIDiscovery === true`
+- If true, create discovery object and store in Redis:
+```typescript
+if (interpretation.isAIDiscovery && response.track) {
+  const discovery: AIDiscoveredTrack = {
+    trackUri: response.track.uri,
+    trackName: response.track.name,
+    artist: response.track.artists.map(a => a.name).join(', '),
+    discoveredAt: Date.now(),
+    reasoning: interpretation.aiReasoning || '',
+    feedback: undefined, // No feedback yet
+    feedbackAt: undefined
+  };
+  
+  // Store in Redis discoveries list
+  await loggingService.redisClient.lpush(
+    `user:${userId}:ai_discoveries`,
+    JSON.stringify(discovery)
+  );
+  // Trim to keep only last 500 discoveries
+  await loggingService.redisClient.ltrim(
+    `user:${userId}:ai_discoveries`, 
+    0, 
+    499
+  );
+}
+```
+
+**Task 2.0 Specific Guardrails:**
+- DO NOT modify the feedback recording logic
+- DO NOT create a new service class
+- Store discoveries ONLY when playback succeeds
+- Keep discovery storage simple - just push to list
+
+### Task 2.1: Add Feedback API Methods
+
+**Goal**: Add methods to call the feedback endpoints
+
+**Files to modify:**
+1. `client/src/services/api.ts` - ADD new methods for feedback API calls
+
+**Exact changes needed:**
+
+In `api.ts`, ADD these methods:
+```typescript
+// Record feedback for a track
+recordFeedback: async (trackUri: string, feedback: 'loved' | 'disliked' | 'remove') => {
+  const response = await fetch(`${API_URL}/api/feedback/ai-discovery`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ trackUri, feedback })
+  });
+  return handleResponse(response);
+},
+
+// Get all AI discoveries with feedback
+getAIDiscoveries: async () => {
+  const response = await fetch(`${API_URL}/api/feedback/ai-discoveries`, {
+    method: 'GET',
+    headers: getAuthHeaders()
+  });
+  return handleResponse(response);
+}
+```
+
+**Task 2.1 Specific Guardrails:**
+- DO NOT add more methods than these two
+- DO NOT create types or interfaces
+- Use the existing error handling pattern
+
+### Task 2.2: Add Feedback Buttons to Messages
+
+**Files to modify:**
+1. `client/src/pages/MainApp.tsx` - MODIFY message rendering to include feedback buttons
+
+**First, update handleCommand to capture AI discovery info:**
+
+In the success case where we add the assistant message, modify to include discovery info:
+```typescript
+// When adding assistant message after successful command
+const newMessage = {
+  // ... existing fields ...
+  isAIDiscovery: interpretation.isAIDiscovery || false,
+  trackUri: response.track?.uri,
+  trackName: response.track?.name,
+  artist: response.track?.artists?.map(a => a.name).join(', '),
+  aiReasoning: interpretation.aiReasoning,
+  // ... rest of message
+};
+```
+
+**Exact UI implementation:**
+
+For messages that have AI discoveries:
+```jsx
+{message.isAIDiscovery && message.trackUri && (
+  <div className="flex gap-2 mt-2 opacity-0 animate-[fadeIn_0.3s_ease-in_2s_forwards]">
+    <button
+      onClick={() => handleFeedback(message.trackUri, 'loved')}
+      className={`px-3 py-1 rounded-lg transition-all ${
+        message.feedback === 'loved' 
+          ? 'bg-green-600 text-white' 
+          : 'bg-zinc-800 hover:bg-green-900 text-zinc-300'
+      }`}
+      disabled={message.feedbackLoading}
+    >
+      👍
+    </button>
+    <button
+      onClick={() => handleFeedback(message.trackUri, 'disliked')}
+      className={`px-3 py-1 rounded-lg transition-all ${
+        message.feedback === 'disliked' 
+          ? 'bg-red-600 text-white' 
+          : 'bg-zinc-800 hover:bg-red-900 text-zinc-300'
+      }`}
+      disabled={message.feedbackLoading}
+    >
+      👎
+    </button>
+  </div>
+)}
+```
+
+**Message state updates needed:**
+- Add to message type: `isAIDiscovery?: boolean`
+- Add to message type: `trackUri?: string`
+- Add to message type: `trackName?: string`
+- Add to message type: `artist?: string`
+- Add to message type: `aiReasoning?: string`
+- Add to message type: `feedback?: 'loved' | 'disliked'`
+- Add to message type: `feedbackLoading?: boolean`
+
+**Task 2.2 Specific Guardrails:**
+- Use Tailwind CSS v4 classes ONLY (check Context7 for syntax)
+- DO NOT install any animation libraries
+- DO NOT create separate component files
+- Keep the animation simple with CSS only
+- Buttons must appear 2-3 seconds after message
+
+### Task 2.3: Handle Feedback Actions
+
+**Files to modify:**
+1. `client/src/pages/MainApp.tsx` - ADD handleFeedback function
+
+**Implementation:**
+```typescript
+const handleFeedback = async (trackUri: string, feedback: 'loved' | 'disliked') => {
+  // Find the message with this trackUri
+  const messageIndex = messages.findIndex(m => m.trackUri === trackUri);
+  if (messageIndex === -1) return;
+
+  // Set loading state
+  setMessages(prev => prev.map((msg, idx) => 
+    idx === messageIndex ? { ...msg, feedbackLoading: true } : msg
+  ));
+
+  try {
+    // If clicking the same feedback again, remove it
+    const currentFeedback = messages[messageIndex].feedback;
+    const newFeedback = currentFeedback === feedback ? 'remove' : feedback;
+    
+    await api.recordFeedback(trackUri, newFeedback);
+    
+    // Update message with new feedback
+    setMessages(prev => prev.map((msg, idx) => 
+      idx === messageIndex 
+        ? { 
+            ...msg, 
+            feedback: newFeedback === 'remove' ? undefined : feedback,
+            feedbackLoading: false 
+          } 
+        : msg
+    ));
+
+    // Show toast notification
+    showToast(
+      newFeedback === 'remove' 
+        ? 'Feedback removed' 
+        : `Thanks for the feedback!`
+    );
+  } catch (error) {
+    console.error('Failed to record feedback:', error);
+    setMessages(prev => prev.map((msg, idx) => 
+      idx === messageIndex ? { ...msg, feedbackLoading: false } : msg
+    ));
+  }
+};
+```
+
+**Task 2.3 Specific Guardrails:**
+- DO NOT create a global feedback state
+- DO NOT refetch all discoveries after feedback
+- Keep feedback local to the message
+- Use the existing toast system (don't create new one)
+
+### Task 2.4: Add Simple Toast Notifications
+
+**Files to modify:**
+1. `client/src/pages/MainApp.tsx` - ADD simple toast system if not exists
+
+**Only if no toast exists, add this minimal implementation:**
+```typescript
+const [toast, setToast] = useState<string | null>(null);
+
+const showToast = (message: string) => {
+  setToast(message);
+  setTimeout(() => setToast(null), 3000);
+};
+
+// In the JSX, near the bottom:
+{toast && (
+  <div className="fixed bottom-4 right-4 bg-zinc-800 text-white px-4 py-2 rounded-lg shadow-lg animate-[slideIn_0.3s_ease-out]">
+    {toast}
+  </div>
+)}
+```
+
+**Task 2.4 Specific Guardrails:**
+- Only add if no toast system exists
+- Keep it minimal - no toast queue or variants
+- Use Tailwind classes only
+
+### Testing Checklist for Phase 2
+- [ ] AI discoveries are tracked when isAIDiscovery: true
+- [ ] Feedback buttons appear after 2-3 seconds
+- [ ] Buttons show correct state (loved/disliked)
+- [ ] Clicking same button again removes feedback
+- [ ] Toast notifications appear and disappear
+- [ ] Page refresh preserves feedback state
+- [ ] Non-AI discoveries don't show buttons
+- [ ] TypeScript compiles without errors
+
+### FINAL WARNINGS FOR PHASE 2
+1. If you created any new component files, DELETE THEM
+2. If you added more than 200 lines total, you overdid it
+3. If you installed any npm packages, UNINSTALL THEM
+4. If you see yourself typing "useState" more than twice, STOP
+5. Keep it simple - this is just thumbs up/down buttons!
+
  
+
+ # Bugs and Snags:
+ When refreshing the page, the thumbs up/down buttons disappear. We should be showing both buttons still, if they were rated or not, and if they were, we should show the correct button as selected. Even though we are building a whole dashboard feedback page its still nice to see the feedback in the chat.
+
+## Phase 3: Feedback Dashboard
+
+**📋 Phase 3 implementation specs have been moved to a dedicated file:**
+
+👉 **[phase-3-feedback-dashboard-specs.md](./phase-3-feedback-dashboard-specs.md)**
+
+This includes:
+- 5 specific implementation tasks with exact code snippets
+- Complete React dashboard component (470 lines of specs)
+- Backend endpoint and data aggregation
+- Frontend API integration
+- Router and navigation setup
+- Comprehensive minion guardrails and testing checklists
+
+The specs are ready for the `spec-adherent-coder` minion to implement the feedback dashboard page.
+

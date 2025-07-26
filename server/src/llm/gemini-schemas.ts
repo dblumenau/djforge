@@ -171,6 +171,14 @@ export const MusicCommandIntentSchema = {
     theme: {
       type: Type.STRING,
       description: 'Theme or description of the song collection for queue_multiple_songs intent'
+    },
+    isAIDiscovery: {
+      type: Type.BOOLEAN,
+      description: 'True when AI made creative choice (not following explicit user request)'
+    },
+    aiReasoning: {
+      type: Type.STRING,
+      description: 'Brief explanation (1-2 sentences) of why AI chose this when isAIDiscovery is true'
     }
   },
   required: ['intent', 'confidence', 'reasoning'],
@@ -190,7 +198,9 @@ export const MusicCommandIntentSchema = {
     'enhancedQuery',
     'responseMessage',
     'songs',
-    'theme'
+    'theme',
+    'isAIDiscovery',
+    'aiReasoning'
   ]
 };
 
@@ -386,6 +396,11 @@ Key guidelines:
 - IMPORTANT: For queue_multiple_songs, analyze the context (current song, recent plays) to suggest similar songs
 
 Supported intents: play_specific_song, queue_specific_song, queue_multiple_songs, play_playlist, queue_playlist, play, pause, skip, previous, volume, set_volume, resume, next, back, get_current_track, set_shuffle, set_repeat, clear_queue, get_devices, get_playlists, get_recently_played, search, get_playback_info, chat, ask_question, unknown.
+
+AI Discovery Detection: When you make a creative choice (not following an explicit user request), set isAIDiscovery: true and include aiReasoning (keep it brief - 1-2 sentences max). Examples:
+- "play something melancholy" → isAIDiscovery: true (you choose the specific track)
+- "queue up something else that is sad" → isAIDiscovery: true (you choose the tracks)  
+- "play Anti-Hero by Taylor Swift" → isAIDiscovery: false (user was specific)
 
 Your response will be automatically validated against a strict schema.`,
 

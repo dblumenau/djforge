@@ -188,6 +188,9 @@ npx tsc --noEmit
 - LLM validation failures → Check intent-validator.ts for schema changes
 - Redis connection errors → Verify Redis server is running
 - AppleScript permissions → Grant Terminal/iTerm accessibility permissions
+- **AI Feedback not appearing in taste profiles** → Check `getAIFeedback()` parsing logic and Redis data format
+- **Multiple songs not getting individual feedback buttons** → Verify each song gets separate `trackAIDiscovery()` call
+- **Feedback not persisting** → Check Redis key naming and JSON format compatibility
 
 **Performance Tips**:
 - Gemini Direct API is faster than OpenRouter

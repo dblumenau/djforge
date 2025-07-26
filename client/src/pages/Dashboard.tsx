@@ -11,6 +11,14 @@ import ListeningTrends from '../components/dashboard/ListeningTrends';
 import PlaylistGrid from '../components/dashboard/PlaylistGrid';
 import { useSpotifyPlayback } from '../hooks/useSpotifyPlayback';
 
+// Skeleton components
+import ProfileSkeleton from '../components/skeletons/ProfileSkeleton';
+import StatCardSkeleton from '../components/skeletons/StatCardSkeleton';
+import TrackListSkeleton from '../components/skeletons/TrackListSkeleton';
+import AlbumGridSkeleton from '../components/skeletons/AlbumGridSkeleton';
+import TimelineSkeleton from '../components/skeletons/TimelineSkeleton';
+import ChartSkeleton from '../components/skeletons/ChartSkeleton';
+
 interface DashboardData {
   profile: any;
   topArtists: {
@@ -41,6 +49,17 @@ interface DashboardData {
 
 type Section = 'overview' | 'top' | 'saved' | 'recent' | 'playlists' | 'insights';
 
+interface DashboardLoadingState {
+  profile: boolean;
+  stats: boolean; 
+  topItems: boolean;
+  savedTracks: boolean;
+  savedAlbums: boolean;
+  recentlyPlayed: boolean;
+  playlists: boolean;
+  insights: boolean;
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const { playTrack, queueTrack, playPlaylist, isLoading } = useSpotifyPlayback();
@@ -53,6 +72,18 @@ export default function Dashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMoreTracks, setLoadingMoreTracks] = useState(false);
   const [refreshProgress, setRefreshProgress] = useState<string>('');
+  
+  // Granular loading states for each section
+  const [loadingStates, setLoadingStates] = useState<DashboardLoadingState>({
+    profile: true,
+    stats: true,
+    topItems: true,
+    savedTracks: true,
+    savedAlbums: true,
+    recentlyPlayed: true,
+    playlists: true,
+    insights: true,
+  });
 
   useEffect(() => {
     fetchDashboardData();
@@ -109,6 +140,18 @@ export default function Dashboard() {
           setError(null);
           setRefreshProgress('');
           console.log('✅ Dashboard data successfully set in state');
+          
+          // Clear all loading states once data is available
+          setLoadingStates({
+            profile: false,
+            stats: false,
+            topItems: false,
+            savedTracks: false,
+            savedAlbums: false,
+            recentlyPlayed: false,
+            playlists: false,
+            insights: false,
+          });
         } else {
           throw new Error(data.error || 'Failed to fetch dashboard data');
         }
@@ -212,7 +255,14 @@ export default function Dashboard() {
       <header className="border-b border-zinc-800 sticky top-0 bg-zinc-950 z-10">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-green-400">Spotify Dashboard</h1>
+            <div className="flex items-center gap-3">
+              <img 
+                src="/square_icon.png" 
+                alt="Spotify Claude Controller" 
+                className="h-10 w-10"
+              />
+              <span className="text-2xl font-bold text-green-400">Dashboard</span>
+            </div>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <button
@@ -264,63 +314,84 @@ export default function Dashboard() {
             {/* Profile Section */}
             <section>
               <h2 className="text-xl font-semibold mb-4">Your Profile</h2>
-              <div className="bg-zinc-900 rounded-lg p-6 flex items-center gap-6">
-                {dashboardData.profile.images?.[0] && (
-                  <img
-                    src={dashboardData.profile.images[0].url}
-                    alt={dashboardData.profile.display_name}
-                    className="w-24 h-24 rounded-full"
-                  />
-                )}
-                <div>
-                  <h3 className="text-2xl font-bold">{dashboardData.profile.display_name}</h3>
-                  <p className="text-zinc-400">{dashboardData.profile.email}</p>
-                  <p className="text-sm text-zinc-500 mt-2">
-                    {dashboardData.profile.product === 'premium' ? '✓ Premium' : 'Free'} • 
-                    {dashboardData.profile.country} • 
-                    {dashboardData.profile.followers?.total || 0} followers
-                  </p>
+              {loadingStates.profile || !dashboardData ? (
+                <ProfileSkeleton />
+              ) : (
+                <div className="bg-zinc-900 rounded-lg p-6 flex items-center gap-6">
+                  {dashboardData.profile.images?.[0] && (
+                    <img
+                      src={dashboardData.profile.images[0].url}
+                      alt={dashboardData.profile.display_name}
+                      className="w-24 h-24 rounded-full"
+                    />
+                  )}
+                  <div>
+                    <h3 className="text-2xl font-bold">{dashboardData.profile.display_name}</h3>
+                    <p className="text-zinc-400">{dashboardData.profile.email}</p>
+                    <p className="text-sm text-zinc-500 mt-2">
+                      {dashboardData.profile.product === 'premium' ? '✓ Premium' : 'Free'} • 
+                      {dashboardData.profile.country} • 
+                      {dashboardData.profile.followers?.total || 0} followers
+                    </p>
+                  </div>
                 </div>
-              </div>
+              )}
             </section>
 
             {/* Quick Stats */}
             <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-zinc-900 rounded-lg p-6 text-center">
-                <p className="text-3xl font-bold text-green-400">{dashboardData.savedTracks.total}</p>
-                <p className="text-sm text-zinc-400 mt-1">Liked Songs</p>
-              </div>
-              <div className="bg-zinc-900 rounded-lg p-6 text-center">
-                <p className="text-3xl font-bold text-purple-400">{dashboardData.savedAlbums.total}</p>
-                <p className="text-sm text-zinc-400 mt-1">Saved Albums</p>
-              </div>
-              <div className="bg-zinc-900 rounded-lg p-6 text-center">
-                <p className="text-3xl font-bold text-orange-400">{dashboardData.playlists.length}</p>
-                <p className="text-sm text-zinc-400 mt-1">Playlists</p>
-              </div>
-              <div className="bg-zinc-900 rounded-lg p-6 text-center">
-                <p className="text-3xl font-bold text-blue-400">{dashboardData.recentlyPlayed.length}</p>
-                <p className="text-sm text-zinc-400 mt-1">Recent Tracks</p>
-              </div>
+              {loadingStates.stats || !dashboardData ? (
+                <>
+                  <StatCardSkeleton />
+                  <StatCardSkeleton />
+                  <StatCardSkeleton />
+                  <StatCardSkeleton />
+                </>
+              ) : (
+                <>
+                  <div className="bg-zinc-900 rounded-lg p-6 text-center">
+                    <p className="text-3xl font-bold text-green-400">{dashboardData.savedTracks.total}</p>
+                    <p className="text-sm text-zinc-400 mt-1">Liked Songs</p>
+                  </div>
+                  <div className="bg-zinc-900 rounded-lg p-6 text-center">
+                    <p className="text-3xl font-bold text-purple-400">{dashboardData.savedAlbums.total}</p>
+                    <p className="text-sm text-zinc-400 mt-1">Saved Albums</p>
+                  </div>
+                  <div className="bg-zinc-900 rounded-lg p-6 text-center">
+                    <p className="text-3xl font-bold text-orange-400">{dashboardData.playlists.length}</p>
+                    <p className="text-sm text-zinc-400 mt-1">Playlists</p>
+                  </div>
+                  <div className="bg-zinc-900 rounded-lg p-6 text-center">
+                    <p className="text-3xl font-bold text-blue-400">{dashboardData.recentlyPlayed.length}</p>
+                    <p className="text-sm text-zinc-400 mt-1">Recent Tracks</p>
+                  </div>
+                </>
+              )}
             </section>
 
             {/* Recent Activity Preview */}
             <section>
               <h2 className="text-xl font-semibold mb-4">Recent Activity</h2>
               <div className="bg-zinc-900 rounded-lg p-6">
-                <RecentlyPlayedTimeline 
-                  tracks={dashboardData.recentlyPlayed.slice(0, 10)} 
-                  onPlay={playTrack}
-                  onQueue={queueTrack}
-                  isLoading={isLoading}
-                />
-                {dashboardData.recentlyPlayed.length > 10 && (
-                  <button
-                    onClick={() => setActiveSection('recent')}
-                    className="mt-4 text-sm text-green-400 hover:text-green-300"
-                  >
-                    View all {dashboardData.recentlyPlayed.length} tracks →
-                  </button>
+                {loadingStates.recentlyPlayed || !dashboardData ? (
+                  <TimelineSkeleton dateGroups={2} tracksPerGroup={3} />
+                ) : (
+                  <>
+                    <RecentlyPlayedTimeline 
+                      tracks={dashboardData.recentlyPlayed.slice(0, 10)} 
+                      onPlay={playTrack}
+                      onQueue={queueTrack}
+                      isLoading={isLoading}
+                    />
+                    {dashboardData.recentlyPlayed.length > 10 && (
+                      <button
+                        onClick={() => setActiveSection('recent')}
+                        className="mt-4 text-sm text-green-400 hover:text-green-300"
+                      >
+                        View all {dashboardData.recentlyPlayed.length} tracks →
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             </section>
@@ -374,37 +445,47 @@ export default function Dashboard() {
 
             {/* Top Artists Grid */}
             {activeTab === 'artists' && (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                {dashboardData.topArtists[timeRange].slice(0, 20).map((artist, index) => (
-                  <div key={artist.id} className="bg-zinc-900 rounded-lg p-4 hover:bg-zinc-800 transition-colors">
-                    <div className="relative">
-                      <span className="absolute top-2 left-2 bg-black/60 text-xs px-2 py-1 rounded">
-                        #{index + 1}
-                      </span>
-                      {artist.images?.[0] && (
-                        <img
-                          src={artist.images[0].url}
-                          alt={artist.name}
-                          className="w-full aspect-square object-cover rounded-lg mb-3"
-                        />
-                      )}
-                    </div>
-                    <h4 className="font-semibold truncate">{artist.name}</h4>
-                    <p className="text-sm text-zinc-400 truncate">
-                      {artist.genres?.slice(0, 2).join(', ') || 'No genres'}
-                    </p>
-                    <p className="text-xs text-zinc-500 mt-1">
-                      Popularity: {artist.popularity}
-                    </p>
+              <>
+                {loadingStates.topItems || !dashboardData ? (
+                  <AlbumGridSkeleton count={20} />
+                ) : (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                    {dashboardData.topArtists[timeRange].slice(0, 20).map((artist, index) => (
+                      <div key={artist.id} className="bg-zinc-900 rounded-lg p-4 hover:bg-zinc-800 transition-colors">
+                        <div className="relative">
+                          <span className="absolute top-2 left-2 bg-black/60 text-xs px-2 py-1 rounded">
+                            #{index + 1}
+                          </span>
+                          {artist.images?.[0] && (
+                            <img
+                              src={artist.images[0].url}
+                              alt={artist.name}
+                              className="w-full aspect-square object-cover rounded-lg mb-3"
+                            />
+                          )}
+                        </div>
+                        <h4 className="font-semibold truncate">{artist.name}</h4>
+                        <p className="text-sm text-zinc-400 truncate">
+                          {artist.genres?.slice(0, 2).join(', ') || 'No genres'}
+                        </p>
+                        <p className="text-xs text-zinc-500 mt-1">
+                          Popularity: {artist.popularity}
+                        </p>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                )}
+              </>
             )}
 
             {/* Top Tracks List */}
             {activeTab === 'tracks' && (
-              <div className="space-y-2">
-                {dashboardData.topTracks[timeRange].slice(0, 20).map((track, index) => (
+              <>
+                {loadingStates.topItems || !dashboardData ? (
+                  <TrackListSkeleton count={20} />
+                ) : (
+                  <div className="space-y-2">
+                    {dashboardData.topTracks[timeRange].slice(0, 20).map((track, index) => (
                   <div key={track.id} className="bg-zinc-900 rounded-lg p-4 flex items-center gap-4 hover:bg-zinc-800 transition-colors group">
                     <span className="text-zinc-500 w-8 text-right">#{index + 1}</span>
                     {track.album?.images?.[0] && (
@@ -463,8 +544,10 @@ export default function Dashboard() {
                       <p className="text-xs text-zinc-500">Pop: {track.popularity}</p>
                     </div>
                   </div>
-                ))}
-              </div>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </section>
         )}
@@ -475,25 +558,33 @@ export default function Dashboard() {
             {/* Saved Tracks */}
             <section>
               <h2 className="text-xl font-semibold mb-4">Liked Songs</h2>
-              <SavedTracksTable
-                tracks={dashboardData.savedTracks.items}
-                total={dashboardData.savedTracks.total}
-                onPlay={playTrack}
-                onQueue={queueTrack}
-                onLoadMore={loadMoreSavedTracks}
-                loading={loadingMoreTracks}
-                isLoading={isLoading}
-              />
+              {loadingStates.savedTracks || !dashboardData ? (
+                <TrackListSkeleton count={10} />
+              ) : (
+                <SavedTracksTable
+                  tracks={dashboardData.savedTracks.items}
+                  total={dashboardData.savedTracks.total}
+                  onPlay={playTrack}
+                  onQueue={queueTrack}
+                  onLoadMore={loadMoreSavedTracks}
+                  loading={loadingMoreTracks}
+                  isLoading={isLoading}
+                />
+              )}
             </section>
 
             {/* Saved Albums */}
             <section>
               <h2 className="text-xl font-semibold mb-4">Saved Albums</h2>
-              <AlbumGrid 
-                albums={dashboardData.savedAlbums.items} 
-                onPlay={(uri) => playPlaylist(uri)}
-                isLoading={isLoading}
-              />
+              {loadingStates.savedAlbums || !dashboardData ? (
+                <AlbumGridSkeleton count={18} />
+              ) : (
+                <AlbumGrid 
+                  albums={dashboardData.savedAlbums.items} 
+                  onPlay={(uri) => playPlaylist(uri)}
+                  isLoading={isLoading}
+                />
+              )}
             </section>
           </div>
         )}
@@ -502,12 +593,16 @@ export default function Dashboard() {
         {activeSection === 'recent' && (
           <section>
             <h2 className="text-xl font-semibold mb-6">Recently Played</h2>
-            <RecentlyPlayedTimeline 
-              tracks={dashboardData.recentlyPlayed} 
-              onPlay={playTrack}
-              onQueue={queueTrack}
-              isLoading={isLoading}
-            />
+            {loadingStates.recentlyPlayed || !dashboardData ? (
+              <TimelineSkeleton dateGroups={4} tracksPerGroup={5} />
+            ) : (
+              <RecentlyPlayedTimeline 
+                tracks={dashboardData.recentlyPlayed} 
+                onPlay={playTrack}
+                onQueue={queueTrack}
+                isLoading={isLoading}
+              />
+            )}
           </section>
         )}
 
@@ -515,11 +610,15 @@ export default function Dashboard() {
         {activeSection === 'playlists' && (
           <section>
             <h2 className="text-xl font-semibold mb-6">Your Playlists</h2>
-            <PlaylistGrid 
-              playlists={dashboardData.playlists}
-              onPlay={playPlaylist}
-              isLoading={isLoading}
-            />
+            {loadingStates.playlists || !dashboardData ? (
+              <AlbumGridSkeleton count={15} />
+            ) : (
+              <PlaylistGrid 
+                playlists={dashboardData.playlists}
+                onPlay={playPlaylist}
+                isLoading={isLoading}
+              />
+            )}
           </section>
         )}
 
@@ -529,18 +628,28 @@ export default function Dashboard() {
             {/* Listening Trends */}
             <section>
               <h2 className="text-xl font-semibold mb-6">Listening Patterns</h2>
-              <ListeningTrends recentlyPlayed={dashboardData.recentlyPlayed} />
+              {loadingStates.insights || !dashboardData ? (
+                <ChartSkeleton height="h-64" />
+              ) : (
+                <ListeningTrends recentlyPlayed={dashboardData.recentlyPlayed} />
+              )}
             </section>
 
             {/* Genre Distribution */}
             <section>
               <h2 className="text-xl font-semibold mb-6">Your Music Taste</h2>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <GenreDistribution 
-                  artists={dashboardData.topArtists[timeRange]} 
-                  timeRange={timeRange}
-                />
-                <div className="bg-zinc-900 rounded-lg p-6">
+              {loadingStates.insights || !dashboardData ? (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <ChartSkeleton height="h-80" title={false} />
+                  <ChartSkeleton height="h-80" title={false} />
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <GenreDistribution 
+                    artists={dashboardData.topArtists[timeRange]} 
+                    timeRange={timeRange}
+                  />
+                  <div className="bg-zinc-900 rounded-lg p-6">
                   <h3 className="text-lg font-semibold mb-2">Top Genres</h3>
                   <p className="text-sm text-zinc-400 mb-6">Your most listened genres</p>
                   <div className="space-y-3">
@@ -572,8 +681,9 @@ export default function Dashboard() {
                         ));
                     })()}
                   </div>
+                  </div>
                 </div>
-              </div>
+                )}
             </section>
           </div>
         )}

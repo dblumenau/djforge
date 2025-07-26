@@ -11,6 +11,7 @@ import {
   PaginatedResponse,
   UserDashboardData
 } from '../types/spotify-data';
+import { AIDiscoveredTrack } from '../types';
 
 export class UserDataService {
   private redis: any; // Using any to avoid Redis type conflicts
@@ -22,6 +23,91 @@ export class UserDataService {
     this.redis = redis;
     this.spotifyApi = spotifyApi;
     this.userId = userId;
+  }
+
+  async generateTasteProfile(): Promise<string> {
+    try {
+      console.log(`[TasteProfile] Starting generation for user: ${this.userId}`);
+      
+      // Check cache first
+      const cacheKey = `taste:profile:${this.userId}`;
+      const cachedProfile = await this.redis?.get(cacheKey);
+      if (cachedProfile) {
+        console.log('[TasteProfile] Returning cached profile');
+        return cachedProfile;
+      }
+
+      console.log('[TasteProfile] Cache miss, fetching fresh data...');
+
+      // Fetch data needed for taste profile
+      const [topArtistsMedium, topTracksMedium, recentTracks] = await Promise.all([
+        this.getTopArtists('medium_term', false),
+        this.getTopTracks('medium_term', false),
+        this.getRecentlyPlayed()
+      ]);
+
+      console.log(`[TasteProfile] Data fetched - Artists: ${topArtistsMedium.length}, Tracks: ${topTracksMedium.length}, Recent: ${recentTracks.length}`);
+
+      // Check if we have enough data
+      if (topArtistsMedium.length === 0 && topTracksMedium.length === 0) {
+        console.log('[TasteProfile] No top artists or tracks available - user may be new or have limited listening history');
+        return 'User music preferences not available - insufficient listening history';
+      }
+
+      // Calculate genre distribution
+      const genreCounts: Record<string, number> = {};
+      topArtistsMedium.forEach((artist, index) => {
+        const weight = topArtistsMedium.length - index;
+        artist.genres.forEach(genre => {
+          genreCounts[genre] = (genreCounts[genre] || 0) + weight;
+        });
+      });
+
+      // Sort genres by weight
+      const topGenres = Object.entries(genreCounts)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 10)
+        .map(([genre]) => genre);
+
+      console.log(`[TasteProfile] Top genres: ${topGenres.join(', ')}`);
+
+      // Get AI feedback data
+      const aiFeedback = await this.getAIFeedback();
+      
+      // Build taste profile string
+      let profile = `User's Music Taste Profile:
+Top Genres: ${topGenres.length > 0 ? topGenres.join(', ') : 'No genre data available'}
+Favorite Artists: ${topArtistsMedium.slice(0, 10).map(a => a.name).join(', ') || 'No artist data available'}
+Recent Favorites: ${topTracksMedium.slice(0, 10).map(t => `"${t.name}" by ${t.artists.map(a => a.name).join(', ')}`).join('; ') || 'No track data available'}`;
+
+      // Add AI feedback section if available
+      if (aiFeedback.loved.length > 0 || aiFeedback.disliked.length > 0) {
+        profile += '\n\nAI Feedback History:';
+        
+        if (aiFeedback.loved.length > 0) {
+          profile += `\nLoved Discoveries: ${aiFeedback.loved.map(t => `"${t.trackName}" by ${t.artist}`).join('; ')}`;
+        }
+        
+        if (aiFeedback.disliked.length > 0) {
+          profile += `\nDisliked Recommendations: ${aiFeedback.disliked.map(t => `"${t.trackName}" by ${t.artist}`).join('; ')}`;
+        }
+      }
+
+      // Cache for 1 hour
+      if (this.redis) {
+        await this.redis.setEx(cacheKey, 3600, profile);
+        console.log('[TasteProfile] Profile cached successfully');
+      }
+
+      return profile;
+    } catch (error) {
+      console.error('[TasteProfile] Error generating taste profile:', error);
+      console.error('[TasteProfile] Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      return 'User music preferences not available';
+    }
   }
 
   // Cache key generators
@@ -363,6 +449,251 @@ export class UserDataService {
     const keys = await this.redis.keys(pattern);
     if (keys.length > 0) {
       await this.redis.del(keys);
+    }
+  }
+
+  // AI Feedback methods
+  async trackAIDiscovery(track: AIDiscoveredTrack): Promise<void> {
+    try {
+      const key = `user:${this.userId}:ai_pending`;
+      const member = `${track.trackUri}|${track.trackName}|${track.artist}|${track.reasoning}`;
+      await this.redis.zAdd(key, { score: track.discoveredAt, value: member });
+      await this.redis.expire(key, 86400 * 30); // 30 days
+    } catch (error) {
+      console.error('Error tracking AI discovery:', error);
+    }
+  }
+
+  async recordFeedback(trackUri: string, feedback: 'loved' | 'disliked'): Promise<void> {
+    try {
+      const discoveriesKey = `user:${this.userId}:ai_discoveries`;
+      const lovedKey = `user:${this.userId}:ai_loved`;
+      const dislikedKey = `user:${this.userId}:ai_disliked`;
+      
+      // Find the track in discoveries list
+      const discoveries = await this.redis.lRange(discoveriesKey, 0, -1);
+      const targetDiscovery = discoveries.find((discovery: string) => {
+        try {
+          const parsed = JSON.parse(discovery);
+          // Try multiple matching strategies
+          const decodedTrackUri = decodeURIComponent(trackUri);
+          const trackUriMatch = parsed.trackUri === trackUri || parsed.trackUri === decodedTrackUri;
+          const nameMatch = decodedTrackUri.includes(parsed.trackName) && decodedTrackUri.includes(parsed.artist);
+          const exactMatch = trackUri.includes(encodeURIComponent(parsed.trackName)) && trackUri.includes(encodeURIComponent(parsed.artist));
+          
+          return trackUriMatch || nameMatch || exactMatch;
+        } catch {
+          return false;
+        }
+      });
+      
+      if (targetDiscovery) {
+        const discoveryData = JSON.parse(targetDiscovery);
+        
+        // Remove any existing feedback for this track (to allow changing feedback)
+        const [lovedMembers, dislikedMembers] = await Promise.all([
+          this.redis.zRange(lovedKey, 0, -1),
+          this.redis.zRange(dislikedKey, 0, -1)
+        ]);
+        
+        const allFeedback = [...lovedMembers, ...dislikedMembers];
+        const existingFeedback = allFeedback.find((member: string) => {
+          try {
+            const parsed = JSON.parse(member);
+            return parsed.trackUri === trackUri || parsed.trackUri === discoveryData.trackUri;
+          } catch {
+            return false;
+          }
+        });
+        
+        if (existingFeedback) {
+          // Remove existing feedback from both lists to allow changing mind
+          await Promise.all([
+            this.redis.zRem(lovedKey, existingFeedback),
+            this.redis.zRem(dislikedKey, existingFeedback)
+          ]);
+          console.log(`🔄 Updating existing feedback for ${discoveryData.trackName} by ${discoveryData.artist}`);
+        }
+        
+        // Add feedback info to discovery data
+        discoveryData.feedback = feedback;
+        discoveryData.feedbackAt = Date.now();
+        
+        // Add to appropriate feedback list  
+        const targetKey = feedback === 'loved' ? lovedKey : dislikedKey;
+        await this.redis.zAdd(targetKey, { score: Date.now(), value: JSON.stringify(discoveryData) });
+        await this.redis.expire(targetKey, 86400 * 30); // 30 days
+        
+        // If the feedback is 'loved', add the track to DJ Forge playlist
+        if (feedback === 'loved') {
+          try {
+            await this.addToJDForgePlaylist(discoveryData.trackUri);
+            console.log(`🎵 Added loved track to DJ Forge playlist: ${discoveryData.trackName} by ${discoveryData.artist}`);
+          } catch (error) {
+            console.error(`⚠️ Failed to add track to DJ Forge playlist:`, error);
+            // Don't fail the feedback recording if playlist addition fails
+          }
+        }
+        
+        console.log(`✅ Recorded ${feedback} feedback for ${discoveryData.trackName} by ${discoveryData.artist}`);
+      } else {
+        console.log(`⚠️ Track not found in discoveries: ${trackUri}`);
+      }
+    } catch (error) {
+      console.error('Error recording feedback:', error);
+    }
+  }
+
+  async removeFeedback(trackUri: string): Promise<void> {
+    try {
+      const lovedKey = `user:${this.userId}:ai_loved`;
+      const dislikedKey = `user:${this.userId}:ai_disliked`;
+      
+      // Remove from feedback lists
+      const [lovedMembers, dislikedMembers] = await Promise.all([
+        this.redis.zRange(lovedKey, 0, -1),
+        this.redis.zRange(dislikedKey, 0, -1)
+      ]);
+      
+      const allMembers = [...lovedMembers, ...dislikedMembers];
+      const targetMember = allMembers.find((member: string) => {
+        try {
+          const parsed = JSON.parse(member);
+          return parsed.trackUri === trackUri || 
+                 trackUri.includes(parsed.trackName) || 
+                 trackUri.includes(parsed.artist);
+        } catch {
+          return member.startsWith(trackUri);
+        }
+      });
+      
+      if (targetMember) {
+        await Promise.all([
+          this.redis.zRem(lovedKey, targetMember),
+          this.redis.zRem(dislikedKey, targetMember)
+        ]);
+      }
+    } catch (error) {
+      console.error('Error removing feedback:', error);
+    }
+  }
+
+  async getAIFeedback(): Promise<{loved: AIDiscoveredTrack[], disliked: AIDiscoveredTrack[]}> {
+    try {
+      const lovedKey = `user:${this.userId}:ai_loved`;
+      const dislikedKey = `user:${this.userId}:ai_disliked`;
+      
+      const [lovedMembers, dislikedMembers] = await Promise.all([
+        this.redis.zRangeWithScores(lovedKey, 0, -1),
+        this.redis.zRangeWithScores(dislikedKey, 0, -1)
+      ]);
+      
+      const parseTrack = (member: string, score: number, feedback: 'loved' | 'disliked'): AIDiscoveredTrack | null => {
+        try {
+          // Try to parse as JSON first (new format)
+          const trackData = JSON.parse(member);
+          return {
+            trackUri: trackData.trackUri,
+            trackName: trackData.trackName,
+            artist: trackData.artist,
+            reasoning: trackData.reasoning || '',
+            discoveredAt: trackData.discoveredAt || score,
+            feedback,
+            feedbackAt: trackData.feedbackAt || score,
+            previewUrl: trackData.previewUrl
+          };
+        } catch {
+          // Fall back to old pipe-separated format
+          const [trackUri, trackName, artist, reasoning] = member.split('|');
+          return {
+            trackUri,
+            trackName,
+            artist,
+            reasoning: reasoning || '',
+            discoveredAt: score,
+            feedback,
+            feedbackAt: score
+          };
+        }
+      };
+      
+      const loved = lovedMembers.map((item: any) => parseTrack(item.value, item.score, 'loved')).filter(Boolean) as AIDiscoveredTrack[];
+      const disliked = dislikedMembers.map((item: any) => parseTrack(item.value, item.score, 'disliked')).filter(Boolean) as AIDiscoveredTrack[];
+      
+      return { loved, disliked };
+    } catch (error) {
+      console.error('Error getting AI feedback:', error);
+      return { loved: [], disliked: [] };
+    }
+  }
+
+  async getAIFeedbackDashboard(): Promise<{
+    discoveries: AIDiscoveredTrack[],
+    loved: AIDiscoveredTrack[],
+    disliked: AIDiscoveredTrack[],
+    stats: {
+      totalDiscoveries: number,
+      lovedCount: number,
+      dislikedCount: number,
+      pendingCount: number
+    }
+  }> {
+    try {
+      const discoveriesKey = `user:${this.userId}:ai_discoveries`;
+      const lovedKey = `user:${this.userId}:ai_loved`;
+      const dislikedKey = `user:${this.userId}:ai_disliked`;
+
+      // Get all data in parallel
+      const [rawDiscoveries, lovedMembers, dislikedMembers] = await Promise.all([
+        this.redis.lRange(discoveriesKey, 0, 99), // Last 100 discoveries
+        this.redis.zRangeWithScores(lovedKey, 0, -1),
+        this.redis.zRangeWithScores(dislikedKey, 0, -1)
+      ]);
+
+      // Parse discoveries
+      const discoveries = rawDiscoveries.map((item: string) => {
+        try {
+          return JSON.parse(item);
+        } catch {
+          return null;
+        }
+      }).filter(Boolean);
+
+      // Parse loved tracks
+      const loved = lovedMembers.map((item: any) => {
+        try {
+          return JSON.parse(item.value);
+        } catch {
+          return null;
+        }
+      }).filter(Boolean);
+
+      // Parse disliked tracks  
+      const disliked = dislikedMembers.map((item: any) => {
+        try {
+          return JSON.parse(item.value);
+        } catch {
+          return null;
+        }
+      }).filter(Boolean);
+
+      // Calculate stats
+      const stats = {
+        totalDiscoveries: discoveries.length,
+        lovedCount: loved.length,
+        dislikedCount: disliked.length,
+        pendingCount: discoveries.length - loved.length - disliked.length
+      };
+
+      return { discoveries, loved, disliked, stats };
+    } catch (error) {
+      console.error('Error getting AI feedback dashboard:', error);
+      return {
+        discoveries: [],
+        loved: [],
+        disliked: [],
+        stats: { totalDiscoveries: 0, lovedCount: 0, dislikedCount: 0, pendingCount: 0 }
+      };
     }
   }
 }

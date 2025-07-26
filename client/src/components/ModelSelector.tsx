@@ -136,7 +136,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange }) => {
 
       {/* Dropdown Menu */}
       {showDropdown && models && (
-        <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 w-[calc(100vw-2rem)] max-w-sm md:max-w-md lg:max-w-lg max-h-[70vh] md:max-h-96 overflow-y-auto bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50">
+        <div className="absolute top-full left-0 mt-1 w-80 md:w-96 lg:w-[28rem] xl:w-[32rem] max-h-72 overflow-y-auto bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50">
           {Object.entries(models.models).map(([provider, providerModels]) => (
             <div key={provider} className="border-b border-gray-700 last:border-0">
               <div className="px-3 md:px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">

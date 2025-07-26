@@ -56,9 +56,11 @@ directActionRouter.post('/song', ensureValidToken, async (req, res) => {
         response = `Playing: ${name} by ${artists}`;
       } else {
         // Queue the track
-        await spotifyControl.queueTrackByUri(uri);
-        success = true;
-        response = `Added to queue: ${name} by ${artists}`;
+        const queueResult = await spotifyControl.queueTrackByUri(uri);
+        success = queueResult.success;
+        response = queueResult.success 
+          ? `Added to queue: ${name} by ${artists}`
+          : queueResult.message || 'Failed to add track to queue';
       }
     } catch (error: any) {
       success = false;

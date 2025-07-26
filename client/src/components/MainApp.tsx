@@ -5,9 +5,10 @@ import SpotifyPlayer from './SpotifyPlayer';
 import ModelSelector from './ModelSelector';
 import LLMLogsViewer from './LLMLogsViewer';
 import WeatherDisplay from './WeatherDisplay';
+import CommandHistorySkeleton from './skeletons/CommandHistorySkeleton';
 import { useSpotifyAuth } from '../hooks/useSpotifyAuth';
 import { apiEndpoint } from '../config/api';
-import { authenticatedFetch } from '../utils/api';
+import { authenticatedFetch, api } from '../utils/api';
 
 // Helper component for clickable example lists
 const ExampleList: React.FC<{ examples: string[] }> = ({ examples }) => {
@@ -46,6 +47,7 @@ const MainApp: React.FC = () => {
   // @ts-ignore - Will be used later  
   const [activeDeviceId, setActiveDeviceId] = useState<string | null>(null);
   const [currentModel, setCurrentModel] = useState<string>('');
+  const [toast, setToast] = useState<string | null>(null);
   const [commandHistory, setCommandHistory] = useState<Array<{
     command: string;
     response: string;
@@ -58,7 +60,15 @@ const MainApp: React.FC = () => {
     model?: string;
     interpretation?: any; // Full interpretation object for debugging
     queuedSongs?: Array<{ name: string; artists: string; success: boolean }>;
+    isAIDiscovery?: boolean;
+    trackUri?: string;
+    trackName?: string;
+    artist?: string;
+    aiReasoning?: string;
+    feedback?: 'loved' | 'disliked';
+    feedbackLoading?: boolean;
   }>>([]);
+  const [commandHistoryLoading, setCommandHistoryLoading] = useState(false);
   // Authentication
   const { isAuthenticated, accessToken, loading: authLoading, logout, checkAuthStatus, error: authError, login } = useSpotifyAuth();
 
@@ -99,6 +109,7 @@ const MainApp: React.FC = () => {
     const loadCommandHistory = async () => {
       if (!isAuthenticated) return;
       
+      setCommandHistoryLoading(true);
       try {
         const response = await authenticatedFetch(apiEndpoint('/api/claude/history'));
         if (response.ok) {
@@ -111,6 +122,8 @@ const MainApp: React.FC = () => {
         }
       } catch (error) {
         console.error('Failed to load command history:', error);
+      } finally {
+        setCommandHistoryLoading(false);
       }
     };
 
@@ -141,6 +154,53 @@ const MainApp: React.FC = () => {
       }
     } catch (error) {
       console.error('Failed to update model preference:', error);
+    }
+  };
+
+  const showToast = (message: string) => {
+    setToast(message);
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const handleFeedback = async (trackUri: string, feedback: 'loved' | 'disliked') => {
+    // Find the message with this trackUri
+    const messageIndex = commandHistory.findIndex(m => m.trackUri === trackUri);
+    if (messageIndex === -1) return;
+
+    // Set loading state
+    setCommandHistory(prev => prev.map((msg, idx) => 
+      idx === messageIndex ? { ...msg, feedbackLoading: true } : msg
+    ));
+
+    try {
+      // If clicking the same feedback again, remove it
+      const currentFeedback = commandHistory[messageIndex].feedback;
+      const newFeedback = currentFeedback === feedback ? 'remove' : feedback;
+      
+      await api.recordFeedback(trackUri, newFeedback);
+      
+      // Update message with new feedback
+      setCommandHistory(prev => prev.map((msg, idx) => 
+        idx === messageIndex 
+          ? { 
+              ...msg, 
+              feedback: newFeedback === 'remove' ? undefined : feedback,
+              feedbackLoading: false 
+            } 
+          : msg
+      ));
+
+      // Show toast notification
+      showToast(
+        newFeedback === 'remove' 
+          ? 'Feedback removed' 
+          : `Thanks for the feedback!`
+      );
+    } catch (error) {
+      console.error('Failed to record feedback:', error);
+      setCommandHistory(prev => prev.map((msg, idx) => 
+        idx === messageIndex ? { ...msg, feedbackLoading: false } : msg
+      ));
     }
   };
 
@@ -190,14 +250,13 @@ const MainApp: React.FC = () => {
     setCommand('');
 
     try {
-      const response = await authenticatedFetch(apiEndpoint('/api/claude/command'), {
+      const response = await authenticatedFetch(apiEndpoint('/api/llm/simple/command'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          command: userCommand,
-          model: currentModel 
+          command: userCommand
         }),
       });
 
@@ -207,8 +266,9 @@ const MainApp: React.FC = () => {
 
       const data = await response.json();
       
+      
       if (data.success) {
-        setCommandHistory(prev => [...prev, {
+        const newMessage = {
           command: userCommand,
           response: data.response || data.message,
           confidence: data.interpretation?.confidence,
@@ -219,8 +279,15 @@ const MainApp: React.FC = () => {
           reasoning: data.interpretation?.reasoning,
           model: data.interpretation?.model || currentModel,
           interpretation: data.interpretation, // Store the full interpretation object
-          queuedSongs: data.queuedSongs
-        }]);
+          queuedSongs: data.queuedSongs,
+          isAIDiscovery: data.interpretation?.isAIDiscovery || false,
+          trackUri: data.track?.uri,
+          trackName: data.track?.name,
+          artist: data.track?.artists?.map((a: any) => a.name).join(', '),
+          aiReasoning: data.interpretation?.aiReasoning
+        };
+        
+        setCommandHistory(prev => [...prev, newMessage]);
       } else {
         setCommandHistory(prev => [...prev, {
           command: userCommand,
@@ -293,7 +360,7 @@ const MainApp: React.FC = () => {
       <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-4xl font-bold text-white mb-4">⚠️ Connection Error</h1>
-          <p className="text-gray-300 mb-8">Cannot connect to the Spotify Claude server.</p>
+          <p className="text-gray-300 mb-8">Cannot connect to the DJ Forge backend server.</p>
           <button 
             onClick={() => window.location.reload()} 
             className="px-6 py-3 bg-green-500 text-black font-bold rounded-full hover:bg-green-400 transition-all transform hover:scale-105"
@@ -318,11 +385,18 @@ const MainApp: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 text-white">
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
+      <div className="container mx-auto px-4 py-8" style={{ maxWidth: '1440px' }}>
+        <div className="w-full">
           {/* Header */}
           <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold mb-2">🎵 DJ Forge</h1>
+            <div className="flex items-center justify-center gap-3 mb-2">
+              <img 
+                src="/square_icon.png" 
+                alt="DJ Forge" 
+                className="h-12 w-12"
+              />
+              <h1 className="text-4xl font-bold">DJ Forge</h1>
+            </div>
             <p className="text-gray-400">Control your Spotify with natural language</p>
           </div>
 
@@ -344,101 +418,117 @@ const MainApp: React.FC = () => {
             </div>
           )}
 
-          {/* Model Selector, Weather, and Logout */}
-          <div className="mb-6 flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
-            <ModelSelector 
-              onModelChange={handleModelSelect}
-            />
-            
-            {/* Weather Display - Mobile: new row, Desktop: same row */}
-            <div className="lg:hidden w-full flex justify-center">
-              <WeatherDisplay />
-            </div>
-            <div className="hidden lg:block lg:mx-4">
-              <WeatherDisplay />
-            </div>
-            
-            <div className="flex gap-2 ml-auto lg:ml-0">
-              <button
-                onClick={() => navigate('/dashboard')}
-                className="px-4 py-2 bg-purple-600 text-white font-semibold rounded-full hover:bg-purple-700 transition-colors text-sm"
-              >
-                Dashboard
-              </button>
-              {import.meta.env.DEV && (
-                <>
-                  <button 
-                    className="px-3 py-2 bg-orange-600 text-white font-semibold rounded-full hover:bg-orange-700 transition-colors text-xs"
-                    onClick={async () => {
-                      const jwtToken = localStorage.getItem('spotify_jwt');
-                      if (jwtToken) {
-                        try {
-                          const response = await fetch(apiEndpoint('/api/auth/debug/simulate-expired'), {
-                            method: 'POST',
-                            headers: {
-                              'Authorization': `Bearer ${jwtToken}`,
-                              'Content-Type': 'application/json'
-                            }
-                          });
-                          const data = await response.json();
-                          if (data.success) {
-                            localStorage.setItem('spotify_jwt', data.simulatedToken);
-                            console.log('⏰ Simulated expired tokens - refresh page to test auto-refresh');
-                            alert('Tokens expired! Refresh the page to test automatic token refresh.');
-                          } else {
-                            alert(data.error);
-                          }
-                        } catch (error) {
-                          console.error('Simulate expired failed:', error);
-                        }
-                      }
-                    }}
+          {/* Navigation Bar */}
+          <div className="mb-6">
+            <div className="bg-zinc-800/50 border border-zinc-700/50 rounded-lg px-4 py-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                {/* Left: Model Selector */}
+                <div className="flex-shrink-0">
+                  <ModelSelector onModelChange={handleModelSelect} />
+                </div>
+
+                {/* Center: Weather */}
+                <div className="hidden lg:block">
+                  <WeatherDisplay />
+                </div>
+
+                {/* Right: Main Navigation */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={() => navigate('/dashboard')}
+                    className="px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-200 hover:text-white border border-zinc-600 hover:border-zinc-500 rounded-md transition-all text-xs font-medium"
                   >
-                    Simulate Expired
+                    📊 Dashboard
+                  </button>
+                  <button
+                    onClick={() => navigate('/feedback-dashboard')}
+                    className="px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-200 hover:text-white border border-zinc-600 hover:border-zinc-500 rounded-md transition-all text-xs font-medium"
+                  >
+                    🎯 Feedback
                   </button>
                   <button 
-                    className="px-3 py-2 bg-red-600 text-white font-semibold rounded-full hover:bg-red-700 transition-colors text-xs"
-                    onClick={async () => {
-                      const jwtToken = localStorage.getItem('spotify_jwt');
-                      if (jwtToken) {
-                        try {
-                          const response = await fetch(apiEndpoint('/api/auth/debug/simulate-revoked'), {
-                            method: 'POST',
-                            headers: {
-                              'Authorization': `Bearer ${jwtToken}`,
-                              'Content-Type': 'application/json'
-                            }
-                          });
-                          const data = await response.json();
-                          if (data.success) {
-                            localStorage.setItem('spotify_jwt', data.revokedToken);
-                            console.log('🚫 Simulated revoked refresh token');
-                            alert('Refresh token revoked! Refresh the page to test error handling.');
-                          }
-                        } catch (error) {
-                          console.error('Simulate revoked failed:', error);
-                        }
-                      }
+                    className="px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-300 hover:text-zinc-100 border border-zinc-600 hover:border-zinc-500 rounded-md transition-all text-xs"
+                    onClick={() => setShowLogs(true)}
+                  >
+                    📋 Logs
+                  </button>
+                  <button 
+                    className="px-3 py-1.5 bg-red-900/20 hover:bg-red-900/30 text-red-300 hover:text-red-200 border border-red-800/50 hover:border-red-700/50 rounded-md transition-all text-xs font-medium"
+                    onClick={() => {
+                      logout();
                     }}
                   >
-                    Simulate Revoked
+                    🚪 Logout
                   </button>
-                </>
-              )}
-              <button 
-                className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-full hover:bg-blue-700 transition-colors text-sm"
-                onClick={() => setShowLogs(true)}
-              >
-                View Logs
-              </button>
-              <button 
-                className="px-4 py-2 bg-red-600 text-white font-semibold rounded-full hover:bg-red-700 transition-colors text-sm"
-                onClick={() => {
-                  logout();
-                }}
-              >
-                Logout
-              </button>
+
+                  {/* Dev Tools - Hidden in production */}
+                  {import.meta.env.DEV && (
+                    <>
+                      <button 
+                        className="px-2 py-1 bg-yellow-900/20 hover:bg-yellow-900/30 text-yellow-400/70 hover:text-yellow-300 border border-yellow-800/30 rounded text-xs opacity-50"
+                        onClick={async () => {
+                          const jwtToken = localStorage.getItem('spotify_jwt');
+                          if (jwtToken) {
+                            try {
+                              const response = await fetch(apiEndpoint('/api/auth/debug/simulate-expired'), {
+                                method: 'POST',
+                                headers: {
+                                  'Authorization': `Bearer ${jwtToken}`,
+                                  'Content-Type': 'application/json'
+                                }
+                              });
+                              const data = await response.json();
+                              if (data.success) {
+                                localStorage.setItem('spotify_jwt', data.simulatedToken);
+                                console.log('⏰ Simulated expired tokens - refresh page to test auto-refresh');
+                                alert('Tokens expired! Refresh the page to test automatic token refresh.');
+                              } else {
+                                alert(data.error);
+                              }
+                            } catch (error) {
+                              console.error('Simulate expired failed:', error);
+                            }
+                          }
+                        }}
+                      >
+                        ⏰ Expire
+                      </button>
+                      <button 
+                        className="px-2 py-1 bg-red-900/20 hover:bg-red-900/30 text-red-400/70 hover:text-red-300 border border-red-800/30 rounded text-xs opacity-50"
+                        onClick={async () => {
+                          const jwtToken = localStorage.getItem('spotify_jwt');
+                          if (jwtToken) {
+                            try {
+                              const response = await fetch(apiEndpoint('/api/auth/debug/simulate-revoked'), {
+                                method: 'POST',
+                                headers: {
+                                  'Authorization': `Bearer ${jwtToken}`,
+                                  'Content-Type': 'application/json'
+                                }
+                              });
+                              const data = await response.json();
+                              if (data.success) {
+                                localStorage.setItem('spotify_jwt', data.revokedToken);
+                                console.log('🚫 Simulated revoked refresh token');
+                                alert('Refresh token revoked! Refresh the page to test error handling.');
+                              }
+                            } catch (error) {
+                              console.error('Simulate revoked failed:', error);
+                            }
+                          }
+                        }}
+                      >
+                        🚫 Revoke
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Mobile: Weather Display */}
+              <div className="lg:hidden mt-3 pt-3 border-t border-zinc-700/50 flex justify-center">
+                <WeatherDisplay />
+              </div>
             </div>
           </div>
 
@@ -450,10 +540,10 @@ const MainApp: React.FC = () => {
             />
           </div>
 
-          {/* Two-column layout */}
-          <div className="grid lg:grid-cols-2 gap-8">
+          {/* Two-column layout - asymmetric for larger screens */}
+          <div className="grid lg:grid-cols-5 gap-8">
             {/* Command Input */}
-            <div className="space-y-6">
+            <div className="space-y-6 lg:col-span-2">
               <div className="bg-zinc-800 rounded-lg p-6 border border-zinc-700">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-xl font-semibold">Send Command</h2>
@@ -492,7 +582,7 @@ const MainApp: React.FC = () => {
             </div>
 
             {/* Command History */}
-            <div className="bg-zinc-800 rounded-lg p-6 border border-zinc-700">
+            <div className="bg-zinc-800 rounded-lg p-6 border border-zinc-700 lg:col-span-3">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-semibold">Command History</h2>
                 {commandHistory.length > 0 && (
@@ -505,7 +595,9 @@ const MainApp: React.FC = () => {
                 )}
               </div>
               <div className="space-y-4 max-h-96 overflow-y-auto">
-                {commandHistory.length === 0 ? (
+                {commandHistoryLoading ? (
+                  <CommandHistorySkeleton count={3} />
+                ) : commandHistory.length === 0 ? (
                   <p className="text-gray-500 text-center py-8">No commands yet. Try sending a command!</p>
                 ) : (
                   commandHistory.slice().reverse().map((item, index) => {
@@ -609,6 +701,34 @@ const MainApp: React.FC = () => {
                         <div className="text-gray-400 text-sm pl-6 whitespace-pre-line">
                           {item.response}
                         </div>
+                        
+                        {/* Feedback Buttons for AI Discoveries */}
+                        {item.isAIDiscovery && item.trackUri && (
+                          <div className="flex gap-2 mt-2 pl-6 opacity-100">
+                            <button
+                              onClick={() => handleFeedback(item.trackUri!, 'loved')}
+                              className={`px-3 py-1 rounded-lg transition-all ${
+                                item.feedback === 'loved' 
+                                  ? 'bg-green-600 text-white' 
+                                  : 'bg-zinc-800 hover:bg-green-900 text-zinc-300'
+                              }`}
+                              disabled={item.feedbackLoading}
+                            >
+                              👍
+                            </button>
+                            <button
+                              onClick={() => handleFeedback(item.trackUri!, 'disliked')}
+                              className={`px-3 py-1 rounded-lg transition-all ${
+                                item.feedback === 'disliked' 
+                                  ? 'bg-red-600 text-white' 
+                                  : 'bg-zinc-800 hover:bg-red-900 text-zinc-300'
+                              }`}
+                              disabled={item.feedbackLoading}
+                            >
+                              👎
+                            </button>
+                          </div>
+                        )}
                         
                         {/* Alternatives */}
                         {item.alternatives && item.alternatives.length > 0 && (
@@ -745,6 +865,13 @@ const MainApp: React.FC = () => {
       {/* LLM Logs Viewer */}
       {showLogs && (
         <LLMLogsViewer onClose={() => setShowLogs(false)} />
+      )}
+
+      {/* Toast Notification */}
+      {toast && (
+        <div className="fixed bottom-4 right-4 bg-zinc-800 text-white px-4 py-2 rounded-lg shadow-lg animate-[slideIn_0.3s_ease-out]">
+          {toast}
+        </div>
       )}
     </div>
   );

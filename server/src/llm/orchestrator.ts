@@ -153,9 +153,9 @@ export class LLMOrchestrator {
 
   private setupProviders() {
     // Google AI Direct (for Gemini models with native grounding)
-    if (process.env.GOOGLE_API_KEY && process.env.ENABLE_GEMINI_DIRECT === 'true') {
+    if (process.env.GEMINI_API_KEY) {
       this.geminiService = new GeminiService({
-        apiKey: process.env.GOOGLE_API_KEY,
+        apiKey: process.env.GEMINI_API_KEY,
         enableGrounding: process.env.GEMINI_SEARCH_GROUNDING === 'true',
         timeout: 30000,
         maxRetries: 3
@@ -535,11 +535,14 @@ export class LLMOrchestrator {
 
   // Check if a model supports grounding
   supportsGrounding(model: string): boolean {
+    this.ensureInitialized();
     return this.isGeminiModel(model) && this.geminiService !== null;
   }
 
   // Get provider info for a model
   getProviderInfo(model: string): { provider: string; isDirect: boolean; supportsGrounding: boolean } {
+    this.ensureInitialized();
+    
     if (this.isGeminiModel(model) && this.geminiService) {
       return {
         provider: 'google-direct',

@@ -8,6 +8,7 @@ import { ConversationEntry, DialogState } from '../utils/redisConversation';
 import { ConversationManager, getConversationManager } from '../services/ConversationManager';
 import { LLMLoggingService } from '../services/llm-logging.service';
 import { createHash } from 'crypto';
+import { UserDataService } from '../services/UserDataService';
 import { 
   FULL_CURATOR_GUIDELINES,
   ALTERNATIVES_APPROACH,
@@ -118,6 +119,8 @@ function normalizeResponse(raw: any): any {
     alternatives: Array.isArray(raw.alternatives) ? raw.alternatives : [],
     volume: raw.volume || raw.volume_level || raw.value,
     volume_level: raw.volume_level || raw.volume || raw.value,
+    isAIDiscovery: raw.isAIDiscovery || false,
+    aiReasoning: raw.aiReasoning || raw.ai_reasoning || '',
     // Preserve any additional fields the LLM provided
     ...raw
   };
@@ -224,8 +227,10 @@ async function interpretCommand(command: string, userId?: string, retryCount = 0
   
   const prompt = `${FULL_CURATOR_GUIDELINES}
 
+${musicContext ? `${musicContext}\n` : ''}
 ${contextBlock}
 [DEBUG: Relevant context entries: ${relevantContext.length}]
+[DEBUG: Music context length: ${musicContext?.length || 0} chars]
 
 CRITICAL FIRST STEP: Determine if this is a QUESTION/CONVERSATION or a MUSIC ACTION command.
 
@@ -391,9 +396,7 @@ For control intents:
 
 Other intents: clear_queue, get_current_track, get_devices, get_playlists, get_recently_played, search
 
-Command: "${command}"
-
-${musicContext || ''}`;
+Command: "${command}"`;
 
   try {
     // Add timeout to prevent hanging
@@ -404,7 +407,7 @@ ${musicContext || ''}`;
     const startTime = Date.now();
     const requestModel = preferredModel || OPENROUTER_MODELS.GEMINI_2_5_FLASH;
     const messages = [
-      { role: 'system' as const, content: `Respond with valid JSON. Be helpful and specific. Include confidence scores as a decimal between 0 and 1 (e.g., 0.95 for 95% confidence). CRITICAL: You must use the discriminated union pattern - when intent is "play_specific_song" or "queue_specific_song", you MUST include artist, track, and alternatives fields. ${ALTERNATIVES_APPROACH} When intent is "play_playlist" or "queue_playlist", use query field. Never use generic search queries for specific song requests - always recommend exact songs using your music knowledge. Distinguish between playing (immediate) and queuing (add to queue) for both songs and playlists. For conversational intents (chat, ask_question), include the actual answer in the responseMessage field. ${RESPONSE_VARIATION}` },
+      { role: 'system' as const, content: `Respond with valid JSON. Be helpful and specific. Include confidence scores as a decimal between 0 and 1 (e.g., 0.95 for 95% confidence). CRITICAL: You must use the discriminated union pattern - when intent is "play_specific_song" or "queue_specific_song", you MUST include artist, track, and alternatives fields. ${ALTERNATIVES_APPROACH} When intent is "play_playlist" or "queue_playlist", use query field. Never use generic search queries for specific song requests - always recommend exact songs using your music knowledge. Distinguish between playing (immediate) and queuing (add to queue) for both songs and playlists. For conversational intents (chat, ask_question), include the actual answer in the responseMessage field. If you're making a creative choice (not following an explicit user request), set isAIDiscovery: true and include aiReasoning explaining your choice. ${RESPONSE_VARIATION}` },
       { role: 'user' as const, content: prompt }
     ];
     
@@ -723,12 +726,12 @@ simpleLLMInterpreterRouter.get('/history', ensureValidToken, async (req, res) =>
     const formattedHistory = await Promise.all(history.map(async (entry: any) => {
       // Debug log for conversational entries
       if (entry.interpretation?.intent === 'chat' || entry.interpretation?.intent === 'ask_question') {
-        console.log('📝 Formatting conversational history entry:', {
-          command: entry.command,
-          responseType: typeof entry.response,
-          response: entry.response,
-          interpretationIntent: entry.interpretation?.intent
-        });
+        // console.log('📝 Formatting conversational history entry:', {
+        //   command: entry.command,
+        //   responseType: typeof entry.response,
+        //   response: entry.response,
+        //   interpretationIntent: entry.interpretation?.intent
+        // });
       }
       
       // Handle response field properly
@@ -916,6 +919,36 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
       }
     } catch (e) {
       console.log('Could not fetch current track for context:', e);
+    }
+    
+    // Get user's taste profile if available
+    let tasteProfile = '';
+    console.log('[DEBUG] Checking taste profile conditions:', {
+      userId: userId || 'none',
+      hasLoggingService: !!loggingService,
+      hasRedisClient: !!loggingService?.redisClient
+    });
+    
+    if (userId && loggingService?.redisClient) {
+      try {
+        const userDataService = new UserDataService(loggingService.redisClient, spotifyControl.getApi(), userId);
+        tasteProfile = await userDataService.generateTasteProfile();
+        console.log('[DEBUG] Fetched taste profile for user');
+        console.log('[DEBUG] Taste Profile Content:', tasteProfile);
+      } catch (error) {
+        console.error('Error fetching taste profile:', error);
+      }
+    } else {
+      console.log('[DEBUG] Taste profile not fetched - missing requirements');
+    }
+    
+    // Combine music context with taste profile
+    if (tasteProfile) {
+      musicContext = `${tasteProfile}\n${musicContext}`;
+      console.log('[DEBUG] Combined music context being sent to LLM:');
+      console.log('---START OF MUSIC CONTEXT---');
+      console.log(musicContext);
+      console.log('---END OF MUSIC CONTEXT---');
     }
     
     // Use userId for conversation history instead of sessionId
@@ -1118,13 +1151,53 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
               
               if (tracks.length > 0) {
                 const track = tracks[0]; // Use first result
-                await spotifyControl.queueTrackByUri(track.uri);
-                queueResults.push({
-                  name: track.name,
-                  artists: track.artists.map((a: any) => a.name).join(', '),
-                  success: true
-                });
-                console.log(`[DEBUG] Successfully queued: ${track.name} by ${track.artists[0]?.name}`);
+                const queueResult = await spotifyControl.queueTrackByUri(track.uri);
+                
+                if (queueResult.success) {
+                  queueResults.push({
+                    name: track.name,
+                    artists: track.artists.map((a: any) => a.name).join(', '),
+                    success: true,
+                    uri: track.uri, // Add URI for AI discovery tracking
+                    track: track    // Add full track data for AI discovery tracking
+                  });
+                  console.log(`[DEBUG] Successfully queued: ${track.name} by ${track.artists[0]?.name}`);
+                  
+                  // Track each successfully queued song as an AI discovery (if this is an AI discovery)
+                  if (interpretation.isAIDiscovery && userId && loggingService?.redisClient) {
+                    try {
+                      const discovery: any = {
+                        trackUri: track.uri,
+                        trackName: track.name,
+                        artist: track.artists.map((a: any) => a.name).join(', '),
+                        discoveredAt: Date.now(),
+                        reasoning: interpretation.aiReasoning || `Part of multiple songs: ${interpretation.theme || 'curated selection'}`,
+                        feedback: undefined,
+                        feedbackAt: undefined,
+                        previewUrl: track.preview_url || undefined
+                      };
+                      
+                      // Store each song as a separate discovery
+                      await loggingService.redisClient.lPush(
+                        `user:${userId}:ai_discoveries`,
+                        JSON.stringify(discovery)
+                      );
+                      
+                      console.log(`[DEBUG] Tracked AI discovery ${i + 1}: ${discovery.trackName} by ${discovery.artist}`);
+                    } catch (trackingError) {
+                      console.error(`Error tracking AI discovery for song ${i + 1}:`, trackingError);
+                    }
+                  }
+                } else {
+                  queueResults.push({
+                    name: track.name,
+                    artists: track.artists.map((a: any) => a.name).join(', '),
+                    success: false,
+                    error: queueResult.message
+                  });
+                  failures.push(`${song.artist} - ${song.track} (${queueResult.message})`);
+                  console.log(`[DEBUG] Error queuing song ${i + 1}: ${queueResult.message}`);
+                }
               } else {
                 failures.push(`${song.artist} - ${song.track}`);
                 console.log(`[DEBUG] No tracks found for: ${song.artist} - ${song.track}`);
@@ -1134,9 +1207,24 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
               if (i < songs.length - 1) {
                 await new Promise(resolve => setTimeout(resolve, 100));
               }
-            } catch (error) {
-              console.error(`[DEBUG] Error queuing song ${i + 1}:`, error);
-              failures.push(`${song.artist} - ${song.track}`);
+            } catch (error: any) {
+              const errorMsg = error.response?.data?.error?.message || error.message || 'Unknown error';
+              console.log(`[DEBUG] Error queuing song ${i + 1}: ${errorMsg}`);
+              failures.push(`${song.artist} - ${song.track} (${errorMsg})`);
+            }
+          }
+          
+          // Trim the discoveries list after processing all songs to keep only last 500 discoveries
+          if (interpretation.isAIDiscovery && userId && loggingService?.redisClient) {
+            try {
+              await loggingService.redisClient.lTrim(
+                `user:${userId}:ai_discoveries`, 
+                0, 
+                499
+              );
+              console.log(`[DEBUG] Trimmed AI discoveries list after queuing ${songs.length} songs`);
+            } catch (trimError) {
+              console.error('Error trimming AI discoveries list:', trimError);
             }
           }
           
@@ -1346,8 +1434,20 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
         ...(interpretation.reasoning && { reasoning: interpretation.reasoning }),
         // Use converted alternatives from result if available, otherwise use raw alternatives from interpretation
         alternatives: (result as any).alternatives || interpretation.alternatives,
-        model: interpretation.model || preferredModel || 'unknown' // Fix model info
+        model: interpretation.model || preferredModel || 'unknown', // Fix model info
+        // Include AI discovery fields for frontend feedback buttons
+        ...(interpretation.isAIDiscovery && { isAIDiscovery: interpretation.isAIDiscovery }),
+        ...(interpretation.aiReasoning && { aiReasoning: interpretation.aiReasoning })
       },
+      // Include track info for feedback buttons (for AI discoveries)
+      ...(interpretation.isAIDiscovery && result.success && {
+        track: {
+          name: ((result as any).track || (result as any).data?.track)?.name || interpretation.track,
+          artists: ((result as any).track || (result as any).data?.track)?.artists || (interpretation.artist ? [{ name: interpretation.artist }] : []),
+          // Use the real Spotify URI from the successful result
+          uri: ((result as any).track || (result as any).data?.track)?.uri || `ai-discovery:${encodeURIComponent(interpretation.track)}-${encodeURIComponent(interpretation.artist || 'unknown')}`
+        }
+      }),
       timestamp: new Date().toISOString(),
       // Include refreshed tokens if they were updated
       ...(refreshedTokens ? { refreshedTokens } : {})
@@ -1368,6 +1468,44 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
     
     res.json(responseData);
     
+    // Track AI discovery if this was an AI-made creative choice (except queue_multiple_songs which tracks individually)
+    if (interpretation.isAIDiscovery && result.success && userId && loggingService?.redisClient && interpretation.intent !== 'queue_multiple_songs') {
+      try {
+        // Use the actual track data from the successful Spotify result, not interpretation data
+        const actualTrack = (result as any).track || (result as any).data?.track;
+        
+        const discovery: any = {
+          trackUri: actualTrack?.uri || `spotify:track:${interpretation.track}`, // Use real URI if available
+          trackName: actualTrack?.name || interpretation.track || 'Unknown Track',
+          artist: actualTrack?.artists?.map((a: any) => a.name).join(', ') || interpretation.artist || 'Unknown Artist',
+          discoveredAt: Date.now(),
+          reasoning: interpretation.aiReasoning || '',
+          feedback: undefined, // No feedback yet
+          feedbackAt: undefined,
+          previewUrl: actualTrack?.preview_url || undefined // 30-second preview URL
+        };
+        
+        // Only store if we have meaningful track info
+        if (discovery.trackUri || (discovery.trackName !== 'Unknown Track' && discovery.artist !== 'Unknown Artist')) {
+          // Store in Redis discoveries list
+          await loggingService.redisClient.lPush(
+            `user:${userId}:ai_discoveries`,
+            JSON.stringify(discovery)
+          );
+          // Trim to keep only last 500 discoveries
+          await loggingService.redisClient.lTrim(
+            `user:${userId}:ai_discoveries`, 
+            0, 
+            499
+          );
+          
+          console.log(`[DEBUG] Tracked AI discovery: ${discovery.trackName} by ${discovery.artist}`);
+        }
+      } catch (error) {
+        console.error('Error tracking AI discovery:', error);
+      }
+    }
+
     // Record successful interpretation
     llmMonitor.recordInterpretation(command, interpretation, startTime, true);
     
@@ -1493,7 +1631,26 @@ simpleLLMInterpreterRouter.post('/test-interpret', async (req, res) => {
       }
     }
     
-    const interpretation = await interpretCommand(command, userId || undefined, 0, preferredModel, undefined, userId || 'test');
+    // Build music context with taste profile for test endpoint
+    let musicContext = '';
+    if (userId && req.spotifyTokens && loggingService?.redisClient) {
+      try {
+        const spotifyControl = new SpotifyControl(
+          req.spotifyTokens,
+          (tokens) => { req.spotifyTokens = tokens; }
+        );
+        
+        // Get taste profile
+        const userDataService = new UserDataService(loggingService.redisClient, spotifyControl.getApi(), userId);
+        const tasteProfile = await userDataService.generateTasteProfile();
+        musicContext = tasteProfile;
+        console.log('[TEST] Fetched taste profile for user');
+      } catch (error) {
+        console.error('[TEST] Error fetching taste profile:', error);
+      }
+    }
+    
+    const interpretation = await interpretCommand(command, userId || undefined, 0, preferredModel, musicContext, userId || 'test');
     const responseTime = Date.now() - startTime;
     
     // Store conversation entry for testing (same as main endpoint)

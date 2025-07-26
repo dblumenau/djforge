@@ -406,4 +406,42 @@ export class SpotifyWebAPI {
       previous: response.data.previous
     };
   }
+
+  // Playlist management methods
+  async createPlaylist(name: string, description?: string, isPublic: boolean = false): Promise<any> {
+    const user = await this.getCurrentUser();
+    const response = await this.api.post(`/users/${user.id}/playlists`, {
+      name,
+      description: description || '',
+      public: isPublic
+    });
+    return response.data;
+  }
+
+  async addTracksToPlaylist(playlistId: string, trackUris: string[]): Promise<any> {
+    const response = await this.api.post(`/playlists/${playlistId}/tracks`, {
+      uris: trackUris
+    });
+    return response.data;
+  }
+
+  async findPlaylistByName(name: string): Promise<any | null> {
+    const playlists = await this.getPlaylists();
+    return playlists.find((playlist: any) => playlist.name === name) || null;
+  }
+
+  async ensurePlaylistExists(name: string, description?: string): Promise<any> {
+    // Try to find existing playlist
+    let playlist = await this.findPlaylistByName(name);
+    
+    if (!playlist) {
+      // Create the playlist if it doesn't exist
+      playlist = await this.createPlaylist(name, description, false);
+      console.log(`Created new playlist: ${name} (ID: ${playlist.id})`);
+    } else {
+      console.log(`Found existing playlist: ${name} (ID: ${playlist.id})`);
+    }
+    
+    return playlist;
+  }
 }

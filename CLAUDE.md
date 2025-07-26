@@ -47,10 +47,13 @@ cd server && npm start
 
 ### Type Checking
 ```bash
-# Check server types
+# Check both server and client types (run from root)
+npm run type-check
+
+# Check server types only
 cd server && npx tsc --noEmit
 
-# Check client types
+# Check client types only
 cd client && npx tsc --noEmit
 ```
 
@@ -74,6 +77,7 @@ cd client && npx tsc --noEmit
 - `routes/model-preferences.ts` - User model selection preferences
 - `routes/llm-logs.ts` - LLM interaction logging (admin only)
 - `routes/user-data.ts` - User data endpoints including taste profile
+- `routes/feedback.ts` - AI feedback recording and dashboard data with duplicate prevention
 
 **Services Organization**:
 - `services/spotify/`:
@@ -105,15 +109,17 @@ cd client && npx tsc --noEmit
 **Pages & Components**:
 - `pages/`:
   - `LandingPage.tsx` - Authentication and landing page
-  - `MainApp.tsx` - Main application UI with command interface
-  - `Dashboard.tsx` - Comprehensive Spotify data visualization dashboard
+  - `MainApp.tsx` - Main application UI with command interface and command history loading
+  - `Dashboard.tsx` - Comprehensive Spotify data visualization dashboard with granular skeleton loading
   - `TasteProfile.tsx` - User taste profile viewer showing LLM context
+  - `FeedbackDashboard.tsx` - AI feedback management with optimistic UI updates
 - `components/`:
   - `MusicLoader.tsx` - Animated loading component
   - `SpotifyPlayer.tsx` - Web Playback SDK integration
   - `WeatherDisplay.tsx` - Weather information display
   - `DebugPanel.tsx` - Development debugging tools
   - `LoadingEllipsis.tsx` - Loading animation
+  - `skeletons/` - Comprehensive skeleton loading components for zero layout shift
 
 **Hooks**:
 - `useSpotifyAuth.ts` - Authentication hook with refresh lock to prevent race conditions
@@ -125,6 +131,201 @@ cd client && npx tsc --noEmit
 - Tailwind CSS v4 with custom Spotify theme colors
 - Dark theme with zinc/gray palette
 - Responsive design with mobile support
+
+## Skeleton Loading States System
+
+The application implements a comprehensive skeleton loading system that eliminates layout shift and provides immediate visual feedback during data loading operations.
+
+### Architecture Overview
+
+**Zero Layout Shift Implementation**:
+- Skeleton components match exact dimensions of final content
+- Progressive content replacement without visual disruption
+- Granular loading states for different sections
+- Motion-safe accessibility variants using `motion-safe:animate-pulse`
+
+**Key Design Principles**:
+1. **Immediate Response**: Skeleton appears instantly on user action
+2. **Accurate Dimensions**: Matches final content layout precisely
+3. **Accessibility**: Respects user motion preferences
+4. **Progressive Loading**: Individual sections load independently
+
+### Skeleton Components (`/client/src/components/skeletons/`)
+
+**Core Components**:
+
+1. **ProfileSkeleton** - User profile card loading state
+   - Avatar placeholder (24x24 rounded circle)
+   - Three text lines with varying widths (1/2, 1/3, 2/3)
+   - Matches profile card layout exactly
+
+2. **StatCardSkeleton** - Statistics card loading state
+   - Number placeholder (16px height, 16px width, centered)
+   - Label placeholder (4px height, 20px width, centered)
+   - Used for stats like follower counts, track counts
+
+3. **TrackListSkeleton** - Track list loading state
+   - Configurable count (default: 5 tracks)
+   - Track number, album art (12x12), track info, action buttons, duration
+   - Matches saved tracks table and top tracks layouts
+
+4. **AlbumGridSkeleton** - Album/artist grid loading state
+   - Configurable count (default: 12 items)
+   - Responsive grid (2-6 columns based on screen size)
+   - Square aspect ratio images with metadata below
+
+5. **TimelineSkeleton** - Recently played timeline loading state
+   - Configurable date groups and tracks per group
+   - Timeline line with circular date markers
+   - Track cards with precise spacing and alignment
+
+6. **ChartSkeleton** - Data visualization loading state
+   - Configurable height (default: h-64)
+   - Optional title area with placeholder text
+   - Bar chart simulation with random heights
+   - Legend area with color dots and labels
+
+7. **CommandHistorySkeleton** - Command history loading state
+   - Configurable count (default: 3 commands)
+   - Command text with badges, response content, metadata
+   - Matches command history card structure
+
+### Implementation Patterns
+
+**Tailwind CSS Animation**:
+```typescript
+// All skeletons use motion-safe prefix
+className="motion-safe:animate-pulse bg-zinc-700 rounded"
+
+// Respects user's prefers-reduced-motion setting
+// Falls back to static loading state for accessibility
+```
+
+**Responsive Design**:
+```typescript
+// AlbumGridSkeleton responsive grid
+className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4"
+
+// Matches production grid layouts exactly
+```
+
+**Configurable Components**:
+```typescript
+interface TrackListSkeletonProps {
+  count?: number;  // Default: 5
+}
+
+interface TimelineSkeletonProps {
+  dateGroups?: number;     // Default: 3
+  tracksPerGroup?: number; // Default: 4
+}
+```
+
+### Dashboard Integration
+
+**Granular Loading States** (`Dashboard.tsx`):
+```typescript
+interface DashboardLoadingState {
+  profile: boolean;        // User profile section
+  stats: boolean;          // Quick stats cards
+  topItems: boolean;       // Top artists/tracks
+  savedTracks: boolean;    // Saved tracks table
+  savedAlbums: boolean;    // Saved albums grid
+  recentlyPlayed: boolean; // Recently played timeline
+  playlists: boolean;      // User playlists grid
+  insights: boolean;       // Data visualization charts
+}
+```
+
+**Progressive Loading Pattern**:
+- Each section loads independently
+- Skeleton shown until specific data is available
+- No cascading layout shifts as content populates
+- Loading states cleared only when data is fully rendered
+
+**Usage Examples**:
+```typescript
+// Profile section
+{loadingStates.profile || !dashboardData ? (
+  <ProfileSkeleton />
+) : (
+  <UserProfileCard data={dashboardData.profile} />
+)}
+
+// Configurable track list
+{loadingStates.savedTracks || !dashboardData ? (
+  <TrackListSkeleton count={10} />
+) : (
+  <SavedTracksTable tracks={dashboardData.savedTracks.items} />
+)}
+
+// Timeline with custom grouping
+{loadingStates.recentlyPlayed || !dashboardData ? (
+  <TimelineSkeleton dateGroups={4} tracksPerGroup={5} />
+) : (
+  <RecentlyPlayedTimeline data={dashboardData.recentlyPlayed} />
+)}
+```
+
+### MainApp Command History Integration
+
+**Command History Loading** (`MainApp.tsx`):
+- Shows skeleton during initial command history fetch
+- Prevents empty state flash before data loads
+- Graceful fallback to empty state message if no commands exist
+
+```typescript
+{commandHistoryLoading ? (
+  <CommandHistorySkeleton count={3} />
+) : commandHistory.length === 0 ? (
+  <p className="text-gray-500 text-center py-8">No commands yet. Try sending a command!</p>
+) : (
+  <CommandHistoryList commands={commandHistory} />
+)}
+```
+
+### Visual Design System
+
+**Color Palette**:
+- `bg-zinc-900` - Component backgrounds
+- `bg-zinc-700` - Skeleton element fills
+- `bg-zinc-800` - Chart/timeline backgrounds
+- `border-zinc-800` - Subtle borders
+
+**Spacing & Sizing**:
+- Consistent with production components
+- Proper flex-shrink-0 for fixed elements
+- Responsive spacing using Tailwind utilities
+
+**Animation**:
+- `motion-safe:animate-pulse` - Respects accessibility preferences
+- Subtle pulsing effect for visual feedback
+- No motion for users with prefers-reduced-motion
+
+### Performance Benefits
+
+1. **Immediate Visual Feedback**: Users see loading state instantly
+2. **Zero Layout Shift**: Content appears in exact final positions
+3. **Reduced Perceived Load Time**: Progressive loading feels faster
+4. **Better UX Flow**: Smooth transitions from loading to content
+5. **Accessibility Compliant**: Motion-safe animations
+
+### Development Patterns
+
+**Creating New Skeletons**:
+1. Match exact dimensions of final content
+2. Use consistent color palette (zinc-700/800/900)
+3. Include motion-safe prefix for animations
+4. Make count/size configurable where appropriate
+5. Test with real content to ensure perfect alignment
+
+**Loading State Management**:
+1. Start with all loading states true
+2. Clear individual states as data becomes available
+3. Use conditional rendering with skeleton as fallback
+4. Never show skeleton and content simultaneously
+
+This skeleton system significantly improves the user experience by providing immediate visual feedback and eliminating the jarring effects of content popping into place during load operations.
 
 ### Critical Implementation Details
 
@@ -168,7 +369,7 @@ REDIS_URL=redis://localhost:6379
 
 # LLM API Keys
 OPENROUTER_API_KEY=your_openrouter_key_here
-GOOGLE_GEMINI_API_KEY=your_gemini_key_here
+GEMINI_API_KEY=your_gemini_key_here
 
 # Weather API (optional)
 DMI_WEATHER_LATITUDE=55.6761
@@ -227,6 +428,13 @@ VITE_CLIENT_URL=https://yourdomain.com
 5. **Token refresh race conditions**: The `useSpotifyAuth` hook includes a refresh lock
 6. **Redis connection issues**: Server falls back to file-based sessions automatically
 7. **Web Playback SDK**: Requires Spotify Premium account
+8. **AI feedback not working**: Check Redis data format compatibility and `getAIFeedback()` parsing
+9. **Multiple songs not getting individual feedback**: Verify `queue_multiple_songs` tracking logic
+10. **Skeleton loading issues**:
+    - Layout shift during loading → Check skeleton dimensions match final content
+    - Animation not working → Verify `motion-safe:animate-pulse` class usage
+    - Content flashing → Ensure loading states start as `true` and clear only when data ready
+    - Accessibility concerns → Test with `prefers-reduced-motion: reduce` setting
 
 ### Project Status
 
@@ -236,6 +444,7 @@ VITE_CLIENT_URL=https://yourdomain.com
 - Docker support for local and production environments
 - Basic Jest test infrastructure in place
 - Comprehensive Spotify Dashboard with data visualization
+- **Skeleton Loading System**: Zero layout shift loading states across all components
 - See `docs/TODO.md` for enhancement opportunities
 
 ## Known Issues & Solutions
@@ -520,12 +729,17 @@ The system automatically generates and includes user taste profiles in LLM promp
    Favorite Artists: Beach House, Slowdive, The National, ...
    Recent Favorites: "Space Song" by Beach House; "When the Sun Hits" by Slowdive; ...
    Recent Listening: "Myth" by Beach House; "Sugar for the Pill" by Slowdive; ...
+   
+   AI Feedback History:
+   Loved Discoveries: "Untitled" by Interpol; "Fade Into You" by Mazzy Star; ...
+   Disliked Recommendations: "Generic Pop Song" by Artist; ...
    ```
 
 3. **LLM Integration**:
    - Profile is automatically fetched when processing commands in `simple-llm-interpreter.ts`
    - Combined with current playback context in the LLM prompt
-   - Enables personalized recommendations based on actual listening history
+   - **AI Feedback Integration**: Includes user feedback history on AI-discovered tracks
+   - Enables personalized recommendations based on actual listening history AND learned preferences
    - Works with all LLM models (OpenRouter and Gemini)
 
 4. **User Interface**:
@@ -563,7 +777,210 @@ The system automatically generates and includes user taste profiles in LLM promp
 - No impact on users without sufficient listening history
 - Debug logging tracks profile fetching and inclusion in prompts
 
-This feature enhances the LLM's ability to provide personalized recommendations by understanding the user's actual music preferences rather than relying solely on the command text.
+This feature enhances the LLM's ability to provide personalized recommendations by understanding the user's actual music preferences AND learning from previous AI discovery feedback, creating a feedback loop for continuous improvement.
+
+## AI Feedback System
+
+The system includes an intelligent feedback mechanism that learns from user preferences to improve future AI music recommendations.
+
+### How It Works
+
+1. **AI Discovery Detection**: When the LLM makes a creative choice (not an explicit user request), it sets `isAIDiscovery: true` and provides `aiReasoning`
+
+2. **Automatic Tracking**: These AI-discovered tracks are automatically tracked in Redis with user feedback capabilities
+
+3. **Individual Song Tracking**: For `queue_multiple_songs` operations, each song gets individual tracking and feedback buttons rather than treating the batch as a single discovery
+
+4. **Feedback Integration**: User feedback (loved/disliked) is included in future taste profiles sent to LLMs, creating a learning loop
+
+### Redis Data Structure
+
+```typescript
+// Current format (JSON objects)
+{
+  trackUri: string,           // Spotify URI for the track
+  trackName: string,          // Track name
+  artist: string,             // Artist name(s)
+  discoveredAt: number,       // Timestamp of discovery
+  reasoning: string,          // AI's reasoning for the choice
+  feedback?: 'loved' | 'disliked',  // User feedback
+  feedbackAt?: number,        // Feedback timestamp
+  previewUrl?: string         // 30-second preview URL
+}
+
+// Redis Keys:
+// user:${userId}:ai_discoveries - List of all discoveries
+// user:${userId}:ai_loved - Sorted set of loved tracks
+// user:${userId}:ai_disliked - Sorted set of disliked tracks
+```
+
+### Data Format Compatibility
+
+The system handles both current and legacy data formats:
+- **Current**: JSON objects (structured data with full metadata)
+- **Legacy**: Pipe-separated strings (`trackUri|trackName|artist|reasoning`)
+- The `getAIFeedback()` method automatically detects and parses both formats
+
+### Key Implementation Details
+
+**Multiple Song Tracking**: Fixed bug where `queue_multiple_songs` only tracked the first song. Now each song in a multi-song queue gets:
+- Individual discovery entry in Redis
+- Separate feedback buttons in the UI
+- Independent tracking metadata
+
+**Feedback Integration in Taste Profiles**: Fixed bug where AI feedback wasn't being included in LLM context due to data parsing issues. Now properly includes:
+- "Loved Discoveries: [song list]"
+- "Disliked Recommendations: [song list]"
+
+**Backward Compatibility**: System gracefully handles both JSON and pipe-separated data formats for smooth transitions.
+
+### API Endpoints
+
+- **User feedback**: Handled via existing user-data endpoints
+- **Discovery tracking**: Automatic during command processing
+- **Taste profile**: `GET /api/user-data/taste-profile` includes AI feedback history
+
+### Debugging AI Feedback
+
+**Common Issues**:
+- AI feedback not appearing in taste profiles → Check `getAIFeedback()` parsing logic
+- Multiple songs getting single feedback button → Verify individual `trackAIDiscovery()` calls
+- Feedback not persisting → Check Redis connection and data format compatibility
+
+**Debug Commands**:
+```bash
+# Check discoveries
+redis-cli LRANGE "user:${userId}:ai_discoveries" 0 10
+
+# Check feedback
+redis-cli ZRANGE "user:${userId}:ai_loved" 0 -1
+```
+
+This creates a continuous improvement cycle where the AI learns from user preferences to provide increasingly personalized music recommendations.
+
+## AI Feedback Dashboard Feature
+
+The feedback dashboard provides a comprehensive interface for users to manage their AI discovery feedback with advanced UX improvements.
+
+### Key Features & Improvements
+
+**1. Optimistic UI Updates (No Page Reloads)**:
+- Feedback changes are applied immediately to local state before API call
+- Users see instant visual feedback without waiting for server response
+- On API failure, the system gracefully reverts to previous state by reloading data
+- Eliminates jarring page refreshes that disrupt user flow
+
+**2. Duplicate Feedback Prevention**:
+- Frontend tracking prevents multiple simultaneous submissions for the same track
+- Backend duplicate detection ensures data consistency
+- Loading states on buttons during submission prevent spam clicks
+- `submittingFeedback` state set tracks in-flight requests
+
+**3. Smooth Fade-Out Transitions**:
+- Items disappearing from current view (e.g., "pending" moving to "loved") fade out smoothly
+- Uses Tailwind v4 transition utilities: `transition-all duration-300`
+- Fade animation completes before data structure updates
+- Provides visual continuity when items change categories
+
+**4. Feedback Undo Functionality**:
+- Users can click the same feedback button again to remove/undo their feedback
+- "Love" button becomes "Unlove" when feedback exists, "Dislike" becomes "Un-dislike"
+- Tracks return to pending status when feedback is removed
+- Enables users to change their mind or correct mistakes
+
+**5. Interactive Button States**:
+- Buttons remain clickable even when feedback exists (for undo/change)
+- Clear visual indicators show current feedback state
+- Different button styles for pending, loved, disliked, and submitting states
+- Hover effects guide users on available actions
+
+### Technical Implementation
+
+**Client-Side (`FeedbackDashboard.tsx`)**:
+```typescript
+// Optimistic update pattern
+const handleFeedback = async (trackUri: string, feedback: 'loved' | 'disliked') => {
+  // Prevent duplicate submissions
+  if (submittingFeedback.has(trackUri)) return;
+  
+  // Detect undo operation
+  const isUndoing = targetTrack.feedback === feedback;
+  
+  // Determine if item will disappear from current view
+  const willDisappearFromView = /* logic for view filtering */;
+  
+  // Start fade animation if needed
+  if (willDisappearFromView) {
+    setFadingOut(prev => new Set(prev).add(trackUri));
+  }
+  
+  // Send API request
+  // Wait for fade animation if needed
+  // Update local state optimistically
+  // Handle errors with graceful fallback
+};
+```
+
+**Backend Duplicate Prevention (`UserDataService.ts`)**:
+```typescript
+// Remove existing feedback before adding new (allows changing mind)
+const existingFeedback = /* find existing feedback */;
+if (existingFeedback) {
+  await Promise.all([
+    this.redis.zRem(lovedKey, existingFeedback),
+    this.redis.zRem(dislikedKey, existingFeedback)
+  ]);
+}
+```
+
+**CSS Transitions (Tailwind v4)**:
+```typescript
+className={`transition-all duration-300 ${
+  fadingOut.has(track.trackUri) 
+    ? 'opacity-0 scale-95 -translate-y-2' 
+    : 'opacity-100 scale-100 translate-y-0'
+}`}
+```
+
+### API Endpoints
+
+**Feedback Management**:
+- `POST /api/feedback/ai-discovery` - Record feedback with duplicate handling
+  - Supports `feedback: 'loved' | 'disliked' | 'remove'` for undo functionality
+- `GET /api/feedback/dashboard` - Comprehensive dashboard data
+  - Returns discoveries, loved, disliked tracks with statistics
+  - Cached for performance, supports real-time updates
+
+### User Experience Benefits
+
+1. **Instant Responsiveness**: No waiting for server responses
+2. **Visual Continuity**: Smooth transitions maintain user context
+3. **Error Recovery**: Graceful handling of network issues
+4. **Flexibility**: Easy to change or undo feedback decisions
+5. **Reliability**: Duplicate prevention ensures data consistency
+
+### Performance Considerations
+
+- **State Management**: Efficient React state updates with Set operations
+- **Animation Timing**: 300ms transitions balance smoothness with responsiveness
+- **API Optimization**: Background API calls don't block UI updates
+- **Memory Management**: Proper cleanup of temporary state sets
+
+### Development Notes
+
+**Common Patterns**:
+- Always check `submittingFeedback` before allowing new submissions
+- Use fade-out detection to determine if transitions are needed
+- Implement optimistic updates with error fallbacks
+- Maintain separation between UI state and persistent data
+
+**Testing Considerations**:
+- Test rapid clicking scenarios to verify duplicate prevention
+- Verify smooth transitions when switching between filter views
+- Test network failure scenarios to ensure graceful degradation
+- Validate undo functionality works correctly across all states
+
+This implementation provides a modern, responsive user experience that feels native and prevents common UI/UX issues found in feedback systems.
 
 ## Major Refactor Notes (2025)
 

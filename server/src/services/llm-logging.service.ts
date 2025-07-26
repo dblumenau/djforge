@@ -76,6 +76,13 @@ export class LLMLoggingService {
   }
 
   /**
+   * Get the Redis client (needed for taste profile fetching)
+   */
+  get redisClient(): any {
+    return this.redis;
+  }
+
+  /**
    * Hash user ID for privacy
    */
   private hashUserId(userId: string): string {

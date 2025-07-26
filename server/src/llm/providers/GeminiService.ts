@@ -51,9 +51,26 @@ export class GeminiService {
       const schema = getSchemaForIntent(intentType);
       let systemPrompt = getSystemPromptForIntent(intentType);
       
-      // Add conversation context if available
+      // Handle conversation context
+      let tasteProfile = '';
+      let conversationContext = '';
+      
       if (request.conversationContext) {
-        systemPrompt += request.conversationContext;
+        // Check if the context includes a taste profile
+        const tasteProfileMatch = request.conversationContext.match(/User's Music Taste Profile:[\s\S]*?(?=\n\n|$)/);
+        if (tasteProfileMatch) {
+          // Extract taste profile
+          tasteProfile = tasteProfileMatch[0];
+          // Remove taste profile from conversation context
+          conversationContext = request.conversationContext.replace(tasteProfileMatch[0], '').trim();
+        } else {
+          conversationContext = request.conversationContext;
+        }
+        
+        // Only add conversation context to system prompt (not taste profile)
+        if (conversationContext) {
+          systemPrompt += `\n\nCONVERSATION CONTEXT:\n${conversationContext}`;
+        }
       }
       
       console.log(`🎯 Using @google/genai API with native responseSchema for intent: ${intentType}`);
@@ -70,9 +87,10 @@ export class GeminiService {
           responseMimeType: "application/json",
           responseSchema: schema,
           temperature: request.temperature ?? 0.7,
-          maxOutputTokens: request.max_tokens ?? 2000
+          maxOutputTokens: request.max_tokens ?? 4000
         }
       });
+      
       
       // Extract content from the response
       const content = this.extractContentFromResponse(response);

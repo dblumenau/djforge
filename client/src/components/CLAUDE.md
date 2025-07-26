@@ -58,6 +58,19 @@ This directory contains reusable React components for the Spotify Claude Control
 - Chart components for listening insights
 - See `dashboard/CLAUDE.md` for details
 
+### skeletons/ (Directory)
+- Comprehensive skeleton loading components for zero layout shift
+- Motion-safe animations respecting accessibility preferences
+- Configurable components matching exact content dimensions
+- Components include:
+  - `ProfileSkeleton.tsx` - User profile card loading state
+  - `StatCardSkeleton.tsx` - Statistics card loading state
+  - `TrackListSkeleton.tsx` - Track list loading state (configurable count)
+  - `AlbumGridSkeleton.tsx` - Album/artist grid loading state (responsive)
+  - `TimelineSkeleton.tsx` - Recently played timeline loading state
+  - `ChartSkeleton.tsx` - Data visualization loading state
+  - `CommandHistorySkeleton.tsx` - Command history loading state
+
 ## Component Patterns
 
 ### State Management
@@ -68,7 +81,9 @@ This directory contains reusable React components for the Spotify Claude Control
 ### Error Handling
 - Components display user-friendly error messages
 - Network errors handled gracefully
-- Loading states shown during async operations
+- **Skeleton Loading States**: Immediate visual feedback with zero layout shift
+- Progressive content replacement without visual disruption
+- Graceful fallback to empty states when no data available
 
 ### Styling
 - Tailwind CSS v4 utility classes

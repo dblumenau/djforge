@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { SpotifyWebAPI } from './api';
 import { SpotifyAuthTokens, SpotifyTrack } from '../types';
 import { ensureValidToken } from './auth';
+import { logDebugError } from '../utils/error-logger';
 
 export const controlRouter = Router();
 
@@ -23,6 +24,11 @@ export class SpotifyControl {
 
   constructor(tokens: SpotifyAuthTokens, onTokenRefresh: (tokens: SpotifyAuthTokens) => void) {
     this.webAPI = new SpotifyWebAPI(tokens, onTokenRefresh);
+  }
+
+  // Getter to access the SpotifyWebAPI instance (needed for UserDataService)
+  getApi(): SpotifyWebAPI {
+    return this.webAPI;
   }
 
   async play() {
@@ -479,8 +485,43 @@ export class SpotifyControl {
   }
 
   async queueTrackByUri(uri: string) {
-    await this.webAPI.addToQueue(uri);
-    return { success: true };
+    try {
+      // First check if there's an active device
+      const devices = await this.webAPI.getDevices();
+      const activeDevice = devices.find((d: any) => d.is_active);
+      
+      if (!activeDevice && devices.length > 0) {
+        // No active device, but devices exist - activate the first one
+        console.log('[DEBUG] No active device found, activating first available device');
+        await this.webAPI.transferPlayback(devices[0].id, false); // Don't start playing immediately
+        
+        // Small delay to let the device activation take effect
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } else if (devices.length === 0) {
+        throw new Error('No Spotify devices found. Please open Spotify on a device.');
+      }
+      
+      await this.webAPI.addToQueue(uri);
+      return { success: true };
+    } catch (error: any) {
+      logDebugError('Queue operation failed', error);
+      
+      // Check if it's a "no active device" error
+      if (error.response?.status === 404) {
+        const errorData = error.response?.data?.error;
+        if (errorData?.reason === 'NO_ACTIVE_DEVICE') {
+          return { 
+            success: false, 
+            message: 'No active Spotify device found. Please start playing something on Spotify first.' 
+          };
+        }
+      }
+      
+      return { 
+        success: false, 
+        message: error.message || 'Failed to add track to queue' 
+      };
+    }
   }
 
   async setShuffle(enabled: boolean) {

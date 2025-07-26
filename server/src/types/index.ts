@@ -45,6 +45,19 @@ export interface ClaudeCommand {
   query?: string;
   value?: number;
   confidence: number;
+  isAIDiscovery?: boolean;  // true when AI made creative choice
+  aiReasoning?: string;     // explanation of why AI chose this
+}
+
+export interface AIDiscoveredTrack {
+  trackUri: string;
+  trackName: string;
+  artist: string;
+  discoveredAt: number;
+  reasoning: string;        // AI's explanation of why it chose this
+  feedback?: 'loved' | 'disliked';  // Only stored if user gave feedback
+  feedbackAt?: number;
+  previewUrl?: string;      // 30-second preview URL from Spotify API
 }
 
 declare module 'express-session' {

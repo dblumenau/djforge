@@ -93,7 +93,14 @@ export const MusicCommandSchema = z.object({
     
   // For queue_multiple_songs theme
   theme: z.string().optional()
-    .describe('Theme description for multiple queued songs')
+    .describe('Theme description for multiple queued songs'),
+    
+  // AI Discovery fields
+  isAIDiscovery: z.boolean().optional()
+    .describe('True when AI made creative choice (not following explicit user request)'),
+    
+  aiReasoning: z.string().optional()
+    .describe('Explanation of why AI chose this when isAIDiscovery is true')
 });
 
 export type MusicCommand = z.infer<typeof MusicCommandSchema>;
@@ -203,6 +210,10 @@ You must respond with a JSON object containing these fields:
 - reasoning: string explaining your interpretation
 - alternatives: array of alternative suggestions
 - enhancedQuery (optional): optimized Spotify search query
+- isAIDiscovery (optional): true when AI made creative choice (not following explicit user request)
+- aiReasoning (optional): explanation of why AI chose this when isAIDiscovery is true
+
+When you make a creative choice (like "play something melancholy" where you choose a specific track), set isAIDiscovery: true and include aiReasoning explaining your choice.
 
 Be creative in interpreting vague requests while maintaining high confidence in clear commands.`,
 

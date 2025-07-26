@@ -14,6 +14,7 @@ import { modelPreferencesRouter, setRedisClient as setModelPrefsRedisClient } fr
 import { waitlistRouter } from './routes/waitlist';
 import { llmLogsRouter, setRedisClientForLogs } from './routes/llm-logs';
 import { directActionRouter, setRedisClient as setDirectActionRedisClient } from './routes/direct-action';
+import { feedbackRouter, setRedisClient as setFeedbackRedisClient } from './routes/feedback';
 import { createRedisClient, checkRedisHealth } from './config/redis';
 import { RedisUtils } from './utils/redis-utils';
 import weatherRouter from './routes/weather';
@@ -70,6 +71,9 @@ async function initializeSessionStore() {
       
       // Initialize Redis client for direct actions
       setDirectActionRedisClient(redisClient);
+      
+      // Initialize Redis client for feedback
+      setFeedbackRedisClient(redisClient);
     } else {
       throw new Error('Redis health check failed');
     }
@@ -148,9 +152,12 @@ async function initializeAndStart() {
     app.use('/api/auth', authRouter);
     app.use('/api/control', controlRouter);
     
-    // Use flexible LLM interpreter by default (production-ready)
+    // Use flexible LLM interpreter by default (production-ready) 
+    app.use('/api/llm/simple', simpleLLMInterpreterRouter);
+    // Keep schema-based interpreter available at /api/llm
+    app.use('/api/llm', llmInterpreterRouter);
+    // Keep legacy endpoints for backwards compatibility
     app.use('/api/claude', simpleLLMInterpreterRouter);
-    // Keep schema-based interpreter available at /api/claude-schema
     app.use('/api/claude-schema', llmInterpreterRouter);
     // Keep enhanced interpreter available at /api/claude-enhanced
     app.use('/api/claude-enhanced', enhancedClaudeRouter);
@@ -172,6 +179,8 @@ async function initializeAndStart() {
     app.use(llmLogsRouter);
     // Direct action endpoints (for bypassing LLM)
     app.use('/api/direct', directActionRouter);
+    // AI feedback endpoints
+    app.use('/api/feedback', feedbackRouter);
 
     // Determine client URL based on environment
     const clientUrl = process.env.CLIENT_URL || 'http://127.0.0.1:5173';

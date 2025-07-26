@@ -291,4 +291,24 @@ router.post('/refresh', async (req: Request, res: Response) => {
   }
 });
 
+// Get taste profile endpoint
+router.get('/taste-profile', async (req: Request, res: Response) => {
+  try {
+    const userDataService = await getUserDataService(req);
+    const tasteProfile = await userDataService.generateTasteProfile();
+    
+    res.json({
+      success: true,
+      profile: tasteProfile,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error: any) {
+    console.error('Error fetching taste profile:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to fetch taste profile'
+    });
+  }
+});
+
 export default router;
