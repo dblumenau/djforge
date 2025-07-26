@@ -227,7 +227,17 @@ async function interpretCommand(command: string, userId?: string, retryCount = 0
   
   const prompt = `${FULL_CURATOR_GUIDELINES}
 
-${musicContext ? `${musicContext}\n` : ''}
+${musicContext ? `${musicContext}
+
+TASTE PROFILE USAGE GUIDELINES:
+The above context provides background about the user's listening habits. Use this to:
+• Understand their general style preferences and musical taste
+• Make informed recommendations that align with their taste when appropriate
+• Feel completely free to recommend artists/songs outside their usual preferences when it better matches their specific request
+• For mood-based requests (like "something sad"), prioritize the mood over sticking to their usual artists
+• Only use their favorite artists if they specifically ask for them or if those artists genuinely have the perfect song for the request
+
+` : ''}
 ${contextBlock}
 [DEBUG: Relevant context entries: ${relevantContext.length}]
 [DEBUG: Music context length: ${musicContext?.length || 0} chars]
@@ -407,7 +417,14 @@ Command: "${command}"`;
     const startTime = Date.now();
     const requestModel = preferredModel || OPENROUTER_MODELS.GEMINI_2_5_FLASH;
     const messages = [
-      { role: 'system' as const, content: `Respond with valid JSON. Be helpful and specific. Include confidence scores as a decimal between 0 and 1 (e.g., 0.95 for 95% confidence). CRITICAL: You must use the discriminated union pattern - when intent is "play_specific_song" or "queue_specific_song", you MUST include artist, track, and alternatives fields. ${ALTERNATIVES_APPROACH} When intent is "play_playlist" or "queue_playlist", use query field. Never use generic search queries for specific song requests - always recommend exact songs using your music knowledge. Distinguish between playing (immediate) and queuing (add to queue) for both songs and playlists. For conversational intents (chat, ask_question), include the actual answer in the responseMessage field. If you're making a creative choice (not following an explicit user request), set isAIDiscovery: true and include aiReasoning explaining your choice. ${RESPONSE_VARIATION}` },
+      { role: 'system' as const, content: `Respond with valid JSON. Be helpful and specific. Include confidence scores as a decimal between 0 and 1 (e.g., 0.95 for 95% confidence). 
+
+CRITICAL ACCURACY REQUIREMENTS:
+• ONLY recommend songs that actually exist - never invent song titles
+• If you're unsure about a song title, choose a different artist or song you're certain about
+• Double-check your music knowledge before recommending specific tracks
+
+CRITICAL: You must use the discriminated union pattern - when intent is "play_specific_song" or "queue_specific_song", you MUST include artist, track, and alternatives fields. ${ALTERNATIVES_APPROACH} When intent is "play_playlist" or "queue_playlist", use query field. Never use generic search queries for specific song requests - always recommend exact songs using your music knowledge. Distinguish between playing (immediate) and queuing (add to queue) for both songs and playlists. For conversational intents (chat, ask_question), include the actual answer in the responseMessage field. If you're making a creative choice (not following an explicit user request), set isAIDiscovery: true and include aiReasoning explaining your choice. ${RESPONSE_VARIATION}` },
       { role: 'user' as const, content: prompt }
     ];
     

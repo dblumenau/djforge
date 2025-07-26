@@ -74,22 +74,24 @@ export class UserDataService {
       // Get AI feedback data
       const aiFeedback = await this.getAIFeedback();
       
-      // Build taste profile string
-      let profile = `User's Music Taste Profile:
-Top Genres: ${topGenres.length > 0 ? topGenres.join(', ') : 'No genre data available'}
-Favorite Artists: ${topArtistsMedium.slice(0, 10).map(a => a.name).join(', ') || 'No artist data available'}
-Recent Favorites: ${topTracksMedium.slice(0, 10).map(t => `"${t.name}" by ${t.artists.map(a => a.name).join(', ')}`).join('; ') || 'No track data available'}`;
+      // Build taste profile string with non-directive language
+      let profile = `BACKGROUND - User's Musical Context (for inspiration, not limitation):
+• Tends to enjoy genres like: ${topGenres.length > 0 ? topGenres.join(', ') : 'varied genres'}
+• Often listens to artists such as: ${topArtistsMedium.slice(0, 10).map(a => a.name).join(', ') || 'various artists'}
+• Recent listening includes: ${topTracksMedium.slice(0, 10).map(t => `"${t.name}" by ${t.artists.map(a => a.name).join(', ')}`).join('; ') || 'varied tracks'}
+
+IMPORTANT: This context shows the user's general taste but you should feel free to recommend ANY artist that fits their request. Don't limit yourself to these artists - use this as inspiration to understand their style preferences.`;
 
       // Add AI feedback section if available
       if (aiFeedback.loved.length > 0 || aiFeedback.disliked.length > 0) {
-        profile += '\n\nAI Feedback History:';
+        profile += '\n\nPast AI Discovery Feedback (what worked/didn\'t work):';
         
         if (aiFeedback.loved.length > 0) {
-          profile += `\nLoved Discoveries: ${aiFeedback.loved.map(t => `"${t.trackName}" by ${t.artist}`).join('; ')}`;
+          profile += `\n• Loved these discoveries: ${aiFeedback.loved.map(t => `"${t.trackName}" by ${t.artist}`).join('; ')}`;
         }
         
         if (aiFeedback.disliked.length > 0) {
-          profile += `\nDisliked Recommendations: ${aiFeedback.disliked.map(t => `"${t.trackName}" by ${t.artist}`).join('; ')}`;
+          profile += `\n• Didn't connect with: ${aiFeedback.disliked.map(t => `"${t.trackName}" by ${t.artist}`).join('; ')}`;
         }
       }
 
