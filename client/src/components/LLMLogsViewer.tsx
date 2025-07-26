@@ -180,16 +180,16 @@ const LLMLogsViewer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-      <div className="bg-zinc-900 rounded-lg max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-2 sm:p-4">
+      <div className="bg-zinc-900 rounded-lg max-w-6xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="border-b border-zinc-800 p-6 flex justify-between items-center">
-          <div>
-            <h2 className="text-2xl font-bold text-white">
+        <div className="border-b border-zinc-800 p-3 sm:p-6 flex justify-between items-center">
+          <div className="min-w-0 flex-1 mr-2">
+            <h2 className="text-lg sm:text-2xl font-bold text-white truncate">
               LLM Logs {!isAdmin && '(Your Logs Only)'}
             </h2>
             {stats && (
-              <p className="text-sm text-gray-400 mt-1">
+              <p className="text-xs sm:text-sm text-gray-400 mt-1 truncate">
                 {stats.totalQueries} queries • {stats.periodDays} days • 
                 {stats.avgLatency}ms avg latency • {stats.errorRate}% error rate
               </p>
@@ -197,9 +197,9 @@ const LLMLogsViewer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors"
+            className="text-gray-400 hover:text-white transition-colors flex-shrink-0"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
@@ -207,11 +207,11 @@ const LLMLogsViewer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
         {/* Controls */}
         {isAdmin && (
-          <div className="border-b border-zinc-800 p-4 flex gap-4">
-            <div className="flex gap-2">
+          <div className="border-b border-zinc-800 p-3 sm:p-4 flex flex-col gap-3 sm:flex-row sm:gap-4">
+            <div className="flex gap-1 sm:gap-2 flex-wrap">
               <button
                 onClick={() => handleFilterChange('all')}
-                className={`px-4 py-2 rounded ${
+                className={`px-2 py-1 sm:px-4 sm:py-2 rounded text-xs sm:text-sm ${
                   filter === 'all' 
                     ? 'bg-green-600 text-white' 
                     : 'bg-zinc-800 text-gray-400 hover:text-white'
@@ -221,7 +221,7 @@ const LLMLogsViewer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
               </button>
               <button
                 onClick={() => handleFilterChange('openrouter')}
-                className={`px-4 py-2 rounded ${
+                className={`px-2 py-1 sm:px-4 sm:py-2 rounded text-xs sm:text-sm ${
                   filter === 'openrouter' 
                     ? 'bg-green-600 text-white' 
                     : 'bg-zinc-800 text-gray-400 hover:text-white'
@@ -231,7 +231,7 @@ const LLMLogsViewer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
               </button>
               <button
                 onClick={() => handleFilterChange('gemini-direct')}
-                className={`px-4 py-2 rounded ${
+                className={`px-2 py-1 sm:px-4 sm:py-2 rounded text-xs sm:text-sm ${
                   filter === 'gemini-direct' 
                     ? 'bg-green-600 text-white' 
                     : 'bg-zinc-800 text-gray-400 hover:text-white'
@@ -241,18 +241,18 @@ const LLMLogsViewer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
               </button>
             </div>
             
-            <div className="flex-1 flex gap-2">
+            <div className="flex gap-2 flex-1 min-w-0">
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
                 placeholder="Search logs..."
-                className="flex-1 bg-zinc-800 text-white px-4 py-2 rounded"
+                className="flex-1 bg-zinc-800 text-white px-3 py-1 sm:px-4 sm:py-2 rounded text-sm min-w-0"
               />
               <button
                 onClick={handleSearch}
-                className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+                className="bg-green-600 text-white px-3 py-1 sm:px-4 sm:py-2 rounded hover:bg-green-700 text-xs sm:text-sm flex-shrink-0"
               >
                 Search
               </button>
@@ -261,7 +261,7 @@ const LLMLogsViewer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         )}
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-6">
           {loading ? (
             <div className="text-center text-gray-400">Loading logs...</div>
           ) : error ? (
@@ -269,32 +269,32 @@ const LLMLogsViewer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           ) : logs.length === 0 ? (
             <div className="text-center text-gray-400">No logs found</div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {logs.map((log) => (
                 <div
                   key={log.id}
-                  className="bg-zinc-800 rounded-lg p-4 hover:bg-zinc-700/50 transition-colors"
+                  className="bg-zinc-800 rounded-lg p-3 sm:p-4 hover:bg-zinc-700/50 transition-colors"
                 >
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-sm text-gray-400">{formatDate(log.timestamp)}</span>
-                        <span className={`text-xs px-2 py-1 rounded ${
+                  <div className="flex justify-between items-start gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1 sm:gap-2 mb-2 flex-wrap">
+                        <span className="text-xs sm:text-sm text-gray-400 flex-shrink-0">{formatDate(log.timestamp)}</span>
+                        <span className={`text-xs px-1 sm:px-2 py-1 rounded flex-shrink-0 ${
                           log.llmRequest.flow === 'gemini-direct' 
                             ? 'bg-blue-600/20 text-blue-400' 
                             : 'bg-purple-600/20 text-purple-400'
                         }`}>
                           {log.llmRequest.flow}
                         </span>
-                        <span className="text-xs px-2 py-1 rounded bg-zinc-700 text-gray-300">
+                        <span className="text-xs px-1 sm:px-2 py-1 rounded bg-zinc-700 text-gray-300 flex-shrink-0 truncate max-w-[100px] sm:max-w-none">
                           {log.llmRequest.model}
                         </span>
                         {log.llmResponse.fallbackUsed && (
-                          <span className="text-xs px-2 py-1 rounded bg-yellow-600/20 text-yellow-400">
+                          <span className="text-xs px-1 sm:px-2 py-1 rounded bg-yellow-600/20 text-yellow-400 flex-shrink-0">
                             Fallback
                           </span>
                         )}
-                        <span className={`text-xs px-2 py-1 rounded ${
+                        <span className={`text-xs px-1 sm:px-2 py-1 rounded flex-shrink-0 ${
                           log.result.success 
                             ? 'bg-green-600/20 text-green-400' 
                             : 'bg-red-600/20 text-red-400'
@@ -303,11 +303,12 @@ const LLMLogsViewer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                         </span>
                       </div>
                       
-                      <div className="text-white mb-2">
-                        <span className="text-gray-400">Command:</span> {log.command}
+                      <div className="text-white mb-2 text-sm sm:text-base">
+                        <span className="text-gray-400">Command:</span> 
+                        <span className="ml-1 break-words">{log.command}</span>
                       </div>
                       
-                      <div className="text-sm text-gray-400">
+                      <div className="text-xs sm:text-sm text-gray-400 break-words">
                         <span className="text-gray-500">Intent:</span> {
                           (log.interpretation as any)?.intent || 'Unknown'
                         } • 
@@ -318,9 +319,9 @@ const LLMLogsViewer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                       </div>
                       
                       {(log.interpretation as any)?.reasoning && (
-                        <div className="mt-2 text-sm">
+                        <div className="mt-2 text-xs sm:text-sm">
                           <span className="text-gray-500">Reasoning:</span>{' '}
-                          <span className="text-gray-300 italic">
+                          <span className="text-gray-300 italic break-words">
                             {(log.interpretation as any).reasoning}
                           </span>
                         </div>
@@ -329,10 +330,10 @@ const LLMLogsViewer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                     
                     <button
                       onClick={() => setExpandedLog(expandedLog === log.id ? null : log.id)}
-                      className="text-gray-400 hover:text-white ml-4"
+                      className="text-gray-400 hover:text-white flex-shrink-0"
                     >
                       <svg 
-                        className={`w-5 h-5 transform transition-transform ${
+                        className={`w-4 h-4 sm:w-5 sm:h-5 transform transition-transform ${
                           expandedLog === log.id ? 'rotate-180' : ''
                         }`} 
                         fill="none" 
@@ -346,23 +347,23 @@ const LLMLogsViewer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                   
                   {expandedLog === log.id && (
                     <div className="mt-4 pt-4 border-t border-zinc-700">
-                      <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 text-sm">
                         <div>
-                          <h4 className="text-gray-400 mb-2">Interpretation</h4>
-                          <pre className="bg-zinc-900 rounded p-2 text-xs overflow-x-auto">
+                          <h4 className="text-gray-400 mb-2 text-sm font-medium">Interpretation</h4>
+                          <pre className="bg-zinc-900 rounded p-2 text-xs overflow-x-auto whitespace-pre-wrap break-words max-w-full">
                             {JSON.stringify(log.interpretation, null, 2)}
                           </pre>
                         </div>
                         <div>
-                          <h4 className="text-gray-400 mb-2">Response</h4>
-                          <pre className="bg-zinc-900 rounded p-2 text-xs overflow-x-auto">
+                          <h4 className="text-gray-400 mb-2 text-sm font-medium">Response</h4>
+                          <pre className="bg-zinc-900 rounded p-2 text-xs overflow-x-auto whitespace-pre-wrap break-words max-w-full">
                             {log.llmResponse.content}
                           </pre>
                         </div>
                       </div>
                       <div className="mt-4">
-                        <h4 className="text-gray-400 mb-2">Result</h4>
-                        <p className="text-gray-300">{log.result.message}</p>
+                        <h4 className="text-gray-400 mb-2 text-sm font-medium">Result</h4>
+                        <p className="text-gray-300 text-sm break-words">{log.result.message}</p>
                       </div>
                     </div>
                   )}
@@ -374,9 +375,9 @@ const LLMLogsViewer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
         {/* Stats */}
         {stats && isAdmin && (
-          <div className="border-t border-zinc-800 p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">Statistics</h3>
-            <div className="grid grid-cols-3 gap-6">
+          <div className="border-t border-zinc-800 p-3 sm:p-6">
+            <h3 className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4">Statistics</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               <div>
                 <h4 className="text-sm text-gray-400 mb-2">Model Distribution</h4>
                 <div className="space-y-1">
@@ -384,9 +385,9 @@ const LLMLogsViewer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                     .sort(([,a], [,b]) => b - a)
                     .slice(0, 5)
                     .map(([model, count]) => (
-                      <div key={model} className="flex justify-between text-sm">
-                        <span className="text-gray-300">{model}</span>
-                        <span className="text-gray-500">{count}</span>
+                      <div key={model} className="flex justify-between text-xs sm:text-sm">
+                        <span className="text-gray-300 truncate mr-2">{model}</span>
+                        <span className="text-gray-500 flex-shrink-0">{count}</span>
                       </div>
                     ))}
                 </div>
@@ -397,9 +398,9 @@ const LLMLogsViewer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 <div className="space-y-1">
                   {stats.flowDistribution && Object.entries(stats.flowDistribution)
                     .map(([flow, count]) => (
-                      <div key={flow} className="flex justify-between text-sm">
-                        <span className="text-gray-300">{flow}</span>
-                        <span className="text-gray-500">{count}</span>
+                      <div key={flow} className="flex justify-between text-xs sm:text-sm">
+                        <span className="text-gray-300 truncate mr-2">{flow}</span>
+                        <span className="text-gray-500 flex-shrink-0">{count}</span>
                       </div>
                     ))}
                 </div>
@@ -412,9 +413,9 @@ const LLMLogsViewer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                     .sort(([,a], [,b]) => b - a)
                     .slice(0, 5)
                     .map(([intent, count]) => (
-                      <div key={intent} className="flex justify-between text-sm">
-                        <span className="text-gray-300">{intent}</span>
-                        <span className="text-gray-500">{count}</span>
+                      <div key={intent} className="flex justify-between text-xs sm:text-sm">
+                        <span className="text-gray-300 truncate mr-2">{intent}</span>
+                        <span className="text-gray-500 flex-shrink-0">{count}</span>
                       </div>
                     ))}
                 </div>
