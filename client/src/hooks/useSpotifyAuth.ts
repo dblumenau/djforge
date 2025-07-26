@@ -88,8 +88,8 @@ export const useSpotifyAuth = () => {
       } else {
         throw new Error('Invalid refresh response');
       }
-    } catch (error) {
-      console.error('💥 Token refresh failed:', error);
+    } catch (error: any) {
+      console.error('💥 Token refresh failed:', error.response?.data || error.message || 'Unknown error');
       // DON'T clear JWT - it's still valid for 30 days
       // Only the Spotify tokens inside it are expired/revoked
       // Keep user "authenticated" but with expired tokens

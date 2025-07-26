@@ -172,8 +172,8 @@ export async function ensureValidToken(req: any, res: any, next: any) {
         req.spotifyTokens = refreshedTokens;
       }
       console.log('Token refreshed successfully');
-    } catch (error) {
-      console.error('Token refresh failed:', error);
+    } catch (error: any) {
+      console.error('Token refresh failed:', error.response?.data || error.message || 'Unknown error');
       return res.status(401).json({ error: 'Token refresh failed' });
     }
   } else {
@@ -269,8 +269,8 @@ authRouter.post('/refresh', async (req, res) => {
       accessToken: refreshedTokens.access_token
     });
     
-  } catch (error) {
-    console.error('Token refresh error:', error);
+  } catch (error: any) {
+    console.error('Token refresh error:', error.response?.data || error.message || 'Unknown error');
     res.status(401).json({ error: 'Token refresh failed' });
   }
 });
