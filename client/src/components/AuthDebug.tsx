@@ -15,7 +15,7 @@ const AuthDebug: React.FC = () => {
       let authResponse = null;
       if (jwtToken) {
         try {
-          const response = await fetch('http://127.0.0.1:3001/api/auth/status', {
+          const response = await fetch('http://127.0.0.1:4001/api/auth/status', {
             headers: {
               'Authorization': `Bearer ${jwtToken}`,
               'Content-Type': 'application/json'

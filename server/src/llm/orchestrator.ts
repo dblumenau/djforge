@@ -60,7 +60,17 @@ export const OPENROUTER_MODELS = {
 
   // OpenAI Models
   O3_PRO: 'openai/o3-pro',
-  GPT_4O: 'openai/o4-mini',
+  O3: 'openai/o3',
+  O3_DEEP_RESEARCH: 'openai/o3-deep-research',
+  O3_PRO_2025_06_10: 'openai/o3-pro-2025-06-10',
+  O4_MINI: 'openai/o4-mini',
+  O4_MINI_DEEP_RESEARCH: 'openai/o4-mini-deep-research',
+  O1: 'openai/o1',
+  O1_PRO: 'openai/o1-pro',
+  GPT_4_1: 'openai/gpt-4.1',
+  GPT_4_1_NANO: 'openai/gpt-4.1-nano',
+  GPT_4O: 'openai/gpt-4o',
+  GPT_4O_MINI: 'openai/gpt-4o-mini',
   CODEX_MINI: 'openai/codex-mini',
   
   // Google Gemini Models
@@ -108,7 +118,17 @@ export const OPENROUTER_MODELS = {
 const JSON_CAPABLE_MODELS = new Set([
   // OpenAI models - confirmed JSON support
   OPENROUTER_MODELS.O3_PRO,
+  OPENROUTER_MODELS.O3,
+  OPENROUTER_MODELS.O3_DEEP_RESEARCH,
+  OPENROUTER_MODELS.O3_PRO_2025_06_10,
+  OPENROUTER_MODELS.O4_MINI,
+  OPENROUTER_MODELS.O4_MINI_DEEP_RESEARCH,
+  OPENROUTER_MODELS.O1,
+  OPENROUTER_MODELS.O1_PRO,
+  OPENROUTER_MODELS.GPT_4_1,
+  OPENROUTER_MODELS.GPT_4_1_NANO,
   OPENROUTER_MODELS.GPT_4O,
+  OPENROUTER_MODELS.GPT_4O_MINI,
   OPENROUTER_MODELS.CODEX_MINI,
   
   // Claude models - use tool calling for JSON, not native JSON mode
@@ -145,9 +165,9 @@ export class LLMOrchestrator {
     this.fallbackChain = [
       OPENROUTER_MODELS.GEMINI_2_5_FLASH, // Primary: fast and reliable
       OPENROUTER_MODELS.CLAUDE_SONNET_4,  // High quality fallback
-      OPENROUTER_MODELS.O3_PRO,           // High capability
+      OPENROUTER_MODELS.GPT_4_1,          // Latest GPT with 1M context
+      OPENROUTER_MODELS.O3_PRO,           // High capability reasoning
       OPENROUTER_MODELS.DEEPSEEK_R1_0528, // Cost-effective with good performance
-      OPENROUTER_MODELS.GROK_3_MINI,      // Lightweight fallback
     ];
   }
 

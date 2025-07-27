@@ -7,7 +7,7 @@ const getApiUrl = () => {
   }
   
   // Default to localhost for development
-  return 'http://127.0.0.1:3001';
+  return 'http://127.0.0.1:4001';
 };
 
 export const API_URL = getApiUrl();

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { apiEndpoint } from '../config/api';
+import { setSentryUserContext, clearSentryUserContext } from '../utils/sentry';
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -73,6 +74,9 @@ export const useSpotifyAuth = () => {
       if (data.success && data.newJwtToken) {
         // Update localStorage with new JWT
         localStorage.setItem('spotify_jwt', data.newJwtToken);
+        
+        // Update Sentry user context
+        setSentryUserContext(data.newJwtToken);
         
         // Set authenticated state directly with new token
         setAuthState({
@@ -148,6 +152,10 @@ export const useSpotifyAuth = () => {
       
       if (data.authenticated && data.accessToken) {
         console.log('✅ useSpotifyAuth: Setting authenticated state');
+        
+        // Update Sentry user context
+        setSentryUserContext(jwtToken);
+        
         setAuthState({
           isAuthenticated: true,
           accessToken: data.accessToken,
@@ -217,6 +225,9 @@ export const useSpotifyAuth = () => {
         method: 'POST',
         credentials: 'include'
       });
+      
+      // Clear Sentry user context on logout
+      clearSentryUserContext();
       
       setAuthState({
         isAuthenticated: false,

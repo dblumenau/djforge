@@ -73,15 +73,65 @@ const MODEL_DISPLAY_INFO: Record<string, { name: string; provider: string; descr
   },
   
   // OpenAI Models
+  [OPENROUTER_MODELS.GPT_4_1]: { 
+    name: 'GPT-4.1', 
+    provider: 'OpenAI',
+    description: 'Latest flagship model with 1M token context and superior coding abilities'
+  },
+  [OPENROUTER_MODELS.GPT_4_1_NANO]: { 
+    name: 'GPT-4.1 Nano', 
+    provider: 'OpenAI',
+    description: 'Smaller, faster version of GPT-4.1 with excellent performance'
+  },
+  [OPENROUTER_MODELS.GPT_4O]: { 
+    name: 'GPT-4 Omni', 
+    provider: 'OpenAI',
+    description: 'Multimodal model with vision and JSON support'
+  },
+  [OPENROUTER_MODELS.GPT_4O_MINI]: { 
+    name: 'GPT-4 Omni Mini', 
+    provider: 'OpenAI',
+    description: 'Efficient multimodal model with fast responses'
+  },
   [OPENROUTER_MODELS.O3_PRO]: { 
     name: 'O3 Pro', 
     provider: 'OpenAI',
-    description: 'Advanced reasoning model (Native JSON support)'
+    description: 'Most intelligent reasoning model with extended thinking'
   },
-  [OPENROUTER_MODELS.GPT_4O]: { 
+  [OPENROUTER_MODELS.O3]: { 
+    name: 'O3', 
+    provider: 'OpenAI',
+    description: 'Advanced reasoning with tool use capabilities'
+  },
+  [OPENROUTER_MODELS.O3_DEEP_RESEARCH]: { 
+    name: 'O3 Deep Research', 
+    provider: 'OpenAI',
+    description: 'Optimized for complex research and analysis tasks'
+  },
+  [OPENROUTER_MODELS.O3_PRO_2025_06_10]: { 
+    name: 'O3 Pro (2025-06-10)', 
+    provider: 'OpenAI',
+    description: 'Latest O3 Pro with enhanced capabilities'
+  },
+  [OPENROUTER_MODELS.O4_MINI]: { 
     name: 'O4 Mini', 
     provider: 'OpenAI',
-    description: 'Efficient model with tools support (Native JSON)'
+    description: 'Fast reasoning optimized for math, coding, and visual tasks'
+  },
+  [OPENROUTER_MODELS.O4_MINI_DEEP_RESEARCH]: { 
+    name: 'O4 Mini Deep Research', 
+    provider: 'OpenAI',
+    description: 'O4 Mini optimized for research applications'
+  },
+  [OPENROUTER_MODELS.O1]: { 
+    name: 'O1', 
+    provider: 'OpenAI',
+    description: 'Original reasoning model with strong problem-solving'
+  },
+  [OPENROUTER_MODELS.O1_PRO]: { 
+    name: 'O1 Pro', 
+    provider: 'OpenAI',
+    description: 'Enhanced O1 with extended reasoning capabilities'
   },
   
   // Google Models
@@ -374,7 +424,9 @@ function getContextWindow(modelId: string): string {
   // This is approximate based on the model
   if (modelId.includes('claude')) return '200K tokens';
   if (modelId.includes('gemini')) return '1M tokens';
-  if (modelId.includes('gpt-4') || modelId.includes('o3')) return '128K tokens';
+  if (modelId.includes('gpt-4.1')) return '1M tokens';
+  if (modelId.includes('gpt-4o')) return '128K tokens';
+  if (modelId.includes('o1') || modelId.includes('o3') || modelId.includes('o4')) return '200K tokens';
   if (modelId.includes('mistral')) return '32K tokens';
   if (modelId.includes('deepseek')) return '64K tokens';
   if (modelId.includes('grok')) return '100K tokens';

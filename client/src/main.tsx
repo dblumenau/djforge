@@ -1,7 +1,55 @@
+import * as Sentry from "@sentry/react";
 import ReactDOM from 'react-dom/client'
 import { RouterProvider } from 'react-router-dom'
 import { router } from './App'
 import './index.css'
+
+// Initialize Sentry
+Sentry.init({
+  dsn: import.meta.env.VITE_SENTRY_DSN || "https://cf410304d6c0e9f558cf1a1df9d31789@o4509741045579776.ingest.de.sentry.io/4509741102727248",
+  environment: import.meta.env.MODE,
+  sendDefaultPii: true,
+  integrations: [
+    Sentry.browserTracingIntegration({
+      // Only create spans for fetch requests to your actual API
+      shouldCreateSpanForRequest: (url) => {
+        // Only trace requests to your API endpoints
+        return url.includes('/api/');
+      },
+    }),
+    Sentry.replayIntegration({
+      maskAllText: false,
+      blockAllMedia: false,
+    })
+  ],
+  // Tracing
+  tracesSampleRate: import.meta.env.MODE === 'production' ? 0.2 : 1.0, // 20% in production, 100% in development
+  // Set 'tracePropagationTargets' to control for which URLs distributed tracing should be enabled
+  tracePropagationTargets: [
+    "localhost",
+    "127.0.0.1",
+    /^https:\/\/api\.djforge\.fly\.dev/,
+    /^http:\/\/localhost:4001/,
+    /^http:\/\/127\.0\.0\.1:4001/
+  ],
+  // Session Replay
+  replaysSessionSampleRate: import.meta.env.MODE === 'production' ? 0.1 : 0.5, // 10% in production, 50% in development
+  replaysOnErrorSampleRate: 1.0, // Always capture replay on errors
+  // Logs
+  enableLogs: true,
+  // Additional options
+  beforeSend(event, hint) {
+    // Filter out specific errors if needed
+    if (event.exception) {
+      const error = hint.originalException;
+      // Don't send network errors in development
+      if (import.meta.env.MODE === 'development' && error?.message?.includes('Network request failed')) {
+        return null;
+      }
+    }
+    return event;
+  },
+});
 
 // Register service worker for PWA support
 if ('serviceWorker' in navigator) {
@@ -17,5 +65,48 @@ if ('serviceWorker' in navigator) {
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
-  <RouterProvider router={router} />
+  <Sentry.ErrorBoundary 
+    fallback={({ error, resetError }) => (
+      <div style={{ 
+        padding: '2rem', 
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        minHeight: '100vh',
+        backgroundColor: '#1a1a1a',
+        color: '#fff'
+      }}>
+        <h1 style={{ fontSize: '2rem', marginBottom: '1rem' }}>Oops! Something went wrong</h1>
+        <p style={{ marginBottom: '1rem', color: '#aaa' }}>An error occurred while loading the application.</p>
+        <details style={{ marginBottom: '1rem', maxWidth: '600px', width: '100%' }}>
+          <summary style={{ cursor: 'pointer', marginBottom: '0.5rem' }}>Error details</summary>
+          <pre style={{ 
+            backgroundColor: '#2a2a2a', 
+            padding: '1rem', 
+            borderRadius: '0.5rem',
+            overflow: 'auto',
+            fontSize: '0.875rem'
+          }}>{error.toString()}</pre>
+        </details>
+        <button 
+          onClick={resetError}
+          style={{ 
+            padding: '0.5rem 1rem', 
+            backgroundColor: '#1DB954',
+            color: 'white',
+            border: 'none',
+            borderRadius: '0.5rem',
+            cursor: 'pointer',
+            fontSize: '1rem'
+          }}
+        >
+          Try again
+        </button>
+      </div>
+    )}
+    showDialog
+  >
+    <RouterProvider router={router} />
+  </Sentry.ErrorBoundary>
 )

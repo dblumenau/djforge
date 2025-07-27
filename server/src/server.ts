@@ -1,3 +1,7 @@
+// IMPORTANT: This must be imported before any other code
+import './instrument';
+
+import * as Sentry from '@sentry/node';
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -23,6 +27,7 @@ import weatherRouter from './routes/weather';
 import userDataRouter from './routes/user-data';
 import { overrideConsole, logger } from './utils/logger';
 import { playbackEventService } from './services/event-emitter.service';
+import { setSentryUserContext } from './middleware/sentry-auth';
 
 // Override console methods to use Winston logger
 overrideConsole();
@@ -156,6 +161,9 @@ async function initializeAndStart() {
       name: 'spotify_session'
     }));
 
+    // Add Sentry user context middleware (after session, before routes)
+    app.use(setSentryUserContext);
+
     // NOW add routes (after session middleware)
     app.use('/api/auth', authRouter);
     app.use('/api/control', controlRouter);
@@ -193,6 +201,26 @@ async function initializeAndStart() {
     app.use('/api/songs', songVerificationRouter);
     // Debug token endpoint
     app.use('/api/debug', debugTokenRouter);
+
+    // Temporary Sentry test endpoint (REMOVE AFTER TESTING)
+    app.get('/api/debug-sentry', (req, res) => {
+      throw new Error('Test Sentry error from backend!');
+    });
+
+    // IMPORTANT: The Sentry error handler must be registered before any other error middleware and after all controllers
+    Sentry.setupExpressErrorHandler(app);
+
+    // Optional fallthrough error handler
+    app.use(function onError(err: any, req: express.Request, res: express.Response, next: express.NextFunction) {
+      // The error id is attached to `res.sentry` to be returned
+      // and optionally displayed to the user for support.
+      console.error('Unhandled error:', err);
+      res.status(500).json({
+        error: 'Internal server error',
+        message: process.env.NODE_ENV === 'development' ? err.message : 'An unexpected error occurred',
+        sentryId: (res as any).sentry
+      });
+    });
 
     // SSE endpoint for real-time updates
     app.get('/api/events', async (req, res) => {

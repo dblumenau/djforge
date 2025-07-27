@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@sentry/react": "^9.42.0",
     "@types/react-router-dom": "^5.3.3",
     "axios": "^1.7.2",
     "chart.js": "^4.5.0",
