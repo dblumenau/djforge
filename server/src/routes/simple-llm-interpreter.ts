@@ -229,8 +229,17 @@ async function interpretCommand(command: string, userId?: string, retryCount = 0
   
   // Format conversation context for the LLM
   const contextBlock = relevantContext.length > 0 ? formatMusicHistory(relevantContext) : '';
-  
-  const prompt = `You are a thoughtful music curator with encyclopedic knowledge of music across all genres and eras.
+
+  try {
+    // Add timeout to prevent hanging
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('LLM timeout')), INTERPRETATION_TIMEOUT)
+    );
+    
+    const startTime = Date.now();
+    const requestModel = preferredModel || OPENROUTER_MODELS.GEMINI_2_5_FLASH;
+    const messages = [
+      { role: 'system' as const, content: `You are a thoughtful music curator with encyclopedic knowledge of music across all genres and eras.
 
 ### Primary Goal ###
 Your single most important goal is to find excellent matches for the user's request below.
@@ -243,11 +252,6 @@ Your single most important goal is to find excellent matches for the user's requ
 3. **Conversation History**: Use this to understand contextual references like "play that again" or "the second one"
 
 ${FULL_CURATOR_GUIDELINES}
-
----
-
-### User Request ###
-Command: "${command}"
 
 ${musicContext ? `### User Taste Profile (Secondary Reference) ###
 ${musicContext}` : ''}
@@ -471,18 +475,7 @@ For control intents:
 
 Other intents: clear_queue, get_current_track, get_devices, get_playlists, get_recently_played, search
 
-Command: "${command}"`;
-
-  try {
-    // Add timeout to prevent hanging
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('LLM timeout')), INTERPRETATION_TIMEOUT)
-    );
-    
-    const startTime = Date.now();
-    const requestModel = preferredModel || OPENROUTER_MODELS.GEMINI_2_5_FLASH;
-    const messages = [
-      { role: 'system' as const, content: `Respond with valid JSON. Be helpful and specific. Include confidence scores as a decimal between 0 and 1 (e.g., 0.95 for 95% confidence). 
+Respond with valid JSON. Be helpful and specific. Include confidence scores as a decimal between 0 and 1 (e.g., 0.95 for 95% confidence). 
 
 CRITICAL ACCURACY REQUIREMENTS:
 • ONLY recommend songs that actually exist - never invent song titles
@@ -490,7 +483,7 @@ CRITICAL ACCURACY REQUIREMENTS:
 • Double-check your music knowledge before recommending specific tracks
 
 CRITICAL: You must use the discriminated union pattern - when intent is "play_specific_song" or "queue_specific_song", you MUST include artist, track, and alternatives fields. ${ALTERNATIVES_APPROACH} When intent is "play_playlist" or "queue_playlist", use query field. Never use generic search queries for specific song requests - always recommend exact songs using your music knowledge. Distinguish between playing (immediate) and queuing (add to queue) for both songs and playlists. For conversational intents (chat, ask_question), include the actual answer in the responseMessage field. If you're making a creative choice (not following an explicit user request), set isAIDiscovery: true and include aiReasoning explaining your choice. ${RESPONSE_VARIATION}` },
-      { role: 'user' as const, content: prompt }
+      { role: 'user' as const, content: `Command: "${command}"` }
     ];
     
     const responsePromise = llmOrchestrator.complete({
