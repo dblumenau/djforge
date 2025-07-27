@@ -106,7 +106,7 @@ const MainApp: React.FC = () => {
     if (item.alternatives && typeof item.alternatives[0] === 'object') {
       const alternativeIds = (item.alternatives as Array<{ uri: string }>)
         .map(alt => alt.uri ? alt.uri.split(':')[2] : null)
-        .filter(Boolean);
+        .filter((id): id is string => Boolean(id));
       trackIds.push(...alternativeIds);
     }
     
