@@ -96,6 +96,11 @@ cd client && npx tsc --noEmit
 - Web Playback SDK support
 
 ### User Experience
+- **Modern Chat Interface**: ChatGPT-style conversational UI with chronological message flow
+  - Fixed header navigation bar with device/model selectors
+  - Fixed bottom input area with floating send button
+  - Responsive design with mobile hamburger menu
+  - Minimizable horizontal playback controls
 - **Skeleton Loading System**: Zero layout shift with motion-safe animations  
   See `/client/src/components/skeletons/CLAUDE.md` for implementation details
 - **AI Feedback System**: Learning from user preferences  

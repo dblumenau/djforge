@@ -4,21 +4,67 @@ This directory contains reusable React components for the Spotify Claude Control
 
 ## Component Files
 
+### HeaderNav.tsx
+- Fixed header navigation component
+- Desktop features:
+  - Logo and app title
+  - Weather display (center)
+  - Model and device selectors
+  - Navigation buttons (Dashboard, Feedback, Logs, Logout)
+  - Dev tools (token expiry simulation)
+- Mobile: Hamburger menu button
+
+### MobileMenu.tsx
+- Slide-out navigation drawer for mobile devices
+- Features:
+  - Weather display
+  - Model and device selectors
+  - Full playback controls
+  - Navigation links
+  - Logout button
+- Backdrop overlay and keyboard navigation support
+
+### ChatMessage.tsx
+- Individual message component for chat interface
+- Displays:
+  - User commands with timestamp
+  - AI responses with confidence indicators
+  - Song alternatives with play/queue actions
+  - Clarification options for ambiguous requests
+  - Feedback buttons for AI discovery tracks
+  - Loading states for feedback actions
+- Supports rich formatting with bold text
+
+### ChatInput.tsx
+- Fixed bottom input component
+- Features:
+  - Full-width text input with rounded styling
+  - Examples button for command suggestions
+  - Send button with disabled state during processing
+  - Floating MusicLoader animation when processing
+- Auto-focus for improved UX
+
 ### LandingPage.tsx
 - Authentication landing page with Spotify OAuth login
 - Displays error messages from failed auth attempts
 - Redirects authenticated users to main app
 
 ### MainApp.tsx
-- Main application UI with command interface
+- Main application with modern chat-style interface
+- Layout structure:
+  - Fixed header navigation bar at top
+  - Scrollable chat message area in center
+  - Fixed input area at bottom
 - Integrates all major features:
-  - Command input with LLM processing
-  - Response history display
-  - Model selection dropdown
-  - Spotify playback controls
-  - Weather display
-  - Debug panel (development only)
-- Manages command history and processing state
+  - Natural language command processing
+  - Chronological message history with ChatMessage components
+  - Real-time playback state updates
+  - Responsive design with mobile menu
+  - Toast notifications for user feedback
+- State management:
+  - Command history with Redis persistence
+  - Authentication state handling
+  - Loading states with skeleton components
 
 ### MusicLoader.tsx
 - Animated loading component for music-related operations
@@ -26,7 +72,8 @@ This directory contains reusable React components for the Spotify Claude Control
 - Used during command processing and API calls
 
 ### PlaybackControls.tsx
-- Comprehensive playback control component
+- Horizontal playback control component with minimizable design
+- Collapsible header showing current track with minimize toggle
 - Smart polling with dynamic intervals to avoid rate limiting
 - Local progress tracking using requestAnimationFrame
 - Features:
@@ -35,6 +82,7 @@ This directory contains reusable React components for the Spotify Claude Control
   - Volume control with slider
   - Progress bar with seek functionality
   - Clear queue button
+  - Track save/unsave integration
   - Rate limit monitoring (dev mode only)
 - Polling strategy:
   - 60s intervals when nothing playing

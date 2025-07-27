@@ -11,14 +11,15 @@ This directory contains the main page components for the Spotify Claude Controll
 - Redirects authenticated users to main app
 
 ### MainApp.tsx
-- Primary application interface
-- Natural language command input
-- Command history with confidence scores
-- Model selection dropdown
-- Response display with loading states
-- Integration with SpotifyPlayer component
-- Weather display integration
-- Debug panel (development only)
+- Primary application with modern chat interface
+- Chat-style conversation flow
+- Fixed header with navigation controls
+- Scrollable message history area
+- Fixed bottom input with send button
+- Real-time playback state updates
+- Mobile-responsive with slide-out menu
+- Toast notifications for user feedback
+- Redis-backed conversation persistence
 
 ### Dashboard.tsx
 - Comprehensive Spotify data visualization
