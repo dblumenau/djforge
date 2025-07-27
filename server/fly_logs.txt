@@ -1164,3 +1164,23 @@
 [2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]}
 [2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Dialog state updated: mode=chat, last_action=play
 [2m2025-07-27T12:45:41Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Auth status check - JWT token valid
+[2m2025-07-27T13:35:14Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]❌ Redis Client Error: SocketClosedUnexpectedlyError: Socket closed unexpectedly
+[2m2025-07-27T13:35:14Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    at TLSSocket.<anonymous> (/app/node_modules/@redis/client/dist/lib/client/socket.js:202:33)
+[2m2025-07-27T13:35:14Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    at Object.onceWrapper (node:events:632:26)
+[2m2025-07-27T13:35:14Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    at TLSSocket.emit (node:events:529:35)
+[2m2025-07-27T13:35:14Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    at node:net:350:12
+[2m2025-07-27T13:35:14Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    at TCP.done (node:_tls_wrap:657:7)
+[2m2025-07-27T13:35:14Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]🔄 Redis reconnecting in 0ms (attempt 1)
+[2m2025-07-27T13:35:14Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]🔄 Redis reconnecting...
+[2m2025-07-27T13:35:14Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]✅ Redis connected successfully
+[2m2025-07-27T13:35:14Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]🚀 Redis ready to accept commands
+[2m2025-07-27T13:35:28Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]❌ Redis Client Error: SocketClosedUnexpectedlyError: Socket closed unexpectedly
+[2m2025-07-27T13:35:28Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    at TLSSocket.<anonymous> (/app/node_modules/@redis/client/dist/lib/client/socket.js:202:33)
+[2m2025-07-27T13:35:28Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    at Object.onceWrapper (node:events:632:26)
+[2m2025-07-27T13:35:28Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    at TLSSocket.emit (node:events:529:35)
+[2m2025-07-27T13:35:28Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    at node:net:350:12
+[2m2025-07-27T13:35:28Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    at TCP.done (node:_tls_wrap:657:7)
+[2m2025-07-27T13:35:28Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]🔄 Redis reconnecting in 0ms (attempt 1)
+[2m2025-07-27T13:35:28Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]🔄 Redis reconnecting...
+[2m2025-07-27T13:35:28Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]✅ Redis connected successfully
+[2m2025-07-27T13:35:28Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]🚀 Redis ready to accept commands

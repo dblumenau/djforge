@@ -58,7 +58,14 @@ const MainApp: React.FC = () => {
     reasoning?: string;
     model?: string;
     interpretation?: any; // Full interpretation object for debugging
-    queuedSongs?: Array<{ name: string; artists: string; success: boolean }>;
+    queuedSongs?: Array<{ 
+      name: string; 
+      artists: string; 
+      success: boolean; 
+      uri?: string;
+      feedback?: 'loved' | 'disliked';
+      feedbackLoading?: boolean;
+    }>;
     isAIDiscovery?: boolean;
     trackUri?: string;
     trackName?: string;
@@ -151,11 +158,19 @@ const MainApp: React.FC = () => {
       if (!isAuthenticated) return;
       
       setCommandHistoryLoading(true);
+      console.log('🔍 Loading command history from backend...');
       try {
         const response = await authenticatedFetch(apiEndpoint('/api/llm/simple/history'));
         if (response.ok) {
           const data = await response.json();
           if (data.history && Array.isArray(data.history)) {
+            console.log(`📋 Loaded ${data.history.length} history entries from backend`);
+            // Look for entries with feedback
+            const entriesWithFeedback = data.history.filter((entry: any) => 
+              entry.feedback || (entry.queuedSongs && entry.queuedSongs.some((song: any) => song.feedback))
+            );
+            console.log(`👍 Found ${entriesWithFeedback.length} entries with feedback data`);
+            
             // History from server is already in chronological order (oldest first)
             // No need to reverse here since we reverse when displaying
             setCommandHistory(data.history);
@@ -204,44 +219,102 @@ const MainApp: React.FC = () => {
   };
 
   const handleFeedback = async (trackUri: string, feedback: 'loved' | 'disliked') => {
-    // Find the message with this trackUri
+    // First check if this is a main track
     const messageIndex = commandHistory.findIndex(m => m.trackUri === trackUri);
-    if (messageIndex === -1) return;
-
-    // Set loading state
-    setCommandHistory(prev => prev.map((msg, idx) => 
-      idx === messageIndex ? { ...msg, feedbackLoading: true } : msg
-    ));
-
-    try {
-      // If clicking the same feedback again, remove it
-      const currentFeedback = commandHistory[messageIndex].feedback;
-      const newFeedback = currentFeedback === feedback ? 'remove' : feedback;
-      
-      await api.recordFeedback(trackUri, newFeedback);
-      
-      // Update message with new feedback
+    
+    if (messageIndex !== -1) {
+      // Handle main track feedback
       setCommandHistory(prev => prev.map((msg, idx) => 
-        idx === messageIndex 
-          ? { 
-              ...msg, 
+        idx === messageIndex ? { ...msg, feedbackLoading: true } : msg
+      ));
+
+      try {
+        const currentFeedback = commandHistory[messageIndex].feedback;
+        const newFeedback = currentFeedback === feedback ? 'remove' : feedback;
+        
+        await api.recordFeedback(trackUri, newFeedback);
+        
+        setCommandHistory(prev => prev.map((msg, idx) => 
+          idx === messageIndex 
+            ? { 
+                ...msg, 
+                feedback: newFeedback === 'remove' ? undefined : feedback,
+                feedbackLoading: false 
+              } 
+            : msg
+        ));
+        
+        showToast(
+          newFeedback === 'remove' 
+            ? 'Feedback removed' 
+            : `Thanks for the feedback!`
+        );
+      } catch (error) {
+        console.error('Failed to record feedback:', error);
+        setCommandHistory(prev => prev.map((msg, idx) => 
+          idx === messageIndex ? { ...msg, feedbackLoading: false } : msg
+        ));
+      }
+    } else {
+      // Handle queued song feedback
+      const historyItemIndex = commandHistory.findIndex(h => 
+        h.queuedSongs?.some(s => s.uri === trackUri)
+      );
+      
+      if (historyItemIndex === -1) return;
+      
+      const songIndex = commandHistory[historyItemIndex].queuedSongs!.findIndex(
+        s => s.uri === trackUri
+      );
+      
+      // Set loading state for queued song
+      setCommandHistory(prev => prev.map((msg, idx) => {
+        if (idx === historyItemIndex && msg.queuedSongs) {
+          const updatedSongs = [...msg.queuedSongs];
+          updatedSongs[songIndex] = { ...updatedSongs[songIndex], feedbackLoading: true };
+          return { ...msg, queuedSongs: updatedSongs };
+        }
+        return msg;
+      }));
+
+      try {
+        const currentSong = commandHistory[historyItemIndex].queuedSongs![songIndex];
+        const currentFeedback = currentSong.feedback;
+        const newFeedback = currentFeedback === feedback ? 'remove' : feedback;
+        
+        await api.recordFeedback(trackUri, newFeedback);
+        
+        // Update feedback for queued song
+        setCommandHistory(prev => prev.map((msg, idx) => {
+          if (idx === historyItemIndex && msg.queuedSongs) {
+            const updatedSongs = [...msg.queuedSongs];
+            updatedSongs[songIndex] = { 
+              ...updatedSongs[songIndex], 
               feedback: newFeedback === 'remove' ? undefined : feedback,
               feedbackLoading: false 
-            } 
-          : msg
-      ));
-
-      // Show toast notification
-      showToast(
-        newFeedback === 'remove' 
-          ? 'Feedback removed' 
-          : `Thanks for the feedback!`
-      );
-    } catch (error) {
-      console.error('Failed to record feedback:', error);
-      setCommandHistory(prev => prev.map((msg, idx) => 
-        idx === messageIndex ? { ...msg, feedbackLoading: false } : msg
-      ));
+            };
+            return { ...msg, queuedSongs: updatedSongs };
+          }
+          return msg;
+        }));
+        
+        showToast(
+          newFeedback === 'remove' 
+            ? 'Feedback removed' 
+            : `Thanks for the feedback!`
+        );
+      } catch (error) {
+        console.error('Failed to record feedback:', error);
+        // Reset loading state on error
+        setCommandHistory(prev => prev.map((msg, idx) => {
+          if (idx === historyItemIndex && msg.queuedSongs) {
+            const updatedSongs = [...msg.queuedSongs];
+            updatedSongs[songIndex] = { ...updatedSongs[songIndex], feedbackLoading: false };
+            return { ...msg, queuedSongs: updatedSongs };
+          }
+          return msg;
+        }));
+      }
     }
   };
 
@@ -948,9 +1021,41 @@ const MainApp: React.FC = () => {
                                       <span className="font-medium">{song.name}</span>
                                       <span className="text-gray-500"> by {song.artists}</span>
                                     </div>
-                                    {song.success && (
-                                      <span className="text-green-400 text-xs">✓</span>
-                                    )}
+                                    <div className="flex items-center gap-1">
+                                      {song.success && song.uri && (
+                                        <>
+                                          <button
+                                            onClick={() => handleFeedback(song.uri!, 'loved')}
+                                            className={`px-2 py-0.5 rounded transition-all text-xs ${
+                                              commandHistory.find(h => 
+                                                h.queuedSongs?.some(s => s.uri === song.uri && s.feedback === 'loved')
+                                              ) ? 'bg-green-600 text-white' : 'bg-zinc-700 hover:bg-green-900 text-zinc-300'
+                                            }`}
+                                            disabled={commandHistory.find(h => 
+                                              h.queuedSongs?.some(s => s.uri === song.uri && s.feedbackLoading)
+                                            )?.queuedSongs?.find(s => s.uri === song.uri)?.feedbackLoading}
+                                          >
+                                            👍
+                                          </button>
+                                          <button
+                                            onClick={() => handleFeedback(song.uri!, 'disliked')}
+                                            className={`px-2 py-0.5 rounded transition-all text-xs ${
+                                              commandHistory.find(h => 
+                                                h.queuedSongs?.some(s => s.uri === song.uri && s.feedback === 'disliked')
+                                              ) ? 'bg-red-600 text-white' : 'bg-zinc-700 hover:bg-red-900 text-zinc-300'
+                                            }`}
+                                            disabled={commandHistory.find(h => 
+                                              h.queuedSongs?.some(s => s.uri === song.uri && s.feedbackLoading)
+                                            )?.queuedSongs?.find(s => s.uri === song.uri)?.feedbackLoading}
+                                          >
+                                            👎
+                                          </button>
+                                        </>
+                                      )}
+                                      {song.success && !song.uri && (
+                                        <span className="text-green-400 text-xs">✓</span>
+                                      )}
+                                    </div>
                                   </div>
                                 ))}
                               </div>

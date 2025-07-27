@@ -15,6 +15,8 @@ import { waitlistRouter } from './routes/waitlist';
 import { llmLogsRouter, setRedisClientForLogs } from './routes/llm-logs';
 import { directActionRouter, setRedisClient as setDirectActionRedisClient } from './routes/direct-action';
 import { feedbackRouter, setRedisClient as setFeedbackRedisClient } from './routes/feedback';
+import songVerificationRouter from './routes/song-verification';
+import debugTokenRouter from './routes/debug-token';
 import { createRedisClient, checkRedisHealth } from './config/redis';
 import { RedisUtils } from './utils/redis-utils';
 import weatherRouter from './routes/weather';
@@ -187,6 +189,10 @@ async function initializeAndStart() {
     app.use('/api/direct', directActionRouter);
     // AI feedback endpoints
     app.use('/api/feedback', feedbackRouter);
+    // Song verification endpoint
+    app.use('/api/songs', songVerificationRouter);
+    // Debug token endpoint
+    app.use('/api/debug', debugTokenRouter);
 
     // SSE endpoint for real-time updates
     app.get('/api/events', async (req, res) => {

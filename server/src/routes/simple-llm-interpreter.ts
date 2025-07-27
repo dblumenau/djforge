@@ -932,8 +932,8 @@ simpleLLMInterpreterRouter.get('/history', ensureValidToken, async (req, res) =>
         ...(entry.response && typeof entry.response === 'object' && entry.response.track?.uri && {
           feedback: (() => {
             const trackUri = entry.response.track.uri;
-            const isLoved = feedbackData.loved.some((track: any) => track.uri === trackUri);
-            const isDisliked = feedbackData.disliked.some((track: any) => track.uri === trackUri);
+            const isLoved = feedbackData.loved.some((track: any) => track.trackUri === trackUri);
+            const isDisliked = feedbackData.disliked.some((track: any) => track.trackUri === trackUri);
             return isLoved ? 'loved' : isDisliked ? 'disliked' : undefined;
           })()
         })
