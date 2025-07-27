@@ -731,21 +731,15 @@ export class UserDataService {
     switch (contextType) {
       case 'specific':
         // For specific song requests - minimal taste context to avoid bias
-        return `BACKGROUND - User's Musical Context (DO NOT USE AS A CONSTRAINT):
-• Generally listens to: ${baseData.genres}
-• Some familiar artists: ${baseData.artists}
+        return `This user generally listens to:
+• Genres: ${baseData.genres}
+• Artists: ${baseData.artists}
 
-CRITICAL INSTRUCTIONS FOR SPECIFIC REQUESTS:
-1. The user has made a SPECIFIC request - focus ONLY on what they asked for
-2. IGNORE their taste profile if it doesn't match the request
-3. If they ask for spoken-word, death metal, K-pop, or ANY genre not in their profile - that's what they want!
-4. Never say "I'll find something from your usual artists" - find what they ACTUALLY requested
-5. Their explicit request OVERRIDES everything in their taste profile
-6. Use the taste profile ONLY if their request is vague like "play something good"`;
+Note: This is background information only. The user has made a specific request that should be fulfilled exactly as asked.`;
 
       case 'discovery':
         // For discovery requests - rich taste context with discovery patterns
-        let discoveryProfile = `BACKGROUND - User's Musical Discovery Context:
+        let discoveryProfile = `This user's musical preferences:
 • Primary genres: ${baseData.genres}
 • Familiar artists: ${baseData.artists}
 • Recent favorites: ${baseData.tracks}`;
@@ -763,43 +757,32 @@ CRITICAL INSTRUCTIONS FOR SPECIFIC REQUESTS:
           }
         }
 
-        discoveryProfile += `\n\nDISCOVERY GUIDANCE: Use this context to find music that expands their horizons while respecting their taste patterns. Look for adjacent artists, similar vibes, or evolution of their favorite genres. Avoid their exact favorites unless they fit perfectly.`;
-        
         return discoveryProfile;
 
       case 'conversational':
         // For chat/questions - focus on knowledge and context
-        return `BACKGROUND - User's Musical Knowledge Context:
+        return `This user's musical background:
 • Interested in genres: ${baseData.genres}
 • Listens to artists like: ${baseData.artists}
-• Recent listening: ${baseData.tracks}
-
-CONVERSATIONAL CONTEXT: This is for music discussion. Use this context to understand their perspective and provide relevant insights about artists, songs, or genres they might know or be interested in.`;
+• Recent listening: ${baseData.tracks}`;
 
       case 'control':
         // For playback controls - minimal context needed
-        return `BACKGROUND - Basic Musical Context:
-• Generally enjoys: ${baseData.genres}
-
-CONTROL CONTEXT: This is a playback control request. Music context is minimal and mainly for potential follow-up suggestions.`;
+        return `User generally enjoys: ${baseData.genres}`;
 
       case 'info':
         // For info requests - broader context for helpful responses
-        return `BACKGROUND - User's Musical Library Context:
+        return `User's music library context:
 • Preferred genres: ${baseData.genres}
 • Known artists: ${baseData.artists}
-• Recent activity: ${baseData.tracks}
-
-INFO CONTEXT: Use this context to provide relevant and personalized information responses about their music library, playlists, or suggestions.`;
+• Recent activity: ${baseData.tracks}`;
 
       default:
         // Default general profile (backward compatibility)
-        let generalProfile = `BACKGROUND - User's Musical Context (for inspiration, not limitation):
+        let generalProfile = `User's musical preferences:
 • Tends to enjoy genres like: ${baseData.genres}
 • Often listens to artists such as: ${baseData.artists}
-• Recent listening includes: ${baseData.tracks}
-
-IMPORTANT: This context shows the user's general taste but you should feel free to recommend ANY artist that fits their request. Don't limit yourself to these artists - use this as inspiration to understand their style preferences.`;
+• Recent listening includes: ${baseData.tracks}`;
 
         // Add AI feedback section if available
         if (aiFeedback.loved.length > 0 || aiFeedback.disliked.length > 0) {

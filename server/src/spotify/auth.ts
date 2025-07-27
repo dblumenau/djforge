@@ -8,6 +8,7 @@ export const authRouter = Router();
 
 const SPOTIFY_AUTH_URL = 'https://accounts.spotify.com/authorize';
 const SPOTIFY_TOKEN_URL = 'https://accounts.spotify.com/api/token';
+const CLIENT_URL = process.env.CLIENT_URL || 'http://127.0.0.1:5173';
 
 // Generate random string for state
 function generateRandomString(length: number): string {
@@ -82,16 +83,16 @@ authRouter.get('/callback', async (req, res) => {
   const { code, error } = req.query;
   
   if (error) {
-    return res.redirect('http://127.0.0.1:5173/?error=' + error);
+    return res.redirect(`${CLIENT_URL}/?error=${error}`);
   }
   
   if (!code || typeof code !== 'string') {
-    return res.redirect('http://127.0.0.1:5173/?error=no_code');
+    return res.redirect(`${CLIENT_URL}/?error=no_code`);
   }
   
   const codeVerifier = req.session.codeVerifier;
   if (!codeVerifier) {
-    return res.redirect('http://127.0.0.1:5173/?error=no_verifier');
+    return res.redirect(`${CLIENT_URL}/?error=no_verifier`);
   }
   
   try {
@@ -132,10 +133,10 @@ authRouter.get('/callback', async (req, res) => {
     delete req.session.codeVerifier;
     
     // Redirect with JWT token
-    res.redirect(`http://127.0.0.1:5173/callback?success=true&token=${encodeURIComponent(jwtToken)}`);
+    res.redirect(`${CLIENT_URL}/callback?success=true&token=${encodeURIComponent(jwtToken)}`);
   } catch (error) {
     console.error('Token exchange error:', error);
-    res.redirect('http://127.0.0.1:5173/?error=token_exchange_failed');
+    res.redirect(`${CLIENT_URL}/?error=token_exchange_failed`);
   }
 });
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, Navigate } from 'react-router-dom';
 import HeaderNav from './HeaderNav';
 import MobileMenu from './MobileMenu';
 import { useSpotifyAuth } from '../hooks/useSpotifyAuth';
@@ -11,8 +11,22 @@ interface AppLayoutProps {
 }
 
 const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
-  const { logout } = useSpotifyAuth();
+  const { isAuthenticated, loading, logout } = useSpotifyAuth();
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+
+  // Show loading state while checking authentication
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-zinc-950">
+        <div className="animate-pulse text-green-400">Loading...</div>
+      </div>
+    );
+  }
+
+  // Redirect to landing page if not authenticated
+  if (!isAuthenticated) {
+    return <Navigate to="/landing" replace />;
+  }
 
   const updateModelPreference = async (_type: string, model: string) => {
     try {
