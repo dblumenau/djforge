@@ -11,6 +11,7 @@ import { useTrackLibrary } from '../hooks/useTrackLibrary';
 import { useIOSKeyboardFix } from '../hooks/useIOSKeyboardFix';
 import { apiEndpoint } from '../config/api';
 import { authenticatedFetch, api } from '../utils/api';
+import { useModel } from '../contexts/ModelContext';
 
 // Helper component for clickable example lists
 const ExampleList: React.FC<{ examples: string[] }> = ({ examples }) => {
@@ -39,13 +40,13 @@ const MainApp: React.FC = () => {
   const navigate = useNavigate();
   const chatContainerRef = useRef<HTMLDivElement>(null);
   useIOSKeyboardFix();
+  const { currentModel } = useModel();
   const [showExamplesModal, setShowExamplesModal] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [checking, setChecking] = useState(true);
   const [command, setCommand] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [currentModel] = useState<string>('');
   const [toast, setToast] = useState<string | null>(null);
   const [commandHistory, setCommandHistory] = useState<Array<{
     command: string;

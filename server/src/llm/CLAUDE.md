@@ -139,6 +139,45 @@ GEMINI_SEARCH_GROUNDING=true  # Optional
 - Let structured output handle JSON formatting
 - Include examples for complex intents
 - Use personality consistently
+- **CRITICAL**: Establish priority rules BEFORE introducing potentially biasing context (see Taste Profile section)
+
+### Taste Profile Prioritization (Updated 2025-07-27)
+
+**The Problem**: User taste profiles were overriding specific requests. When users asked for genres outside their usual preferences (e.g., "songs where someone talks over a beat"), the system returned songs from their typical genres instead.
+
+**The Solution**: Restructured prompts using hierarchical prioritization:
+
+1. **Primary Goal First**: State the main objective before any context
+2. **Clear Hierarchy**: Explicitly label User Request as primary, Taste Profile as secondary
+3. **DO/DO NOT Rules**: Clear directives on when to use vs. ignore taste profiles
+4. **Strategic Placement**: User request appears before taste profile data
+
+**Implementation**:
+```typescript
+// Structure used in both OpenRouter and Gemini flows
+const prompt = `
+### Primary Goal ###
+Your single most important goal is to find excellent matches for the user's request below.
+
+### How to Use the Provided Context ###
+1. **User Request**: This is your primary instruction. Fulfill it directly and precisely.
+2. **User Taste Profile**: This is secondary reference information.
+   - DO use it if the User Request is vague (e.g., "play something for me")
+   - DO NOT let it override a specific User Request for a genre, artist, or style.
+
+### User Request ###
+${userRequest}
+
+### User Taste Profile (Secondary Reference) ###
+${tasteProfile}
+`;
+```
+
+**Key Learnings**:
+- **Primacy Effect**: Instructions appearing first carry more weight in LLM attention
+- **Explicit Labeling**: Calling taste profile "Secondary Reference" reinforces its subordinate role
+- **Simplified Context**: Removed verbose instructions from taste profiles themselves
+- **Both Flows**: Updated both `simple-llm-interpreter.ts` and `gemini-schemas.ts` for consistency
 
 ### Error Handling
 - Always provide fallback behavior

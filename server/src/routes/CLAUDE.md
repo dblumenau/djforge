@@ -13,11 +13,14 @@ This directory contains Express route handlers that define the API endpoints for
   - Supports multiple song queuing (`queue_multiple_songs`)
   - Contextual reference resolution ("play that again")
   - Model fallback chains for reliability
+  - **Hierarchical Prompt Structure** (2025-07-27): User requests now take priority over taste profiles
 - **Additional Endpoints**:
   - `GET /api/llm/simple/history` - Get conversation history
   - `POST /api/llm/simple/clear-history` - Clear conversation history
   - `POST /api/llm/simple/direct-action` - Direct Spotify actions (bypass LLM)
   - `GET /api/llm/simple/stats` - LLM usage statistics
+
+**Important Update (2025-07-27)**: The prompt structure has been redesigned to prevent taste profiles from overriding specific user requests. The system now uses a hierarchical approach where the user's current request is always prioritized over their historical preferences. See `/server/src/llm/CLAUDE.md` for details on the "Taste Profile Prioritization" implementation.
 
 ### llm-interpreter.ts
 - **Endpoint**: `/api/llm/command`

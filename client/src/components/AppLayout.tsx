@@ -5,14 +5,16 @@ import MobileMenu from './MobileMenu';
 import { useSpotifyAuth } from '../hooks/useSpotifyAuth';
 import { api } from '../utils/api';
 import { apiEndpoint } from '../config/api';
+import { ModelProvider, useModel } from '../contexts/ModelContext';
 
 interface AppLayoutProps {
   children?: React.ReactNode;
 }
 
-const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
+const AppLayoutInner: React.FC<AppLayoutProps> = ({ children }) => {
   const { isAuthenticated, loading, logout } = useSpotifyAuth();
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const { setCurrentModel } = useModel();
 
   // Show loading state while checking authentication
   if (loading) {
@@ -52,6 +54,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
 
   const handleModelSelect = (model: string) => {
     updateModelPreference('default', model);
+    setCurrentModel(model);
   };
 
   const handleDeviceChange = async (deviceId: string | 'auto') => {
@@ -137,6 +140,14 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         {children || <Outlet />}
       </div>
     </div>
+  );
+};
+
+const AppLayout: React.FC<AppLayoutProps> = (props) => {
+  return (
+    <ModelProvider>
+      <AppLayoutInner {...props} />
+    </ModelProvider>
   );
 };
 
