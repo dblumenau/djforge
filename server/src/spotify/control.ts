@@ -683,6 +683,20 @@ export class SpotifyControl {
     }
   }
 
+  async getQueue() {
+    try {
+      console.log(`[DEBUG] Getting queue`);
+      const queue = await this.webAPI.getQueue();
+      return { 
+        success: true, 
+        queue 
+      };
+    } catch (error: any) {
+      console.log(`[DEBUG] Get queue failed: ${error.message}`);
+      return { success: false, message: `Failed to get queue: ${error.message}` };
+    }
+  }
+
   async getUserProfile(): Promise<any> {
     try {
       const profile = await this.webAPI.getUserProfile();
@@ -1019,6 +1033,17 @@ controlRouter.post('/clear-queue', ensureValidToken, async (req, res) => {
     }
     
     res.json({ success: true, message: 'Queue cleared' });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get queue
+controlRouter.get('/queue', ensureValidToken, async (req, res) => {
+  try {
+    const webAPI = getWebAPI(req);
+    const queue = await webAPI.getQueue();
+    res.json({ success: true, queue });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

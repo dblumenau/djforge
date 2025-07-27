@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { apiEndpoint } from '../config/api';
 import { authenticatedFetch } from '../utils/api';
 import MusicLoader from '../components/MusicLoader';
@@ -61,7 +60,6 @@ interface DashboardLoadingState {
 }
 
 export default function Dashboard() {
-  const navigate = useNavigate();
   const { playTrack, queueTrack, playPlaylist, isLoading } = useSpotifyPlayback();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -250,45 +248,30 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white">
-      {/* Header */}
-      <header className="border-b border-zinc-800 sticky top-0 bg-zinc-950 z-10">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <img 
-                src="/square_icon.png" 
-                alt="Spotify Claude Controller" 
-                className="h-10 w-10"
-              />
-              <span className="text-2xl font-bold text-green-400">Dashboard</span>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleRefresh}
-                  disabled={refreshing}
-                  className="px-4 py-2 text-sm bg-zinc-800 text-white rounded-lg hover:bg-zinc-700 transition-colors disabled:opacity-50"
-                >
-                  {refreshing ? 'Refreshing...' : 'Refresh Data'}
-                </button>
-                {refreshProgress && (
-                  <span className="text-sm text-zinc-400 animate-pulse">
-                    {refreshProgress}
-                  </span>
-                )}
-              </div>
+    <div className="flex-1 flex flex-col">
+      {/* Page Header */}
+      <div className="border-b border-zinc-800 bg-zinc-900/50 backdrop-blur-sm">
+        <div className="max-w-7xl mx-auto px-4 py-6">
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-3xl font-bold text-green-400">📊 Spotify Dashboard</h1>
+            <div className="flex items-center gap-2">
               <button
-                onClick={() => navigate('/')}
-                className="px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="px-4 py-2 text-sm bg-zinc-800 text-white rounded-lg hover:bg-zinc-700 transition-colors disabled:opacity-50"
               >
-                Back to Controller
+                {refreshing ? 'Refreshing...' : 'Refresh Data'}
               </button>
+              {refreshProgress && (
+                <span className="text-sm text-zinc-400 animate-pulse">
+                  {refreshProgress}
+                </span>
+              )}
             </div>
           </div>
           
           {/* Section Navigation */}
-          <nav className="mt-4 flex gap-2 overflow-x-auto pb-2">
+          <nav className="flex gap-2 overflow-x-auto pb-2">
             {sections.map(section => (
               <button
                 key={section.id}
@@ -305,9 +288,10 @@ export default function Dashboard() {
             ))}
           </nav>
         </div>
-      </header>
+      </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="flex-1 bg-zinc-950">
+        <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Overview Section */}
         {activeSection === 'overview' && (
           <div className="space-y-8">
@@ -687,6 +671,7 @@ export default function Dashboard() {
             </section>
           </div>
         )}
+        </div>
       </div>
     </div>
   );

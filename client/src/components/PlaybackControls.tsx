@@ -3,7 +3,6 @@ import { api } from '../utils/api';
 import { useSSE, PlaybackEvent } from '../hooks/useSSE';
 import { useTrackLibrary } from '../hooks/useTrackLibrary';
 import HeartIcon from './HeartIcon';
-
 interface PlaybackState {
   isPlaying: boolean;
   track: {
@@ -19,7 +18,11 @@ interface PlaybackState {
   volume: number;
 }
 
-const PlaybackControls: React.FC = () => {
+interface PlaybackControlsProps {
+  onShowQueue?: () => void;
+}
+
+const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue }) => {
   const [playbackState, setPlaybackState] = useState<PlaybackState>({
     isPlaying: false,
     track: null,
@@ -35,8 +38,9 @@ const PlaybackControls: React.FC = () => {
   const [pollTimeoutId, setPollTimeoutId] = useState<number | null>(null);
   const [animationFrameId, setAnimationFrameId] = useState<number | null>(null);
   const [apiCallCount, setApiCallCount] = useState<number[]>([]);
-  const [lastServerEvent, setLastServerEvent] = useState<Date | null>(null);
+  const [, setLastServerEvent] = useState<Date | null>(null);
   const [isTrackChanging, setIsTrackChanging] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
   const previousTrackNameRef = useRef<string | null>(null);
 
   // Track library hook
@@ -379,224 +383,253 @@ const PlaybackControls: React.FC = () => {
   };
 
   return (
-    <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
-      {/* Dev mode indicators */}
-      {import.meta.env.DEV && (
-        <div className="mb-2 space-y-1">
-          {/* Rate limit indicator */}
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-gray-500">
-              API calls (30s): {apiCallCount.length}/180
-            </span>
-            <div className="w-32 h-1 bg-gray-700 rounded-full overflow-hidden">
-              <div 
-                className={`h-full transition-all ${
-                  apiCallCount.length > 150 ? 'bg-red-500' : 
-                  apiCallCount.length > 100 ? 'bg-yellow-500' : 
-                  'bg-green-500'
-                }`}
-                style={{ width: `${Math.min((apiCallCount.length / 180) * 100, 100)}%` }}
-              />
-            </div>
-          </div>
-          
-          {/* SSE connection status */}
-          <div className="flex items-center justify-between text-xs">
-            <div className="flex items-center gap-2">
-              <span className={`w-2 h-2 rounded-full ${
-                sseConnected ? 'bg-green-500' : 'bg-red-500'
-              }`} />
-              <span className="text-gray-500">
-                SSE: {sseConnected ? 'Connected' : 'Disconnected'}
-              </span>
-            </div>
-            {lastServerEvent && (
-              <span className="text-gray-500">
-                Last event: {new Date().getTime() - lastServerEvent.getTime() < 5000 
-                  ? 'Just now' 
-                  : `${Math.floor((new Date().getTime() - lastServerEvent.getTime()) / 1000)}s ago`}
-              </span>
+    <div className="bg-zinc-800 rounded-lg border border-zinc-700 overflow-hidden">
+        {/* Minimize/Maximize Toggle */}
+        <div 
+          className="flex items-center justify-between p-2 cursor-pointer hover:bg-zinc-700/50 transition-colors"
+          onClick={() => setIsMinimized(!isMinimized)}
+        >
+          <div className="flex items-center gap-3">
+            {playbackState.track ? (
+              <>
+                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                <div className="text-sm">
+                  <span className="text-white font-medium">{playbackState.track.name}</span>
+                  <span className="text-gray-400"> • </span>
+                  <span className="text-gray-400">{playbackState.track.artist}</span>
+                </div>
+              </>
+            ) : (
+              <div className="text-sm text-gray-500">No track playing</div>
             )}
           </div>
-        </div>
-      )}
-      
-      {/* Track info */}
-      {playbackState.track && (
-        <div className="mb-4">
-          <div className="text-center mb-3 relative">
-            <div className="flex items-center justify-center gap-2">
-              <div className="flex-1 min-w-0">
-                <div className="text-white font-medium truncate">{playbackState.track.name}</div>
-                <div className="text-gray-400 text-sm truncate">{playbackState.track.artist}</div>
-              </div>
-              {playbackState.track.id && (
-                <HeartIcon
-                  filled={savedStatus.get(playbackState.track.id) || false}
-                  loading={libraryLoading.get(playbackState.track.id) || false}
-                  size="md"
-                  onClick={() => playbackState.track?.id && toggleSave(playbackState.track.id)}
-                />
-              )}
-            </div>
-          </div>
-          
-          {/* Progress bar */}
-          <div className="space-y-1">
-            <div 
-              className="w-full h-2 bg-gray-700 rounded-full cursor-pointer relative group"
-              onClick={handleSeek}
+          <button className="p-1 hover:bg-zinc-600 rounded transition-colors">
+            <svg 
+              className={`w-4 h-4 text-gray-400 transition-transform ${
+                isMinimized ? 'rotate-180' : ''
+              }`} 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
             >
-              <div 
-                className={`h-full bg-green-500 rounded-full relative ${
-                  isTrackChanging ? '' : 'transition-all duration-1000 ease-linear'
-                }`}
-                style={{ width: `${(localPosition / playbackState.track.duration) * 100}%` }}
-              >
-                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
-              </div>
-            </div>
-            <div className="flex justify-between text-xs text-gray-400">
-              <span>{formatTime(Math.floor(localPosition))}</span>
-              <span>{formatTime(playbackState.track.duration)}</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Main controls */}
-      <div className="flex items-center justify-center gap-4 mb-4">
-        {/* Shuffle */}
-        <button
-          onClick={handleShuffle}
-          className={`p-2 rounded-full transition-colors ${
-            playbackState.shuffleState 
-              ? 'text-green-500 hover:text-green-400' 
-              : 'text-gray-400 hover:text-white'
-          }`}
-          title="Shuffle"
-        >
-          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/>
-          </svg>
-        </button>
-
-        {/* Previous */}
-        <button
-          onClick={handlePrevious}
-          disabled={loading}
-          className="p-2 rounded-full text-gray-400 hover:text-white transition-colors disabled:opacity-50"
-          title="Previous track"
-        >
-          <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/>
-          </svg>
-        </button>
-
-        {/* Play/Pause */}
-        <button
-          onClick={handlePlayPause}
-          disabled={loading}
-          className="p-3 bg-white rounded-full text-black hover:scale-105 transition-transform disabled:opacity-50"
-          title={playbackState.isPlaying ? "Pause" : "Play"}
-        >
-          {playbackState.isPlaying ? (
-            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
-            </svg>
-          ) : (
-            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M8 5v14l11-7z"/>
-            </svg>
-          )}
-        </button>
-
-        {/* Next */}
-        <button
-          onClick={handleSkip}
-          disabled={loading}
-          className="p-2 rounded-full text-gray-400 hover:text-white transition-colors disabled:opacity-50"
-          title="Next track"
-        >
-          <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/>
-          </svg>
-        </button>
-
-        {/* Repeat */}
-        <button
-          onClick={handleRepeat}
-          className={`p-2 rounded-full transition-colors ${
-            playbackState.repeatState !== 'off'
-              ? 'text-green-500 hover:text-green-400' 
-              : 'text-gray-400 hover:text-white'
-          }`}
-          title={`Repeat: ${playbackState.repeatState}`}
-        >
-          {playbackState.repeatState === 'track' ? (
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4zm-4-2V9h-1l-2 1v1h1.5v4H13z"/>
-            </svg>
-          ) : (
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/>
-            </svg>
-          )}
-        </button>
-      </div>
-
-      {/* Additional controls */}
-      <div className="flex items-center justify-center gap-4">
-        {/* Volume */}
-        <div className="relative">
-          <button
-            onClick={() => setShowVolume(!showVolume)}
-            className="p-2 rounded text-gray-400 hover:text-white transition-colors"
-            title="Volume"
-          >
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
           </button>
-          
-          {showVolume && (
-            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-800 border border-gray-700 rounded-lg p-3">
-              <input
-                type="range"
-                min="0"
-                max="100"
-                value={volume}
-                onChange={(e) => handleVolumeChange(Number(e.target.value))}
-                className="w-24 accent-green-500"
-                title={`Volume: ${volume}%`}
-              />
-              <div className="text-center text-xs text-gray-400 mt-1">{volume}%</div>
-            </div>
-          )}
         </div>
 
-        {/* Clear Queue */}
-        <button
-          onClick={handleClearQueue}
-          disabled={loading}
-          className="p-2 rounded text-gray-400 hover:text-white transition-colors disabled:opacity-50"
-          title="Clear queue"
-        >
-          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M15 16h4v2h-4zm0-8h7v2h-7zm0 4h6v2h-6zM3 18c0 1.1.9 2 2 2h6c1.1 0 2-.9 2-2V8H3v10zM14 5h-3l-1-1H6L5 5H2v2h12z"/>
-          </svg>
-        </button>
+      {/* Expanded Content */}
+      {!isMinimized && (
+        <div className="p-4 pt-0">
+          {/* Dev mode indicators */}
+          {import.meta.env.DEV && (
+            <div className="mb-2 space-y-1 text-xs">
+              {/* Rate limit indicator */}
+              <div className="flex items-center gap-2">
+                <span className="text-gray-500">
+                  API: {apiCallCount.length}/180
+                </span>
+                <div className="w-20 h-1 bg-gray-700 rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full transition-all ${
+                      apiCallCount.length > 150 ? 'bg-red-500' : 
+                      apiCallCount.length > 100 ? 'bg-yellow-500' : 
+                      'bg-green-500'
+                    }`}
+                    style={{ width: `${Math.min((apiCallCount.length / 180) * 100, 100)}%` }}
+                  />
+                </div>
+                <span className={`w-2 h-2 rounded-full ${
+                  sseConnected ? 'bg-green-500' : 'bg-red-500'
+                }`} />
+                <span className="text-gray-500">
+                  SSE: {sseConnected ? 'On' : 'Off'}
+                </span>
+              </div>
+            </div>
+          )}
+      
+          {/* Horizontal Layout */}
+          <div className="flex items-center gap-4">
+            {/* Track info and progress - Left side */}
+            {playbackState.track && (
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-white font-medium text-sm truncate">{playbackState.track.name}</div>
+                    <div className="text-gray-400 text-xs truncate">{playbackState.track.artist}</div>
+                  </div>
+                  {playbackState.track.id && (
+                    <HeartIcon
+                      filled={savedStatus.get(playbackState.track.id) || false}
+                      loading={libraryLoading.get(playbackState.track.id) || false}
+                      size="sm"
+                      onClick={() => playbackState.track?.id && toggleSave(playbackState.track.id)}
+                    />
+                  )}
+                </div>
+                
+                {/* Progress bar */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-400 w-10 text-right">
+                    {formatTime(Math.floor(localPosition))}
+                  </span>
+                  <div 
+                    className="flex-1 h-1 bg-zinc-700 rounded-full cursor-pointer relative group"
+                    onClick={handleSeek}
+                  >
+                    <div 
+                      className={`h-full bg-green-500 rounded-full relative ${
+                        isTrackChanging ? '' : 'transition-all duration-1000 ease-linear'
+                      }`}
+                      style={{ width: `${(localPosition / playbackState.track.duration) * 100}%` }}
+                    >
+                      <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 bg-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                  </div>
+                  <span className="text-xs text-gray-400 w-10">
+                    {formatTime(playbackState.track.duration)}
+                  </span>
+                </div>
+              </div>
+            )}
 
-        {/* Queue */}
-        <button
-          className="p-2 rounded text-gray-400 hover:text-white transition-colors"
-          title="View queue (coming soon)"
-        >
-          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/>
-          </svg>
-        </button>
-      </div>
+            {/* Main controls - Center */}
+            <div className="flex items-center gap-2">
+              {/* Shuffle */}
+              <button
+                onClick={handleShuffle}
+                className={`p-1.5 rounded transition-colors ${
+                  playbackState.shuffleState 
+                    ? 'text-green-500 hover:text-green-400' 
+                    : 'text-gray-400 hover:text-white'
+                }`}
+                title="Shuffle"
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/>
+                </svg>
+              </button>
+
+              {/* Previous */}
+              <button
+                onClick={handlePrevious}
+                disabled={loading}
+                className="p-1.5 rounded text-gray-400 hover:text-white transition-colors disabled:opacity-50"
+                title="Previous track"
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/>
+                </svg>
+              </button>
+
+              {/* Play/Pause */}
+              <button
+                onClick={handlePlayPause}
+                disabled={loading}
+                className="p-2 bg-white rounded-full text-black hover:scale-105 transition-transform disabled:opacity-50"
+                title={playbackState.isPlaying ? "Pause" : "Play"}
+              >
+                {playbackState.isPlaying ? (
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z"/>
+                  </svg>
+                )}
+              </button>
+
+              {/* Next */}
+              <button
+                onClick={handleSkip}
+                disabled={loading}
+                className="p-1.5 rounded text-gray-400 hover:text-white transition-colors disabled:opacity-50"
+                title="Next track"
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/>
+                </svg>
+              </button>
+
+              {/* Repeat */}
+              <button
+                onClick={handleRepeat}
+                className={`p-1.5 rounded transition-colors ${
+                  playbackState.repeatState !== 'off'
+                    ? 'text-green-500 hover:text-green-400' 
+                    : 'text-gray-400 hover:text-white'
+                }`}
+                title={`Repeat: ${playbackState.repeatState}`}
+              >
+                {playbackState.repeatState === 'track' ? (
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4zm-4-2V9h-1l-2 1v1h1.5v4H13z"/>
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/>
+                  </svg>
+                )}
+              </button>
+            </div>
+
+            {/* Additional controls - Right side */}
+            <div className="flex items-center gap-2 border-l border-zinc-700 pl-2">
+              {/* Volume */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowVolume(!showVolume)}
+                  className="p-1.5 rounded text-gray-400 hover:text-white transition-colors"
+                  title="Volume"
+                >
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+                  </svg>
+                </button>
+                
+                {showVolume && (
+                  <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-zinc-800 border border-zinc-700 rounded-lg p-3 z-10">
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={volume}
+                      onChange={(e) => handleVolumeChange(Number(e.target.value))}
+                      className="w-24 accent-green-500"
+                      title={`Volume: ${volume}%`}
+                    />
+                    <div className="text-center text-xs text-gray-400 mt-1">{volume}%</div>
+                  </div>
+                )}
+              </div>
+
+              {/* Clear Queue */}
+              <button
+                onClick={handleClearQueue}
+                disabled={loading}
+                className="p-1.5 rounded text-gray-400 hover:text-white transition-colors disabled:opacity-50"
+                title="Clear queue"
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M15 16h4v2h-4zm0-8h7v2h-7zm0 4h6v2h-6zM3 18c0 1.1.9 2 2 2h6c1.1 0 2-.9 2-2V8H3v10zM14 5h-3l-1-1H6L5 5H2v2h12z"/>
+                </svg>
+              </button>
+
+              {/* Queue */}
+              <button
+                onClick={onShowQueue}
+                className="p-1.5 rounded text-gray-400 hover:text-white transition-colors"
+                title="View queue"
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

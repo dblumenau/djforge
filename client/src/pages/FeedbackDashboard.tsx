@@ -235,22 +235,21 @@ const FeedbackDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 text-white">
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-6xl mx-auto">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-8">
+    <div className="flex-1 flex flex-col">
+      {/* Page Header */}
+      <div className="border-b border-zinc-800 bg-zinc-900/50 backdrop-blur-sm">
+        <div className="max-w-6xl mx-auto px-4 py-6 w-full">
+          <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-4xl font-bold mb-2">🎯 AI Feedback Dashboard</h1>
-              <p className="text-gray-400">Manage your AI music discovery feedback</p>
+              <h1 className="text-3xl font-bold text-green-400">🎯 AI Feedback Dashboard</h1>
+              <p className="text-gray-400 mt-1">Manage your AI music discovery feedback</p>
             </div>
-            <button
-              onClick={() => navigate('/')}
-              className="px-4 py-2 bg-zinc-700 text-white rounded-lg hover:bg-zinc-600 transition-colors"
-            >
-              ← Back to Main App
-            </button>
           </div>
+        </div>
+      </div>
+
+      <div className="flex-1 bg-zinc-950">
+        <div className="max-w-6xl mx-auto px-4 py-8">
 
           {/* Stats Cards */}
           {data && (

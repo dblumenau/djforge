@@ -57,6 +57,7 @@ export const MusicCommandIntentSchema = {
         'chat',
         'ask_question',
         'clarification_mode',
+        'explain_reasoning',
         'unknown'
       ]
     },

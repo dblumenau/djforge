@@ -165,7 +165,7 @@ describe('Dual Path Validation', () => {
       const result = validateIntent(invalidIntent);
       
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain('Invalid intent "invalid_intent". Must be one of: play_specific_song, queue_specific_song, queue_multiple_songs, play_playlist, queue_playlist, play, pause, skip, previous, volume, set_volume, resume, next, back, get_current_track, set_shuffle, set_repeat, clear_queue, get_devices, get_playlists, get_recently_played, search, get_playback_info, chat, ask_question, unknown');
+      expect(result.errors).toContain('Invalid intent "invalid_intent". Must be one of: play_specific_song, queue_specific_song, queue_multiple_songs, play_playlist, queue_playlist, play, pause, skip, previous, volume, set_volume, resume, next, back, get_current_track, set_shuffle, set_repeat, clear_queue, get_devices, get_playlists, get_recently_played, search, get_playback_info, chat, ask_question, explain_reasoning, unknown');
     });
 
     test('rejects invalid confidence values', () => {
@@ -522,12 +522,12 @@ describe('Dual Path Validation', () => {
 
   describe('Extended Intent Validation', () => {
     
-    test('validates all 23 intent types', () => {
+    test('validates all 25 intent types', () => {
       const allIntents = [
         'play_specific_song', 'queue_specific_song', 'queue_multiple_songs', 'play_playlist', 'queue_playlist',
         'play', 'pause', 'skip', 'previous', 'volume', 'set_volume', 'resume', 'next', 'back',
         'get_current_track', 'set_shuffle', 'set_repeat', 'clear_queue', 'get_devices', 'get_playlists',
-        'get_recently_played', 'search', 'get_playback_info', 'chat', 'ask_question', 'unknown'
+        'get_recently_played', 'search', 'get_playback_info', 'chat', 'ask_question', 'explain_reasoning', 'unknown'
       ];
       
       allIntents.forEach(intentType => {
@@ -665,7 +665,7 @@ describe('Dual Path Validation', () => {
         'queue_playlist', 'play', 'pause', 'skip', 'previous', 'volume', 'set_volume', 
         'resume', 'next', 'back', 'get_current_track', 'set_shuffle', 'set_repeat', 
         'clear_queue', 'get_devices', 'get_playlists', 'get_recently_played', 'search', 
-        'get_playback_info', 'chat', 'ask_question', 'unknown'
+        'get_playback_info', 'chat', 'ask_question', 'explain_reasoning', 'unknown'
       ];
       
       // Extract intents from Gemini schema
@@ -674,8 +674,8 @@ describe('Dual Path Validation', () => {
       
       // Verify both schemas have identical intent types
       expect(geminiIntents).toEqual(openRouterIntents);
-      expect(geminiIntents).toHaveLength(26);
-      expect(openRouterIntents).toHaveLength(26);
+      expect(geminiIntents).toHaveLength(27);
+      expect(openRouterIntents).toHaveLength(27);
     });
 
     test('Both schemas must support identical required fields', () => {

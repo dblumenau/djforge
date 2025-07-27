@@ -12,5 +12,20 @@ export default defineConfig({
         changeOrigin: true,
       }
     }
+  },
+  build: {
+    rollupOptions: {
+      input: {
+        main: './index.html',
+        'service-worker': './src/service-worker.ts'
+      },
+      output: {
+        entryFileNames: (chunkInfo) => {
+          return chunkInfo.name === 'service-worker' 
+            ? '[name].js' 
+            : 'assets/[name]-[hash].js'
+        }
+      }
+    }
   }
 })

@@ -256,11 +256,13 @@ AVAILABLE INTENTS - Choose the most appropriate one:
 • ask_question - Questions about collaborations, facts ("did he collaborate with X", "has she ever worked with Y")
 • get_playback_info - Get information about what's currently playing ("what's playing", "current song", "what song is this")
 • clarification_mode - When user expresses rejection/dissatisfaction with current selection or gives vague directional requests
+• explain_reasoning - When user asks about model decisions or reasoning ("why did you choose", "how did you decide", "explain your reasoning")
 
 CONVERSATIONAL TRIGGERS (these are NOT music actions):
 - Questions starting with: "did", "does", "has", "tell me about", "what do you think", "how is", "what's"
 - Playback info requests: "what's playing", "what song is this", "current track"
 - General discussion: "what do you think", "how do you feel", "your opinion"
+- Reasoning questions: "why did you choose", "why did the model", "how did you decide", "explain your reasoning", "what was your thought process"
 
 CLARIFICATION MODE TRIGGERS:
 - User expresses rejection: "not this", "dislike", "don't like", "hate this", "not feeling", "not the vibe"
@@ -326,6 +328,7 @@ CRITICAL DISTINCTIONS:
    - If asking for A PLAYLIST → use play_playlist/queue_playlist
    - If asking QUESTIONS → use conversational intents (chat/ask_question)
    - If asking "what's playing" or "current song" → use get_playback_info
+   - If asking about MODEL REASONING/DECISIONS → use explain_reasoning
    - The word "playlist" in the command is a strong indicator for playlist intents
    - Words like "multiple", "many", "several", "more songs", "a few songs" indicate queue_multiple_songs
 
@@ -389,6 +392,14 @@ For conversational requests:
   "confidence": 0.8-1.0,
   "reasoning": "explain why this is conversational and what information to provide",
   "responseMessage": "The actual answer to the user's question about the artist/music. For 'this artist' questions, use the currently playing context to provide information about the specific artist. Include interesting facts, notable achievements, genre influences, and career highlights. Keep it 2-4 sentences."
+}
+
+For reasoning explanation requests:
+{
+  "intent": "explain_reasoning",
+  "confidence": 0.9-1.0,
+  "reasoning": "User is asking about model decision-making process",
+  "responseMessage": "I will explain the reasoning from the most recent model decision, including what was chosen and why."
 }
 
 For clarification mode (when user rejects/dislikes current selection):
@@ -1131,9 +1142,81 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
     const intent = interpretation.intent || interpretation.action;
     
     // Handle conversational intents (return text, no Spotify action)
-    if (intent === 'chat' || intent === 'ask_question' || intent === 'clarification_mode') {
-      // Check if Gemini already provided the response in responseMessage field
-      if (interpretation.responseMessage) {
+    if (intent === 'chat' || intent === 'ask_question' || intent === 'clarification_mode' || intent === 'explain_reasoning') {
+      // Handle explain_reasoning specially - always use our custom logic
+      if (intent === 'explain_reasoning') {
+        // Handle reasoning explanation by looking at conversation history
+        let reasoningExplanation = "I don't have any recent decisions to explain.";
+        
+        if (userId && conversationManager) {
+          try {
+            // Get recent conversation history to find the last model decision
+            const recentHistory = await conversationManager.getConversationHistory(userId, 10);
+            
+            // Find the most recent action that wasn't a question
+            const lastMusicAction = recentHistory.find(entry => 
+              entry.interpretation && 
+              entry.interpretation.intent !== 'chat' && 
+              entry.interpretation.intent !== 'ask_question' &&
+              entry.interpretation.intent !== 'explain_reasoning' &&
+              entry.interpretation.intent !== 'get_playback_info' &&
+              entry.interpretation.reasoning
+            );
+            
+            if (lastMusicAction) {
+              const lastIntent = lastMusicAction.interpretation;
+              const actionType = lastIntent.intent === 'play_specific_song' ? 'chose to play' :
+                               lastIntent.intent === 'queue_specific_song' ? 'chose to queue' :
+                               lastIntent.intent === 'queue_multiple_songs' ? 'chose to queue multiple songs' :
+                               lastIntent.intent === 'play_playlist' ? 'chose to play a playlist' :
+                               'performed an action';
+              
+              const trackInfo = lastIntent.track ? 
+                `"${lastIntent.track}"${lastIntent.artist ? ` by ${lastIntent.artist}` : ''}` :
+                lastIntent.query || 'the selection';
+              
+              reasoningExplanation = `I ${actionType} ${trackInfo}.\n\n`;
+              
+              if (lastIntent.reasoning) {
+                reasoningExplanation += `**My reasoning**: ${lastIntent.reasoning}\n\n`;
+              }
+              
+              if (lastIntent.confidence) {
+                reasoningExplanation += `**Confidence**: ${Math.round(lastIntent.confidence * 100)}%\n\n`;
+              }
+              
+              if (lastIntent.alternatives && lastIntent.alternatives.length > 0) {
+                const altCount = lastIntent.alternatives.length;
+                reasoningExplanation += `**Alternatives considered**: ${lastIntent.alternatives.slice(0, 3).join(', ')}${altCount > 3 ? ` and ${altCount - 3} more` : ''}\n\n`;
+              }
+              
+              if ((lastIntent as any).model) {
+                reasoningExplanation += `**Model used**: ${(lastIntent as any).model}\n\n`;
+              }
+              
+              if ((lastIntent as any).isAIDiscovery && (lastIntent as any).aiReasoning) {
+                reasoningExplanation += `**AI Discovery**: ${(lastIntent as any).aiReasoning}`;
+              }
+              
+              // Clean up extra trailing newlines
+              reasoningExplanation = reasoningExplanation.trim();
+            }
+          } catch (error) {
+            console.error('Error retrieving reasoning explanation:', error);
+            reasoningExplanation = "I encountered an error while trying to explain my reasoning.";
+          }
+        }
+        
+        result = {
+          success: true,
+          message: reasoningExplanation,
+          conversational: true
+        };
+        
+        console.log('📝 Explanation of reasoning:', reasoningExplanation);
+      }
+      // Check if Gemini already provided the response in responseMessage field (for other intents)
+      else if (interpretation.responseMessage) {
         // Gemini provided the answer directly in the structured output
         result = {
           success: true,

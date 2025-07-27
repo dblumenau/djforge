@@ -28,6 +28,7 @@ export const MusicCommandSchema = z.object({
     'get_playback_info',
     'chat',
     'ask_question',
+    'explain_reasoning',
     'unknown'
   ]),
   

@@ -38,6 +38,7 @@ export type IntentType =
   | 'get_playback_info'
   | 'chat'
   | 'ask_question'
+  | 'explain_reasoning'
   | 'unknown';
 
 // Obscurity levels for track requests
@@ -223,6 +224,7 @@ export const VALID_INTENTS: IntentType[] = [
   'get_playback_info',
   'chat',
   'ask_question',
+  'explain_reasoning',
   'unknown'
 ];
 

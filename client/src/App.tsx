@@ -5,6 +5,8 @@ import NotFound from './components/NotFound';
 import Dashboard from './pages/Dashboard';
 import TasteProfile from './pages/TasteProfile';
 import FeedbackDashboard from './pages/FeedbackDashboard';
+import LogsPage from './pages/LogsPage';
+import AppLayout from './components/AppLayout';
 
 // Auth callback loader - handles OAuth callback without a component
 const authCallbackLoader = ({ request }: { request: Request }) => {
@@ -38,23 +40,33 @@ const authCallbackLoader = ({ request }: { request: Request }) => {
 export const router = createBrowserRouter([
   {
     path: "/",
-    element: <MainApp />
+    element: <AppLayout />,
+    children: [
+      {
+        index: true,
+        element: <MainApp />
+      },
+      {
+        path: "dashboard",
+        element: <Dashboard />
+      },
+      {
+        path: "taste-profile",
+        element: <TasteProfile />
+      },
+      {
+        path: "feedback-dashboard",
+        element: <FeedbackDashboard />
+      },
+      {
+        path: "logs",
+        element: <LogsPage />
+      }
+    ]
   },
   {
     path: "/landing",
     element: <LandingPage />
-  },
-  {
-    path: "/dashboard",
-    element: <Dashboard />
-  },
-  {
-    path: "/taste-profile",
-    element: <TasteProfile />
-  },
-  {
-    path: "/feedback-dashboard",
-    element: <FeedbackDashboard />
   },
   {
     path: "/callback",
