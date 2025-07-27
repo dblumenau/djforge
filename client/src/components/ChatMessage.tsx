@@ -245,7 +245,7 @@ const ChatMessage: React.FC<MessageProps> = ({
                   <span className="text-xs text-gray-500 font-medium">Similar songs:</span>
                   <div className="space-y-1">
                     {(alternatives as Alternative[]).map((alt, altIndex) => {
-                      const trackId = alt.uri.split(':')[2];
+                      const trackId = alt.uri ? alt.uri.split(':')[2] : '';
                       return (
                         <div key={altIndex} className="flex items-center justify-between bg-zinc-900/50 rounded p-2 text-xs">
                           <div className="flex-1 text-gray-300">
