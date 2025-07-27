@@ -1,4 +1,5 @@
 import { createBrowserRouter, redirect, Outlet } from 'react-router-dom';
+import * as Sentry from '@sentry/react';
 import LandingPage from './components/LandingPage';
 import MainApp from './components/MainApp';
 import NotFound from './components/NotFound';
@@ -7,7 +8,7 @@ import TasteProfile from './pages/TasteProfile';
 import FeedbackDashboard from './pages/FeedbackDashboard';
 import LogsPage from './pages/LogsPage';
 import AppLayout from './components/AppLayout';
-import ErrorBoundary from './components/ErrorBoundary';
+import ErrorFallback from './components/ErrorFallback';
 
 // Auth callback loader - handles OAuth callback without a component
 const authCallbackLoader = ({ request }: { request: Request }) => {
@@ -42,9 +43,9 @@ export const router = createBrowserRouter([
   {
     path: "/",
     element: (
-      <ErrorBoundary>
+      <Sentry.ErrorBoundary fallback={ErrorFallback} showDialog>
         <AppLayout />
-      </ErrorBoundary>
+      </Sentry.ErrorBoundary>
     ),
     children: [
       {
