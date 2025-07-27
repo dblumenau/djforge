@@ -645,19 +645,6 @@ const MainApp: React.FC = () => {
         currentModel={currentModel}
       />
 
-      {/* Temporary Sentry Test Button (REMOVE AFTER TESTING) */}
-      {import.meta.env.DEV && (
-        <div className="fixed bottom-32 right-4 z-50">
-          <button
-            onClick={() => {
-              throw new Error("Test Sentry error from frontend!");
-            }}
-            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg shadow-lg text-sm font-semibold"
-          >
-            Test Sentry Error
-          </button>
-        </div>
-      )}
 
       {/* Examples Modal */}
       {showExamplesModal && (

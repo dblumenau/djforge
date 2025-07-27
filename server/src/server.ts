@@ -202,10 +202,6 @@ async function initializeAndStart() {
     // Debug token endpoint
     app.use('/api/debug', debugTokenRouter);
 
-    // Temporary Sentry test endpoint (REMOVE AFTER TESTING)
-    app.get('/api/debug-sentry', (req, res) => {
-      throw new Error('Test Sentry error from backend!');
-    });
 
     // IMPORTANT: The Sentry error handler must be registered before any other error middleware and after all controllers
     Sentry.setupExpressErrorHandler(app);
