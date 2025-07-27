@@ -24,8 +24,10 @@ export const simpleLLMInterpreterRouter = Router();
 // Shared conversation manager instance
 let conversationManager: ConversationManager;
 let loggingService: LLMLoggingService | null = null;
+let redisClient: any = null;
 
 export function setRedisClient(client: any) {
+  redisClient = client; // Store Redis client for UserDataService access
   conversationManager = getConversationManager(client);
   console.log('✅ Shared ConversationManager initialized for contextual understanding');
   
@@ -784,6 +786,24 @@ simpleLLMInterpreterRouter.get('/history', ensureValidToken, async (req, res) =>
     // Get up to 100 most recent conversation entries
     const history = await conversationManager.getConversationHistory(userId, 100);
     
+    // Get user feedback data to merge into history
+    let feedbackData: {loved: any[], disliked: any[]} = {loved: [], disliked: []};
+    try {
+      const { UserDataService } = await import('../services/UserDataService');
+      if (redisClient) {
+        const userDataService = new UserDataService(redisClient, null as any, userId); // spotifyApi not needed for getAIFeedback
+        feedbackData = await userDataService.getAIFeedback();
+        console.log(`🔍 Loaded feedback data: ${feedbackData.loved.length} loved, ${feedbackData.disliked.length} disliked`);
+        if (feedbackData.loved.length > 0) {
+          console.log('📝 Sample loved track:', feedbackData.loved[0]?.trackUri || feedbackData.loved[0]?.uri || feedbackData.loved[0]);
+        }
+      } else {
+        console.log('⚠️ Redis client not available for feedback loading');
+      }
+    } catch (error) {
+      console.error('Error getting AI feedback:', error);
+    }
+    
     // Format history to match client's expected structure
     const formattedHistory = await Promise.all(history.map(async (entry: any) => {
       // Debug log for conversational entries
@@ -873,11 +893,49 @@ simpleLLMInterpreterRouter.get('/history', ensureValidToken, async (req, res) =>
         model: entry.interpretation?.model || undefined,
         intent: entry.interpretation?.intent,
         reasoning: entry.interpretation?.reasoning,
+        // Include AI discovery fields
+        isAIDiscovery: entry.interpretation?.isAIDiscovery || false,
+        aiReasoning: entry.interpretation?.aiReasoning,
+        // Include track information for single tracks
+        ...(entry.response && typeof entry.response === 'object' && {
+          trackUri: entry.response.track?.uri,
+          trackName: entry.response.track?.name,
+          artist: entry.response.track?.artists?.map((a: any) => a.name).join(', '),
+          feedback: entry.response.feedback
+        }),
         // Include clarification data if available
         ...(entry.response && typeof entry.response === 'object' && entry.response.clarificationOptions && {
           clarificationOptions: entry.response.clarificationOptions,
           currentContext: entry.response.currentContext,
           uiType: entry.response.uiType
+        }),
+        // Include queued songs data if available, with feedback merged in
+        ...(entry.response && typeof entry.response === 'object' && entry.response.queuedSongs && {
+          queuedSongs: entry.response.queuedSongs.map((song: any) => {
+            if (!song.uri) return song;
+            
+            // Check if this song has feedback (feedback data uses trackUri field)
+            const isLoved = feedbackData.loved.some((track: any) => track.trackUri === song.uri);
+            const isDisliked = feedbackData.disliked.some((track: any) => track.trackUri === song.uri);
+            
+            if (isLoved || isDisliked) {
+              console.log(`🎯 Found feedback for ${song.name} (${song.uri}): ${isLoved ? 'loved' : 'disliked'}`);
+            }
+            
+            return {
+              ...song,
+              feedback: isLoved ? 'loved' : isDisliked ? 'disliked' : undefined
+            };
+          })
+        }),
+        // Include main track feedback if available
+        ...(entry.response && typeof entry.response === 'object' && entry.response.track?.uri && {
+          feedback: (() => {
+            const trackUri = entry.response.track.uri;
+            const isLoved = feedbackData.loved.some((track: any) => track.uri === trackUri);
+            const isDisliked = feedbackData.disliked.some((track: any) => track.uri === trackUri);
+            return isLoved ? 'loved' : isDisliked ? 'disliked' : undefined;
+          })()
         })
       };
     }));
@@ -1231,17 +1289,26 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
           for (let i = 0; i < songs.length; i++) {
             const song = songs[i];
             try {
-              // Build search query for this specific song
+              // Build search query for this specific song (don't include album as it often varies)
               let searchQuery = `artist:"${song.artist}" track:"${song.track}"`;
-              if (song.album) {
-                searchQuery += ` album:"${song.album}"`;
-              }
               
               console.log(`[DEBUG] Searching for song ${i + 1}: "${searchQuery}"`);
               const tracks = await spotifyControl.search(searchQuery);
               
               if (tracks.length > 0) {
-                const track = tracks[0]; // Use first result
+                // Look for exact match first, fallback to first result
+                const exactMatch = tracks.find(track => {
+                  const trackArtist = track.artists[0]?.name.toLowerCase();
+                  const searchArtist = song.artist.toLowerCase();
+                  const trackNameLower = track.name.toLowerCase();
+                  const searchTrackLower = song.track.toLowerCase();
+                  
+                  return trackArtist === searchArtist && trackNameLower === searchTrackLower;
+                });
+                
+                const track = exactMatch || tracks[0]; // Use exact match if found, otherwise first result
+                console.log(`[DEBUG] Using ${exactMatch ? 'exact match' : 'first result'}: "${track.name}" by ${track.artists[0]?.name}`);
+                
                 const queueResult = await spotifyControl.queueTrackByUri(track.uri);
                 
                 if (queueResult.success) {
@@ -1674,10 +1741,7 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
         command: command,
         interpretation: interpretation,
         timestamp: Date.now(),
-        response: {
-          success: result.success || false,
-          message: result.message || ''
-        }
+        response: result // Store full result object to preserve clarification data
       };
       
       // Debug log for conversational responses
