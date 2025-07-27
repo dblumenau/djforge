@@ -12,10 +12,7 @@ Sentry.init({
   integrations: [
     nodeProfilingIntegration(),
     // HTTP integration is automatically added
-    Sentry.httpIntegration({
-      // Enable distributed tracing
-      instrumenter: 'sentry',
-    }),
+    Sentry.httpIntegration(),
     // Express integration will be added automatically when setupExpressErrorHandler is called
   ],
   // Tracing

@@ -71,18 +71,7 @@ const MODEL_DISPLAY_INFO: Record<string, { name: string; provider: string; descr
     provider: 'Anthropic',
     description: 'Fast and efficient (JSON via tool calling)'
   },
-  
-  // OpenAI Models
-  [OPENROUTER_MODELS.GPT_4_1]: { 
-    name: 'GPT-4.1', 
-    provider: 'OpenAI',
-    description: 'Latest flagship model with 1M token context and superior coding abilities'
-  },
-  [OPENROUTER_MODELS.GPT_4_1_NANO]: { 
-    name: 'GPT-4.1 Nano', 
-    provider: 'OpenAI',
-    description: 'Smaller, faster version of GPT-4.1 with excellent performance'
-  },
+
   [OPENROUTER_MODELS.GPT_4O]: { 
     name: 'GPT-4 Omni', 
     provider: 'OpenAI',
@@ -103,11 +92,11 @@ const MODEL_DISPLAY_INFO: Record<string, { name: string; provider: string; descr
     provider: 'OpenAI',
     description: 'Advanced reasoning with tool use capabilities'
   },
-  [OPENROUTER_MODELS.O3_DEEP_RESEARCH]: { 
-    name: 'O3 Deep Research', 
-    provider: 'OpenAI',
-    description: 'Optimized for complex research and analysis tasks'
-  },
+  // [OPENROUTER_MODELS.O3_DEEP_RESEARCH]: { 
+  //   name: 'O3 Deep Research', 
+  //   provider: 'OpenAI',
+  //   description: 'Optimized for complex research and analysis tasks'
+  // },
   [OPENROUTER_MODELS.O3_PRO_2025_06_10]: { 
     name: 'O3 Pro (2025-06-10)', 
     provider: 'OpenAI',
@@ -117,21 +106,6 @@ const MODEL_DISPLAY_INFO: Record<string, { name: string; provider: string; descr
     name: 'O4 Mini', 
     provider: 'OpenAI',
     description: 'Fast reasoning optimized for math, coding, and visual tasks'
-  },
-  [OPENROUTER_MODELS.O4_MINI_DEEP_RESEARCH]: { 
-    name: 'O4 Mini Deep Research', 
-    provider: 'OpenAI',
-    description: 'O4 Mini optimized for research applications'
-  },
-  [OPENROUTER_MODELS.O1]: { 
-    name: 'O1', 
-    provider: 'OpenAI',
-    description: 'Original reasoning model with strong problem-solving'
-  },
-  [OPENROUTER_MODELS.O1_PRO]: { 
-    name: 'O1 Pro', 
-    provider: 'OpenAI',
-    description: 'Enhanced O1 with extended reasoning capabilities'
   },
   
   // Google Models
@@ -166,57 +140,27 @@ const MODEL_DISPLAY_INFO: Record<string, { name: string; provider: string; descr
     provider: 'X.AI',
     description: 'Latest Grok model'
   },
-  [OPENROUTER_MODELS.GROK_3]: { 
-    name: 'Grok 3', 
-    provider: 'X.AI',
-    description: 'Powerful reasoning capabilities'
-  },
-  [OPENROUTER_MODELS.GROK_3_MINI]: { 
-    name: 'Grok 3 Mini', 
-    provider: 'X.AI',
-    description: 'Lightweight and fast'
-  },
+  // [OPENROUTER_MODELS.GROK_3]: { 
+  //   name: 'Grok 3', 
+  //   provider: 'X.AI',
+  //   description: 'Powerful reasoning capabilities'
+  // },
+  // [OPENROUTER_MODELS.GROK_3_MINI]: { 
+  //   name: 'Grok 3 Mini', 
+  //   provider: 'X.AI',
+  //   description: 'Lightweight and fast'
+  // },
   
   // Additional models
-  [OPENROUTER_MODELS.CODEX_MINI]: { 
-    name: 'Codex Mini', 
-    provider: 'OpenAI',
-    description: 'Code-optimized model (Native JSON support)'
-  },
-  [OPENROUTER_MODELS.GEMINI_2_5_PRO_PREVIEW]: { 
-    name: 'Gemini 2.5 Pro Preview', 
-    provider: 'Google',
-    description: 'Preview of upcoming features'
-  },
-  [OPENROUTER_MODELS.GEMINI_2_5_FLASH_LITE]: { 
-    name: 'Gemini 2.5 Flash Lite', 
-    provider: 'Google',
-    description: 'Ultra-fast lightweight model'
-  },
+  // [OPENROUTER_MODELS.CODEX_MINI]: { 
+  //   name: 'Codex Mini', 
+  //   provider: 'OpenAI',
+  //   description: 'Code-optimized model (Native JSON support)'
+  // },
   [OPENROUTER_MODELS.LLAMA_GUARD_4_12B]: { 
     name: 'Llama Guard 4', 
     provider: 'Meta',
     description: 'Safety-focused model'
-  },
-  [OPENROUTER_MODELS.DEVSTRAL_MEDIUM]: { 
-    name: 'Devstral Medium', 
-    provider: 'Mistral',
-    description: 'Developer-focused model'
-  },
-  [OPENROUTER_MODELS.DEVSTRAL_SMALL]: { 
-    name: 'Devstral Small', 
-    provider: 'Mistral',
-    description: 'Fast developer assistant'
-  },
-  [OPENROUTER_MODELS.DEVSTRAL_SMALL_2505]: { 
-    name: 'Devstral Small 2505', 
-    provider: 'Mistral',
-    description: 'Latest small developer model'
-  },
-  [OPENROUTER_MODELS.MAGISTRAL_SMALL_2506]: { 
-    name: 'Magistral Small', 
-    provider: 'Mistral',
-    description: 'General purpose small model'
   },
   [OPENROUTER_MODELS.MAGISTRAL_MEDIUM_2506]: { 
     name: 'Magistral Medium', 
@@ -237,11 +181,6 @@ const MODEL_DISPLAY_INFO: Record<string, { name: string; provider: string; descr
     name: 'DeepSeek R1 Qwen3', 
     provider: 'DeepSeek',
     description: '8B parameter model'
-  },
-  [OPENROUTER_MODELS.DEEPSEEK_PROVER_V2]: { 
-    name: 'DeepSeek Prover V2', 
-    provider: 'DeepSeek',
-    description: 'Mathematical reasoning'
   },
   [OPENROUTER_MODELS.QWEN3_235B]: { 
     name: 'Qwen3 235B', 

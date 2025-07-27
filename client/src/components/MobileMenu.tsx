@@ -110,6 +110,16 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
               <nav className="space-y-2">
                 <button
                   onClick={() => {
+                    navigate('/');
+                    onClose();
+                  }}
+                  className="w-full px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-left rounded-lg transition-colors flex items-center gap-2"
+                >
+                  <span>💬</span>
+                  <span>Chat</span>
+                </button>
+                <button
+                  onClick={() => {
                     navigate('/dashboard');
                     onClose();
                   }}

@@ -18,10 +18,7 @@ const HeaderNav: React.FC<HeaderNavProps> = ({
   onModelChange,
   onDeviceChange,
   onLogout,
-  onMenuToggle,
-  isDevMode = false,
-  onExpireTokens,
-  onRevokeTokens
+  onMenuToggle
 }) => {
   const navigate = useNavigate();
 
@@ -55,6 +52,12 @@ const HeaderNav: React.FC<HeaderNavProps> = ({
             {/* Navigation Buttons (desktop only) */}
             <div className="hidden md:flex items-center gap-2">
               <button
+                onClick={() => navigate('/')}
+                className="px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-200 hover:text-white border border-zinc-600 hover:border-zinc-500 rounded-md transition-all text-xs font-medium"
+              >
+                💬 Chat
+              </button>
+              <button
                 onClick={() => navigate('/dashboard')}
                 className="px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-200 hover:text-white border border-zinc-600 hover:border-zinc-500 rounded-md transition-all text-xs font-medium"
               >
@@ -80,7 +83,7 @@ const HeaderNav: React.FC<HeaderNavProps> = ({
               </button>
 
               {/* Dev Tools - Hidden in production */}
-              {isDevMode && (
+              {/* {isDevMode && (
                 <>
                   <button 
                     className="px-2 py-1 bg-yellow-900/20 hover:bg-yellow-900/30 text-yellow-400/70 hover:text-yellow-300 border border-yellow-800/30 rounded text-xs opacity-50"
@@ -95,7 +98,7 @@ const HeaderNav: React.FC<HeaderNavProps> = ({
                     🚫 Revoke
                   </button>
                 </>
-              )}
+              )} */}
             </div>
 
             {/* Mobile Menu Button */}

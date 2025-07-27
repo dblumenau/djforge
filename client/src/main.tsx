@@ -21,7 +21,7 @@ Sentry.init({
       // Don't add sentry-trace headers to requests by default
       shouldCreateSpanForRequest: (url) => {
         // Only create spans for your API requests
-        const urlString = typeof url === 'string' ? url : url instanceof URL ? url.toString() : String(url);
+        const urlString = typeof url === 'string' ? url : String(url);
         return urlString.includes('127.0.0.1:4001') || urlString.includes('localhost:4001');
       },
     }),
@@ -49,11 +49,14 @@ Sentry.init({
     if (event.exception) {
       const error = hint.originalException;
       // Don't send network errors in development
-      if (import.meta.env.MODE === 'development' && error?.message?.includes('Network request failed')) {
+      if (import.meta.env.MODE === 'development' && 
+          error && typeof error === 'object' && 'message' in error && 
+          typeof error.message === 'string' && error.message.includes('Network request failed')) {
         return null;
       }
       // Don't send health check errors
-      if (error?.message?.includes('/api/health')) {
+      if (error && typeof error === 'object' && 'message' in error && 
+          typeof error.message === 'string' && error.message.includes('/api/health')) {
         return null;
       }
     }
@@ -97,7 +100,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             borderRadius: '0.5rem',
             overflow: 'auto',
             fontSize: '0.875rem'
-          }}>{error.toString()}</pre>
+          }}>{error instanceof Error ? error.toString() : String(error)}</pre>
         </details>
         <button 
           onClick={resetError}
