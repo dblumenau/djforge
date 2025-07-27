@@ -7,7 +7,6 @@ import TasteProfile from './pages/TasteProfile';
 import FeedbackDashboard from './pages/FeedbackDashboard';
 import LogsPage from './pages/LogsPage';
 import AppLayout from './components/AppLayout';
-import ErrorBoundary from './components/ErrorBoundary';
 
 // Auth callback loader - handles OAuth callback without a component
 const authCallbackLoader = ({ request }: { request: Request }) => {
@@ -41,11 +40,7 @@ const authCallbackLoader = ({ request }: { request: Request }) => {
 export const router = createBrowserRouter([
   {
     path: "/",
-    element: (
-      <ErrorBoundary>
-        <AppLayout />
-      </ErrorBoundary>
-    ),
+    element: <AppLayout />,
     children: [
       {
         index: true,

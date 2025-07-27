@@ -92,16 +92,18 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       }}>
         <h1 style={{ fontSize: '2rem', marginBottom: '1rem' }}>Oops! Something went wrong</h1>
         <p style={{ marginBottom: '1rem', color: '#aaa' }}>An error occurred while loading the application.</p>
-        <details style={{ marginBottom: '1rem', maxWidth: '600px', width: '100%' }}>
-          <summary style={{ cursor: 'pointer', marginBottom: '0.5rem' }}>Error details</summary>
-          <pre style={{ 
-            backgroundColor: '#2a2a2a', 
-            padding: '1rem', 
-            borderRadius: '0.5rem',
-            overflow: 'auto',
-            fontSize: '0.875rem'
-          }}>{error instanceof Error ? error.toString() : String(error)}</pre>
-        </details>
+        {import.meta.env.DEV && error && (
+          <details style={{ marginBottom: '1rem', maxWidth: '600px', width: '100%' }}>
+            <summary style={{ cursor: 'pointer', marginBottom: '0.5rem' }}>Error details (development only)</summary>
+            <pre style={{ 
+              backgroundColor: '#2a2a2a', 
+              padding: '1rem', 
+              borderRadius: '0.5rem',
+              overflow: 'auto',
+              fontSize: '0.875rem'
+            }}>{error instanceof Error ? error.toString() : String(error)}</pre>
+          </details>
+        )}
         <button 
           onClick={resetError}
           style={{ 
@@ -118,6 +120,15 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         </button>
       </div>
     )}
+    beforeCapture={(scope, error, errorInfo) => {
+      scope.setTag('errorBoundary', 'sentry-main');
+      scope.setTag('component', 'App');
+      scope.setLevel('error');
+      scope.setFingerprint(['errorBoundary', error.name, error.message]);
+      if (errorInfo) {
+        scope.setContext('errorInfo', errorInfo);
+      }
+    }}
     showDialog
   >
     <RouterProvider router={router} />
