@@ -731,11 +731,17 @@ export class UserDataService {
     switch (contextType) {
       case 'specific':
         // For specific song requests - minimal taste context to avoid bias
-        return `BACKGROUND - User's Musical Context (for reference only):
+        return `BACKGROUND - User's Musical Context (DO NOT USE AS A CONSTRAINT):
 • Generally listens to: ${baseData.genres}
 • Some familiar artists: ${baseData.artists}
 
-IMPORTANT: The user is asking for a specific song. Use this context only to understand their general style, but focus on finding the exact song they requested. Don't substitute with something from their taste profile unless the specific song cannot be found.`;
+CRITICAL INSTRUCTIONS FOR SPECIFIC REQUESTS:
+1. The user has made a SPECIFIC request - focus ONLY on what they asked for
+2. IGNORE their taste profile if it doesn't match the request
+3. If they ask for spoken-word, death metal, K-pop, or ANY genre not in their profile - that's what they want!
+4. Never say "I'll find something from your usual artists" - find what they ACTUALLY requested
+5. Their explicit request OVERRIDES everything in their taste profile
+6. Use the taste profile ONLY if their request is vague like "play something good"`;
 
       case 'discovery':
         // For discovery requests - rich taste context with discovery patterns

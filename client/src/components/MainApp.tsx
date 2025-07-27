@@ -646,7 +646,7 @@ const MainApp: React.FC = () => {
       />
 
       {/* Temporary Sentry Test Button (REMOVE AFTER TESTING) */}
-      {process.env.NODE_ENV === 'development' && (
+      {import.meta.env.DEV && (
         <div className="fixed bottom-32 right-4 z-50">
           <button
             onClick={() => {

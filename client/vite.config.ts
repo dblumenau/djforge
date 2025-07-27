@@ -14,6 +14,7 @@ export default defineConfig({
     }
   },
   build: {
+    sourcemap: true, // Generate source maps for production
     rollupOptions: {
       input: {
         main: './index.html',

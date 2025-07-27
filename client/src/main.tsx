@@ -8,6 +8,7 @@ import './index.css'
 Sentry.init({
   dsn: import.meta.env.VITE_SENTRY_DSN || "https://cf410304d6c0e9f558cf1a1df9d31789@o4509741045579776.ingest.de.sentry.io/4509741102727248",
   environment: import.meta.env.MODE,
+  release: import.meta.env.VITE_SENTRY_RELEASE || 'spotify-claude-controller@dev',
   sendDefaultPii: true,
   integrations: [
     Sentry.browserTracingIntegration({
@@ -20,7 +21,7 @@ Sentry.init({
       // Don't add sentry-trace headers to requests by default
       shouldCreateSpanForRequest: (url) => {
         // Only create spans for your API requests
-        const urlString = typeof url === 'string' ? url : url.toString();
+        const urlString = typeof url === 'string' ? url : url instanceof URL ? url.toString() : String(url);
         return urlString.includes('127.0.0.1:4001') || urlString.includes('localhost:4001');
       },
     }),

@@ -63,6 +63,7 @@ export interface AIDiscoveredTrack {
 declare module 'express-session' {
   interface SessionData {
     spotifyTokens?: SpotifyAuthTokens;
+    spotifyUserId?: string;
     codeVerifier?: string;
     tokenTimestamp?: number;
     preferredModel?: string;

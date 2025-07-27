@@ -6,13 +6,13 @@ import dotenv from 'dotenv';
 dotenv.config({ path: '../.env' });
 
 Sentry.init({
-  dsn: process.env.SENTRY_DSN_SERVER || "https://6c213e177c0499ba964211308733917c@o4509741045579776.ingest.de.sentry.io/4509741047611472",
+  dsn: process.env.SENTRY_DSN_SERVER || "https://18505a4fbecc87e3b465673e827b4cae@o4509741045579776.ingest.de.sentry.io/4509741295009872",
   environment: process.env.NODE_ENV || 'development',
+  release: process.env.SENTRY_RELEASE || 'spotify-claude-controller@dev',
   integrations: [
     nodeProfilingIntegration(),
     // HTTP integration is automatically added
     Sentry.httpIntegration({
-      tracing: true,
       // Enable distributed tracing
       instrumenter: 'sentry',
     }),
@@ -28,11 +28,24 @@ Sentry.init({
   
   // Additional options
   beforeSend(event, hint) {
+    console.log('🔍 Sentry beforeSend called:', {
+      eventId: event.event_id,
+      message: event.message,
+      exception: event.exception?.values?.[0]?.value,
+      environment: event.environment,
+      release: event.release,
+    });
+    
+    // Log what we're returning
+    console.log('🔍 Sentry: Sending event to Sentry');
+    
     // Don't send certain errors in development
     if (process.env.NODE_ENV === 'development') {
       const error = hint.originalException;
       // Skip ECONNREFUSED errors (common in dev when services aren't running)
-      if (error?.message?.includes('ECONNREFUSED')) {
+      if (error && typeof error === 'object' && 'message' in error && 
+          typeof error.message === 'string' && error.message.includes('ECONNREFUSED')) {
+        console.log('🔍 Sentry: Skipping ECONNREFUSED error');
         return null;
       }
     }
