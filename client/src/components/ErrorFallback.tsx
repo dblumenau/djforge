@@ -1,5 +1,5 @@
 interface ErrorFallbackProps {
-  error: Error;
+  error: unknown;
   resetError: () => void;
 }
 
@@ -11,16 +11,14 @@ const ErrorFallback = ({ error, resetError }: ErrorFallbackProps) => {
         <p className="text-gray-400">
           An unexpected error occurred. Please try refreshing the page.
         </p>
-        {error && (
-          <details className="mt-4">
-            <summary className="cursor-pointer text-sm text-gray-500 hover:text-gray-300">
-              Error details
-            </summary>
-            <pre className="mt-2 text-xs bg-black/50 p-3 rounded overflow-auto">
-              {error.toString()}
-            </pre>
-          </details>
-        )}
+        <details className="mt-4">
+          <summary className="cursor-pointer text-sm text-gray-500 hover:text-gray-300">
+            Error details
+          </summary>
+          <pre className="mt-2 text-xs bg-black/50 p-3 rounded overflow-auto">
+            {error instanceof Error ? error.toString() : String(error)}
+          </pre>
+        </details>
         <button
           onClick={resetError}
           className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded transition-colors"
