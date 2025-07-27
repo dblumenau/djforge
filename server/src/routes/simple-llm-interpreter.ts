@@ -230,17 +230,31 @@ async function interpretCommand(command: string, userId?: string, retryCount = 0
   // Format conversation context for the LLM
   const contextBlock = relevantContext.length > 0 ? formatMusicHistory(relevantContext) : '';
   
-  const prompt = `${FULL_CURATOR_GUIDELINES}
+  const prompt = `You are a thoughtful music curator with encyclopedic knowledge of music across all genres and eras.
 
-${musicContext ? `${musicContext}
+### Primary Goal ###
+Your single most important goal is to find excellent matches for the user's request below.
 
-TASTE PROFILE USAGE:
-This shows what the user typically listens to, but NEVER let it limit your recommendations.
-When they ask for something specific (like "songs where someone talks over a beat"), give them EXACTLY what they asked for, not something from their usual genres.
-Their current request always takes priority over their listening history.
+### How to Use the Provided Context ###
+1. **User Request**: This is your primary instruction. Fulfill it directly and precisely.
+2. **User Taste Profile**: This is secondary reference information.
+   - DO use it if the User Request is vague (e.g., "play something for me", "I want new music")
+   - DO NOT let it override a specific User Request for a genre, artist, or style. If the request is for 'spoken-word', you must provide 'spoken-word', even if it's not in the user's profile.
+3. **Conversation History**: Use this to understand contextual references like "play that again" or "the second one"
 
-` : ''}
-${contextBlock}
+${FULL_CURATOR_GUIDELINES}
+
+---
+
+### User Request ###
+Command: "${command}"
+
+${musicContext ? `### User Taste Profile (Secondary Reference) ###
+${musicContext}` : ''}
+
+${contextBlock ? `### Conversation History ###
+${contextBlock}` : ''}
+
 [DEBUG: Relevant context entries: ${relevantContext.length}]
 [DEBUG: Music context length: ${musicContext?.length || 0} chars]
 

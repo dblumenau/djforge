@@ -8,7 +8,11 @@ interface WeatherData {
   observationTime: string;
 }
 
-const WeatherDisplay: React.FC = () => {
+interface WeatherDisplayProps {
+  compact?: boolean;
+}
+
+const WeatherDisplay: React.FC<WeatherDisplayProps> = ({ compact = false }) => {
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -83,11 +87,11 @@ const WeatherDisplay: React.FC = () => {
   }
 
   return (
-    <div className="flex items-center gap-3 px-4 py-2 bg-zinc-800/50 rounded-full border border-zinc-700/50">
+    <div className={`flex items-center gap-3 ${compact ? 'px-3 py-1.5' : 'px-4 py-2'} bg-zinc-800/50 rounded-full border border-zinc-700/50`}>
       {/* Temperature */}
       <div className="flex items-center gap-1.5">
-        <span className="text-lg">{getTemperatureIcon(weather.temperature)}</span>
-        <span className="text-sm font-medium text-gray-300">
+        <span className={compact ? 'text-base' : 'text-lg'}>{getTemperatureIcon(weather.temperature)}</span>
+        <span className={`${compact ? 'text-xs' : 'text-sm'} font-medium text-gray-300`}>
           {weather.temperature.toFixed(1)}°C
         </span>
       </div>
@@ -97,18 +101,20 @@ const WeatherDisplay: React.FC = () => {
 
       {/* Humidity */}
       <div className="flex items-center gap-1.5">
-        <span className="text-lg">💧</span>
-        <span className="text-sm font-medium text-gray-300">
+        <span className={compact ? 'text-base' : 'text-lg'}>💧</span>
+        <span className={`${compact ? 'text-xs' : 'text-sm'} font-medium text-gray-300`}>
           {weather.humidity.toFixed(0)}%
         </span>
       </div>
 
-      {/* Location and time */}
-      <div className="hidden lg:flex items-center gap-1.5 text-xs text-gray-500">
-        <span>Copenhagen</span>
-        <span>•</span>
-        <span>{formatTime(weather.observationTime)}</span>
-      </div>
+      {/* Location and time - only in non-compact mode */}
+      {!compact && (
+        <div className="hidden lg:flex items-center gap-1.5 text-xs text-gray-500">
+          <span>Copenhagen</span>
+          <span>•</span>
+          <span>{formatTime(weather.observationTime)}</span>
+        </div>
+      )}
     </div>
   );
 };

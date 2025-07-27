@@ -3,9 +3,10 @@ import { ModelAPI, ModelPreferencesResponse, ModelInfo } from '../utils/modelApi
 
 interface ModelSelectorProps {
   onModelChange?: (modelId: string) => void;
+  compact?: boolean;
 }
 
-const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange }) => {
+const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange, compact = false }) => {
   const [models, setModels] = useState<ModelPreferencesResponse | null>(null);
   const [selectedModel, setSelectedModel] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
@@ -90,35 +91,39 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange }) => {
       <button
         onClick={() => setShowDropdown(!showDropdown)}
         className={`
-          flex items-center space-x-2 px-4 py-2 rounded-lg
+          flex items-center space-x-2 ${compact ? 'px-3 py-1.5' : 'px-4 py-2'} rounded-lg
           bg-gray-800 border border-gray-700 hover:border-green-500
           transition-all duration-200 text-sm
           ${showDropdown ? 'border-green-500' : ''}
         `}
       >
-        <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-4 h-4 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
         </svg>
-        <span className="text-gray-300 truncate max-w-[150px] md:max-w-none">
+        <span className={`text-gray-300 truncate ${compact ? 'max-w-[100px]' : 'max-w-[150px] md:max-w-none'}`}>
           {selectedModelInfo ? selectedModelInfo.name : 'Select Model'}
         </span>
-        {selectedModelInfo?.supportsJSON && (
-          <span className="hidden sm:inline text-xs text-green-400 bg-green-900/30 px-2 py-0.5 rounded">
-            JSON
-          </span>
-        )}
-        {selectedModelInfo?.providerInfo?.supportsGrounding && (
-          <span className="hidden sm:inline text-xs text-blue-400 bg-blue-900/30 px-2 py-0.5 rounded">
-            🔍 Grounding
-          </span>
-        )}
-        {selectedModelInfo?.providerInfo?.isDirect && (
-          <span className="hidden sm:inline text-xs text-yellow-400 bg-yellow-900/30 px-2 py-0.5 rounded">
-            Direct
-          </span>
+        {!compact && (
+          <>
+            {selectedModelInfo?.supportsJSON && (
+              <span className="hidden sm:inline text-xs text-green-400 bg-green-900/30 px-2 py-0.5 rounded">
+                JSON
+              </span>
+            )}
+            {selectedModelInfo?.providerInfo?.supportsGrounding && (
+              <span className="hidden sm:inline text-xs text-blue-400 bg-blue-900/30 px-2 py-0.5 rounded">
+                🔍 Grounding
+              </span>
+            )}
+            {selectedModelInfo?.providerInfo?.isDirect && (
+              <span className="hidden sm:inline text-xs text-yellow-400 bg-yellow-900/30 px-2 py-0.5 rounded">
+                Direct
+              </span>
+            )}
+          </>
         )}
         <svg 
-          className={`w-4 h-4 text-gray-400 transition-transform ${showDropdown ? 'rotate-180' : ''}`} 
+          className={`w-4 h-4 text-gray-400 transition-transform flex-shrink-0 ${showDropdown ? 'rotate-180' : ''}`} 
           fill="none" 
           stroke="currentColor" 
           viewBox="0 0 24 24"

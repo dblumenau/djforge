@@ -82,16 +82,16 @@ authRouter.get('/callback', async (req, res) => {
   const { code, error } = req.query;
   
   if (error) {
-    return res.redirect('http://localhost:5173/?error=' + error);
+    return res.redirect('http://127.0.0.1:5173/?error=' + error);
   }
   
   if (!code || typeof code !== 'string') {
-    return res.redirect('http://localhost:5173/?error=no_code');
+    return res.redirect('http://127.0.0.1:5173/?error=no_code');
   }
   
   const codeVerifier = req.session.codeVerifier;
   if (!codeVerifier) {
-    return res.redirect('http://localhost:5173/?error=no_verifier');
+    return res.redirect('http://127.0.0.1:5173/?error=no_verifier');
   }
   
   try {
@@ -113,14 +113,29 @@ authRouter.get('/callback', async (req, res) => {
     
     const tokens: SpotifyAuthTokens = response.data;
     req.session.spotifyTokens = tokens;
+    req.session.tokenTimestamp = Date.now();
+    
+    // Get user profile to get the Spotify user ID
+    const userResponse = await axios.get('https://api.spotify.com/v1/me', {
+      headers: {
+        'Authorization': `Bearer ${tokens.access_token}`
+      }
+    });
+    
+    const spotifyUserId = userResponse.data.id;
+    
+    // Generate JWT token
+    const { generateJWT } = require('../utils/jwt');
+    const jwtToken = generateJWT(tokens, spotifyUserId);
     
     // Clear the code verifier
     delete req.session.codeVerifier;
     
-    res.redirect('http://localhost:5173/callback?success=true');
+    // Redirect with JWT token
+    res.redirect(`http://127.0.0.1:5173/callback?success=true&token=${encodeURIComponent(jwtToken)}`);
   } catch (error) {
     console.error('Token exchange error:', error);
-    res.redirect('http://localhost:5173/?error=token_exchange_failed');
+    res.redirect('http://127.0.0.1:5173/?error=token_exchange_failed');
   }
 });
 

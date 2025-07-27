@@ -36,50 +36,55 @@ const HeaderNav: React.FC<HeaderNavProps> = ({
             <h1 className="text-xl font-bold hidden sm:block">DJ Forge</h1>
           </div>
 
-          {/* Center: Weather (desktop only) */}
-          <div className="hidden lg:block">
-            <WeatherDisplay />
+          {/* Center: Weather (always visible on desktop) */}
+          <div className="hidden md:block">
+            <WeatherDisplay compact />
           </div>
 
           {/* Right: Controls and Navigation */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 lg:gap-3">
             {/* Model and Device Selectors (desktop only) */}
-            <div className="hidden md:flex items-center gap-3">
-              <ModelSelector onModelChange={onModelChange} />
-              <DeviceSelector onDeviceChange={onDeviceChange} />
+            <div className="hidden md:flex items-center gap-2 lg:gap-3">
+              <ModelSelector onModelChange={onModelChange} compact />
+              <DeviceSelector onDeviceChange={onDeviceChange} compact />
             </div>
 
             {/* Navigation Buttons (desktop only) */}
-            <div className="hidden md:flex items-center gap-2">
+            <div className="hidden md:flex items-center gap-1 lg:gap-2">
               <button
                 onClick={() => navigate('/')}
-                className="px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-200 hover:text-white border border-zinc-600 hover:border-zinc-500 rounded-md transition-all text-xs font-medium"
+                className="px-2 lg:px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-200 hover:text-white border border-zinc-600 hover:border-zinc-500 rounded-md transition-all text-xs font-medium"
               >
-                💬 Chat
+                <span className="hidden lg:inline">💬 Chat</span>
+                <span className="lg:hidden">💬</span>
               </button>
               <button
                 onClick={() => navigate('/dashboard')}
-                className="px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-200 hover:text-white border border-zinc-600 hover:border-zinc-500 rounded-md transition-all text-xs font-medium"
+                className="px-2 lg:px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-200 hover:text-white border border-zinc-600 hover:border-zinc-500 rounded-md transition-all text-xs font-medium"
               >
-                📊 Dashboard
+                <span className="hidden lg:inline">📊 Dashboard</span>
+                <span className="lg:hidden">📊</span>
               </button>
               <button
                 onClick={() => navigate('/feedback-dashboard')}
-                className="px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-200 hover:text-white border border-zinc-600 hover:border-zinc-500 rounded-md transition-all text-xs font-medium"
+                className="px-2 lg:px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-200 hover:text-white border border-zinc-600 hover:border-zinc-500 rounded-md transition-all text-xs font-medium"
               >
-                🎯 Feedback
+                <span className="hidden lg:inline">🎯 Feedback</span>
+                <span className="lg:hidden">🎯</span>
               </button>
               <button 
-                className="px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-300 hover:text-zinc-100 border border-zinc-600 hover:border-zinc-500 rounded-md transition-all text-xs"
+                className="px-2 lg:px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-300 hover:text-zinc-100 border border-zinc-600 hover:border-zinc-500 rounded-md transition-all text-xs"
                 onClick={() => navigate('/logs')}
               >
-                📋 Logs
+                <span className="hidden lg:inline">📋 Logs</span>
+                <span className="lg:hidden">📋</span>
               </button>
               <button 
-                className="px-3 py-1.5 bg-red-900/20 hover:bg-red-900/30 text-red-300 hover:text-red-200 border border-red-800/50 hover:border-red-700/50 rounded-md transition-all text-xs font-medium"
+                className="px-2 lg:px-3 py-1.5 bg-red-900/20 hover:bg-red-900/30 text-red-300 hover:text-red-200 border border-red-800/50 hover:border-red-700/50 rounded-md transition-all text-xs font-medium"
                 onClick={onLogout}
               >
-                🚪 Logout
+                <span className="hidden lg:inline">🚪 Logout</span>
+                <span className="lg:hidden">🚪</span>
               </button>
 
               {/* Dev Tools - Hidden in production */}

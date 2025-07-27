@@ -11,9 +11,10 @@ interface SpotifyDevice {
 
 interface DeviceSelectorProps {
   onDeviceChange?: (deviceId: string | 'auto') => void;
+  compact?: boolean;
 }
 
-const DeviceSelector: React.FC<DeviceSelectorProps> = ({ onDeviceChange }) => {
+const DeviceSelector: React.FC<DeviceSelectorProps> = ({ onDeviceChange, compact = false }) => {
   const [devices, setDevices] = useState<SpotifyDevice[]>([]);
   const [selectedDevice, setSelectedDevice] = useState<string>('auto');
   const [isOpen, setIsOpen] = useState(false);
@@ -100,9 +101,12 @@ const DeviceSelector: React.FC<DeviceSelectorProps> = ({ onDeviceChange }) => {
   // Get display name for selected device
   const getSelectedDisplayName = () => {
     if (selectedDevice === 'auto') {
-      return 'Auto - Use last active';
+      return compact ? 'Auto' : 'Auto - Use last active';
     }
     const device = devices.find(d => d.id === selectedDevice);
+    if (compact && device) {
+      return getDeviceIcon(device.type);
+    }
     return device ? `${getDeviceIcon(device.type)} ${device.name}` : 'Select device...';
   };
 
@@ -110,13 +114,13 @@ const DeviceSelector: React.FC<DeviceSelectorProps> = ({ onDeviceChange }) => {
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg hover:bg-gray-700 transition-colors text-sm"
+        className={`flex items-center gap-2 ${compact ? 'px-3 py-1.5' : 'px-3 py-2'} bg-gray-800 border border-gray-700 rounded-lg hover:bg-gray-700 transition-colors text-sm`}
         title="Select Spotify playback device"
       >
-        <span className="text-gray-400">Device:</span>
-        <span className="text-white">{getSelectedDisplayName()}</span>
+        <span className={`text-gray-400 ${compact ? 'hidden' : ''}`}>Device:</span>
+        <span className="text-white truncate max-w-[120px]">{getSelectedDisplayName()}</span>
         <svg
-          className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          className={`w-4 h-4 transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
