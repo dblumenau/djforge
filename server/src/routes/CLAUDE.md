@@ -42,6 +42,9 @@ This directory contains Express route handlers that define the API endpoints for
   - `GET /playlists` - User playlists
   - `GET /taste-profile` - Generated music taste profile
   - `POST /refresh` - Force refresh all cached data
+  - `PUT /saved-tracks` - Add tracks to library (requires trackIds array in body)
+  - `DELETE /saved-tracks` - Remove tracks from library (requires trackIds array in body)
+  - `GET /saved-tracks/contains` - Check if tracks are saved (requires ids query param)
 - **Authentication**: JWT required for all endpoints
 
 ### llm-logs.ts

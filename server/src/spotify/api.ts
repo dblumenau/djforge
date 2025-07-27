@@ -29,6 +29,8 @@ export class SpotifyWebAPI {
   private tokens: SpotifyAuthTokens;
   private onTokenRefresh: (tokens: SpotifyAuthTokens) => void;
   private deviceId?: string;
+  private devicePreference: 'auto' | string = 'auto';
+  private lastActiveDeviceId?: string;
 
   constructor(
     tokens: SpotifyAuthTokens,
@@ -119,7 +121,8 @@ export class SpotifyWebAPI {
 
   async getDevices() {
     const response = await this.api.get('/me/player/devices');
-    return response.data.devices || [];
+    const devices = response.data.devices || [];
+    return devices;
   }
 
   async addToQueue(uri: string) {
@@ -151,19 +154,95 @@ export class SpotifyWebAPI {
 
   // Playback control methods to replace AppleScript
   async ensureDeviceId(): Promise<string> {
-    if (this.deviceId) return this.deviceId;
+    console.log('[DEVICE] Ensuring device ID for playback...');
+    console.log(`[DEVICE] Device preference: ${this.devicePreference}`);
+    
+    if (this.deviceId && this.devicePreference !== 'auto') {
+      console.log(`[DEVICE] Using cached device ID: ${this.deviceId}`);
+      return this.deviceId;
+    }
     
     const devices = await this.getDevices();
     if (devices.length === 0) {
-      throw new Error('No active Spotify devices found. Please open Spotify on a device.');
+      console.log('[DEVICE] ERROR: No devices found!');
+      throw new Error('No active Spotify devices found. Please open Spotify on a device or use the web player.');
     }
     
-    // Prefer active device, otherwise use first available
+    // Find active device
     const activeDevice = devices.find((d: SpotifyDevice) => d.is_active);
-    const selectedDeviceId = activeDevice ? activeDevice.id : devices[0].id;
-    this.deviceId = selectedDeviceId;
     
-    return selectedDeviceId;
+    // Update last active device if we found one
+    if (activeDevice) {
+      this.lastActiveDeviceId = activeDevice.id;
+      console.log(`[DEVICE] Tracking active device: "${activeDevice.name}"`);
+    }
+    
+    // Find web player device
+    const webPlayerDevice = devices.find((d: SpotifyDevice) => 
+      d.name === 'DJForge Web Player' || d.name.toLowerCase().includes('web player')
+    );
+    
+    let selectedDevice: SpotifyDevice | undefined;
+    let selectionReason: string = '';
+    
+    // Handle device preference
+    if (this.devicePreference !== 'auto') {
+      // Manual device selection
+      selectedDevice = devices.find((d: SpotifyDevice) => d.id === this.devicePreference);
+      if (selectedDevice) {
+        selectionReason = 'Manual device preference';
+      } else {
+        console.log(`[DEVICE] Preferred device ${this.devicePreference} not found, falling back to auto`);
+        this.devicePreference = 'auto';
+      }
+    }
+    
+    // Auto mode or fallback
+    if (!selectedDevice) {
+      if (activeDevice) {
+        selectedDevice = activeDevice;
+        selectionReason = 'Active device found (auto mode)';
+      } else if (this.lastActiveDeviceId) {
+        // Try to use last active device
+        const lastDevice = devices.find((d: SpotifyDevice) => d.id === this.lastActiveDeviceId);
+        if (lastDevice) {
+          selectedDevice = lastDevice;
+          selectionReason = 'Using last active device (auto mode)';
+        }
+      }
+      
+      // Still no device? Try web player
+      if (!selectedDevice && webPlayerDevice) {
+        selectedDevice = webPlayerDevice;
+        selectionReason = 'Web player available (auto mode)';
+      }
+      
+      // Final fallback
+      if (!selectedDevice) {
+        selectedDevice = devices[0];
+        selectionReason = 'Using first available device (auto mode)';
+      }
+    }
+    
+    if (!selectedDevice) {
+      throw new Error('No suitable device found');
+    }
+    
+    console.log(`[DEVICE] Selected: "${selectedDevice.name}" (${selectedDevice.type})`);
+    console.log(`[DEVICE] Reason: ${selectionReason}`);
+    console.log(`[DEVICE] Device ID: ${selectedDevice.id}`);
+    
+    this.deviceId = selectedDevice.id;
+    return selectedDevice.id;
+  }
+  
+  setDevicePreference(preference: 'auto' | string): void {
+    console.log(`[DEVICE] Setting device preference to: ${preference}`);
+    this.devicePreference = preference;
+    // Clear cached device ID if switching to auto mode
+    if (preference === 'auto') {
+      this.deviceId = undefined;
+    }
   }
 
   async play(deviceId?: string): Promise<void> {
@@ -306,11 +385,18 @@ export class SpotifyWebAPI {
   }
 
   async transferPlayback(deviceId: string, play: boolean = true): Promise<void> {
+    console.log(`[DEVICE] Transferring playback to device: ${deviceId} (play: ${play})`);
     await this.api.put('/me/player', {
       device_ids: [deviceId],
       play
     });
     this.deviceId = deviceId;
+    console.log('[DEVICE] Playback transferred successfully');
+  }
+  
+  async getCurrentDevice(): Promise<SpotifyDevice | null> {
+    const playback = await this.getCurrentPlayback();
+    return playback?.device || null;
   }
 
   async seekToPosition(positionMs: number): Promise<void> {
@@ -443,5 +529,74 @@ export class SpotifyWebAPI {
     }
     
     return playlist;
+  }
+
+  // Library management methods
+  async saveTracksToLibrary(trackIds: string[]): Promise<void> {
+    if (trackIds.length === 0) return;
+    
+    try {
+      // Spotify API allows max 50 tracks per request
+      const chunks = [];
+      for (let i = 0; i < trackIds.length; i += 50) {
+        chunks.push(trackIds.slice(i, i + 50));
+      }
+      
+      for (const chunk of chunks) {
+        await this.api.put('/me/tracks', {
+          ids: chunk
+        });
+      }
+    } catch (error: any) {
+      console.error('Failed to save tracks to library:', error.response?.data || error.message);
+      throw new Error('Failed to save tracks to library');
+    }
+  }
+
+  async removeTracksFromLibrary(trackIds: string[]): Promise<void> {
+    if (trackIds.length === 0) return;
+    
+    try {
+      // Spotify API allows max 50 tracks per request
+      const chunks = [];
+      for (let i = 0; i < trackIds.length; i += 50) {
+        chunks.push(trackIds.slice(i, i + 50));
+      }
+      
+      for (const chunk of chunks) {
+        await this.api.delete('/me/tracks', {
+          data: {
+            ids: chunk
+          }
+        });
+      }
+    } catch (error: any) {
+      console.error('Failed to remove tracks from library:', error.response?.data || error.message);
+      throw new Error('Failed to remove tracks from library');
+    }
+  }
+
+  async checkIfTracksSaved(trackIds: string[]): Promise<boolean[]> {
+    if (trackIds.length === 0) return [];
+    
+    try {
+      // Spotify API allows max 50 tracks per request
+      const results: boolean[] = [];
+      
+      for (let i = 0; i < trackIds.length; i += 50) {
+        const chunk = trackIds.slice(i, i + 50);
+        const response = await this.api.get('/me/tracks/contains', {
+          params: {
+            ids: chunk.join(',')
+          }
+        });
+        results.push(...response.data);
+      }
+      
+      return results;
+    } catch (error: any) {
+      console.error('Failed to check if tracks are saved:', error.response?.data || error.message);
+      throw new Error('Failed to check saved status');
+    }
   }
 }

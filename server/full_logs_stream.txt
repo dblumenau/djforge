@@ -1,0 +1,100 @@
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  track: 'If I Had a Heart',
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  album: '',
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  confidence: 0.9,
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  reasoning: "Given the user's affinity for artists like Lady Gaga and Nine Inch Nails, and genres like industrial rock and art pop, 'If I Had a Heart' by Fever Ray offers a dark, atmospheric, and electronic sound that aligns with their taste for intense and unique production, without being an obvious pick. It also has a cinematic quality that resonates with their 'soundtrack' interest.",
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  modifiers: {},
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  alternatives: [
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    'Purity Ring - Fineshrine',
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    'Slikback - Sick',
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    'Chelsea Wolfe - The Warden',
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    'HEALTH - BODY/PRISON',
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    'Bat For Lashes - Daniel',
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    'iamamiwhoami - Play'
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  ],
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  volume: undefined,
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  volume_level: undefined,
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  isAIDiscovery: false,
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  aiReasoning: '',
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  model: 'google/gemini-2.5-flash',
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  provider: 'openrouter',
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  flow: 'openrouter',
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  fallbackUsed: false,
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  actualModel: 'google/gemini-2.5-flash'
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]}
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Interpretation: {
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  command: 'Play something',
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  intent: 'play_specific_song',
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  confidence: 0.9,
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  model: 'google/gemini-2.5-flash'
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]}
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Spotify search: "artist:"Fever Ray" track:"If I Had a Heart""
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Attempt 1 - Full search: artist:"Fever Ray" track:"If I Had a Heart"
+[2m2025-07-27T09:55:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Converting 6 alternatives to URI format
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Successfully converted 4 alternatives with URIs
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Final response alternatives: [
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  {
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    name: 'fineshrine',
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    artists: 'Purity Ring',
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    popularity: 57,
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    uri: 'spotify:track:5aJmSzmuhLI6fr1Rm0EnkS'
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  },
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  {
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    name: 'The Warden',
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    artists: 'Chelsea Wolfe',
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    popularity: 40,
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    uri: 'spotify:track:36lzO2VTPIBA6cHmv7JrPN'
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  },
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  {
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    name: 'BODY/PRISON',
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    artists: 'HEALTH, Perturbator',
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    popularity: 49,
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    uri: 'spotify:track:4pYuPkr13zQbrrDChQrfQs'
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  },
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  {
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    name: 'Daniel',
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    artists: 'Bat For Lashes',
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    popularity: 54,
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    uri: 'spotify:track:3jgGvWC8icBVtEj0ZzCvBf'
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  }
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]]
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Final response interpretation alternatives: [
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  {
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    name: 'fineshrine',
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    artists: 'Purity Ring',
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    popularity: 57,
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    uri: 'spotify:track:5aJmSzmuhLI6fr1Rm0EnkS'
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  },
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  {
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    name: 'The Warden',
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    artists: 'Chelsea Wolfe',
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    popularity: 40,
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    uri: 'spotify:track:36lzO2VTPIBA6cHmv7JrPN'
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  },
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  {
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    name: 'BODY/PRISON',
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    artists: 'HEALTH, Perturbator',
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    popularity: 49,
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    uri: 'spotify:track:4pYuPkr13zQbrrDChQrfQs'
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  },
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  {
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    name: 'Daniel',
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    artists: 'Bat For Lashes',
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    popularity: 54,
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    uri: 'spotify:track:3jgGvWC8icBVtEj0ZzCvBf'
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  }
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]]
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Dialog state updated: mode=music, last_action=play
+[2m2025-07-27T10:21:45Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Auth status check - JWT token valid
+[2m2025-07-27T10:21:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Auth status check - JWT token valid
+[2m2025-07-27T10:21:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]🔄 Attempting to refresh access token...
+[2m2025-07-27T10:21:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Refresh token: AQB_7w0ipc_IFN5TghYf...
+[2m2025-07-27T10:21:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]❌ Token refresh failed: { error: 'invalid_grant', error_description: 'Refresh token revoked' }
+[2m2025-07-27T10:21:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Token refresh error: { error: 'invalid_grant', error_description: 'Refresh token revoked' }
+[2m2025-07-27T10:21:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]🔄 Attempting to refresh access token...
+[2m2025-07-27T10:21:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Refresh token: AQB_7w0ipc_IFN5TghYf...
+[2m2025-07-27T10:21:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]❌ Token refresh failed: { error: 'invalid_grant', error_description: 'Refresh token revoked' }
+[2m2025-07-27T10:21:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Token refresh failed: { error: 'invalid_grant', error_description: 'Refresh token revoked' }
+[2m2025-07-27T10:21:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]🔄 Attempting to refresh access token...
+[2m2025-07-27T10:21:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Refresh token: AQB_7w0ipc_IFN5TghYf...
+[2m2025-07-27T10:21:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]❌ Token refresh failed: { error: 'invalid_grant', error_description: 'Refresh token revoked' }
+[2m2025-07-27T10:21:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Token refresh failed: { error: 'invalid_grant', error_description: 'Refresh token revoked' }

@@ -25,11 +25,23 @@ This directory contains reusable React components for the Spotify Claude Control
 - Displays pulsing music note animation
 - Used during command processing and API calls
 
-### SpotifyPlayer.tsx
-- Web Playback SDK integration
-- Shows currently playing track information
-- Provides playback controls (play/pause, skip, previous)
-- Displays album artwork and track progress
+### PlaybackControls.tsx
+- Comprehensive playback control component
+- Smart polling with dynamic intervals to avoid rate limiting
+- Local progress tracking using requestAnimationFrame
+- Features:
+  - Play/pause, skip, previous controls
+  - Shuffle and repeat toggles
+  - Volume control with slider
+  - Progress bar with seek functionality
+  - Clear queue button
+  - Rate limit monitoring (dev mode only)
+- Polling strategy:
+  - 60s intervals when nothing playing
+  - 30s intervals during normal playback
+  - 10s intervals in last 30s of track
+  - 2s before track end for seamless transitions
+  - Immediate fetch after user actions
 
 ### WeatherDisplay.tsx
 - Fetches and displays weather information

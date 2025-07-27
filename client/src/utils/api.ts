@@ -37,8 +37,44 @@ const getAuthHeaders = (): Record<string, string> => {
   };
 };
 
-// API object with feedback methods
+// API object with feedback methods and generic HTTP methods
 export const api = {
+  // Generic HTTP methods
+  get: async (endpoint: string) => {
+    const response = await fetch(apiEndpoint(endpoint), {
+      method: 'GET',
+      headers: getAuthHeaders()
+    });
+    return response;
+  },
+
+  post: async (endpoint: string, data: any) => {
+    const response = await fetch(apiEndpoint(endpoint), {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data)
+    });
+    return response;
+  },
+
+  put: async (endpoint: string, data: any) => {
+    const response = await fetch(apiEndpoint(endpoint), {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data)
+    });
+    return response;
+  },
+
+  delete: async (endpoint: string, data: any) => {
+    const response = await fetch(apiEndpoint(endpoint), {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data)
+    });
+    return response;
+  },
+
   // Record feedback for a track
   recordFeedback: async (trackUri: string, feedback: 'loved' | 'disliked' | 'remove') => {
     const response = await fetch(apiEndpoint('/api/feedback/ai-discovery'), {

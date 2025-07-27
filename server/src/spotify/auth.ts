@@ -44,6 +44,7 @@ const SCOPES = [
   'playlist-modify-public',
   'playlist-modify-private',
   'user-library-read',
+  'user-library-modify',
   'user-read-recently-played',
   'user-top-read'
 ].join(' ');

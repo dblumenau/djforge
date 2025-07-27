@@ -314,4 +314,169 @@ router.get('/taste-profile', async (req: Request, res: Response) => {
   }
 });
 
+// Save tracks to library
+router.put('/saved-tracks', async (req: Request, res: Response) => {
+  try {
+    const { trackIds } = req.body;
+    
+    if (!trackIds || !Array.isArray(trackIds) || trackIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'trackIds array is required'
+      });
+    }
+    
+    // Get tokens and create API instance directly
+    const authHeader = req.headers.authorization;
+    const jwtToken = extractTokenFromHeader(authHeader);
+    
+    if (!jwtToken) {
+      throw new Error('No JWT token provided');
+    }
+    
+    const payload = verifyJWT(jwtToken);
+    if (!payload) {
+      throw new Error('Invalid JWT token');
+    }
+    
+    const tokens = payload.spotifyTokens || req.session.spotifyTokens;
+    if (!tokens) {
+      throw new Error('No Spotify tokens found');
+    }
+    
+    const api = new SpotifyWebAPI(tokens, (newTokens) => {
+      // Update tokens in session if refreshed
+      if (req.session) {
+        req.session.spotifyTokens = newTokens;
+      }
+    });
+    
+    await api.saveTracksToLibrary(trackIds);
+    
+    res.json({
+      success: true,
+      message: `Added ${trackIds.length} track${trackIds.length > 1 ? 's' : ''} to your library`
+    });
+  } catch (error: any) {
+    console.error('Error saving tracks to library:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to save tracks to library'
+    });
+  }
+});
+
+// Remove tracks from library
+router.delete('/saved-tracks', async (req: Request, res: Response) => {
+  try {
+    const { trackIds } = req.body;
+    
+    if (!trackIds || !Array.isArray(trackIds) || trackIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'trackIds array is required'
+      });
+    }
+    
+    // Get tokens and create API instance directly
+    const authHeader = req.headers.authorization;
+    const jwtToken = extractTokenFromHeader(authHeader);
+    
+    if (!jwtToken) {
+      throw new Error('No JWT token provided');
+    }
+    
+    const payload = verifyJWT(jwtToken);
+    if (!payload) {
+      throw new Error('Invalid JWT token');
+    }
+    
+    const tokens = payload.spotifyTokens || req.session.spotifyTokens;
+    if (!tokens) {
+      throw new Error('No Spotify tokens found');
+    }
+    
+    const api = new SpotifyWebAPI(tokens, (newTokens) => {
+      // Update tokens in session if refreshed
+      if (req.session) {
+        req.session.spotifyTokens = newTokens;
+      }
+    });
+    
+    await api.removeTracksFromLibrary(trackIds);
+    
+    res.json({
+      success: true,
+      message: `Removed ${trackIds.length} track${trackIds.length > 1 ? 's' : ''} from your library`
+    });
+  } catch (error: any) {
+    console.error('Error removing tracks from library:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to remove tracks from library'
+    });
+  }
+});
+
+// Check if tracks are saved
+router.get('/saved-tracks/contains', async (req: Request, res: Response) => {
+  try {
+    const { ids } = req.query;
+    
+    if (!ids || typeof ids !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'ids query parameter is required'
+      });
+    }
+    
+    const trackIds = ids.split(',').filter(id => id.trim());
+    
+    if (trackIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'No valid track IDs provided'
+      });
+    }
+    
+    // Get tokens and create API instance directly
+    const authHeader = req.headers.authorization;
+    const jwtToken = extractTokenFromHeader(authHeader);
+    
+    if (!jwtToken) {
+      throw new Error('No JWT token provided');
+    }
+    
+    const payload = verifyJWT(jwtToken);
+    if (!payload) {
+      throw new Error('Invalid JWT token');
+    }
+    
+    const tokens = payload.spotifyTokens || req.session.spotifyTokens;
+    if (!tokens) {
+      throw new Error('No Spotify tokens found');
+    }
+    
+    const api = new SpotifyWebAPI(tokens, (newTokens) => {
+      // Update tokens in session if refreshed
+      if (req.session) {
+        req.session.spotifyTokens = newTokens;
+      }
+    });
+    
+    const savedStatus = await api.checkIfTracksSaved(trackIds);
+    
+    res.json({
+      success: true,
+      savedStatus // Array of booleans matching the order of trackIds
+    });
+  } catch (error: any) {
+    console.error('Error checking saved tracks:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to check saved tracks'
+    });
+  }
+});
+
 export default router;

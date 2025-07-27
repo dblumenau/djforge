@@ -30,6 +30,8 @@ cd server && npm run dev
 cd client && npm run dev
 ```
 
+**IMPORTANT FOR CLAUDE**: NEVER run `npm run dev` yourself - the user ALWAYS has it running already! The dev server runs continuously and doesn't exit. If you need to test changes, simply inform the user that the server needs to be restarted, or check if hot-reload has already applied your changes.
+
 ### Build & Production
 ```bash
 # Build everything (from root)
@@ -111,6 +113,7 @@ cd client && npx tsc --noEmit
    - `user-read-private`, `user-read-email` - User profile
    - `user-top-read` - Top artists and tracks
    - `user-library-read` - Saved tracks and albums
+   - `user-library-modify` - Add/remove tracks from library
    - `user-read-recently-played` - Recently played
    - `playlist-read-private` - User playlists
    - `user-modify-playback-state` - Playback control

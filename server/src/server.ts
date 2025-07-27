@@ -20,6 +20,7 @@ import { RedisUtils } from './utils/redis-utils';
 import weatherRouter from './routes/weather';
 import userDataRouter from './routes/user-data';
 import { overrideConsole, logger } from './utils/logger';
+import { playbackEventService } from './services/event-emitter.service';
 
 // Override console methods to use Winston logger
 overrideConsole();
@@ -186,6 +187,145 @@ async function initializeAndStart() {
     app.use('/api/direct', directActionRouter);
     // AI feedback endpoints
     app.use('/api/feedback', feedbackRouter);
+
+    // SSE endpoint for real-time updates
+    app.get('/api/events', async (req, res) => {
+      // Handle auth via query parameter since EventSource doesn't support headers
+      const token = req.query.token as string;
+      if (!token) {
+        console.error('[SSE] Connection attempt without token');
+        // Send SSE-formatted error to prevent reconnection storm
+        res.writeHead(401, {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'close'
+        });
+        res.write(`event: error\ndata: ${JSON.stringify({ error: 'Token required', code: 'NO_TOKEN' })}\n\n`);
+        res.end();
+        return;
+      }
+      
+      // Verify JWT token manually
+      try {
+        const { verifyJWT } = require('./utils/jwt');
+        const decoded = verifyJWT(token);
+        
+        if (!decoded) {
+          console.error('[SSE] Token verification failed');
+          res.writeHead(401, {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'close'
+          });
+          res.write(`event: error\ndata: ${JSON.stringify({ error: 'Invalid token', code: 'INVALID_TOKEN' })}\n\n`);
+          res.end();
+          return;
+        }
+        
+        // Extract spotifyId from the JWT payload (use sub or spotify_user_id)
+        const spotifyId = decoded.sub || decoded.spotify_user_id;
+        if (!spotifyId) {
+          console.error('[SSE] Token missing user ID');
+          res.writeHead(401, {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'close'
+          });
+          res.write(`event: error\ndata: ${JSON.stringify({ error: 'Invalid token - missing user data', code: 'NO_USER_ID' })}\n\n`);
+          res.end();
+          return;
+        }
+        
+        // Set user object with spotifyId for consistency
+        (req as any).user = { spotifyId };
+      } catch (error) {
+        console.error('[SSE] Token verification failed:', error);
+        res.writeHead(401, {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'close'
+        });
+        res.write(`event: error\ndata: ${JSON.stringify({ error: 'Token verification failed', code: 'TOKEN_ERROR' })}\n\n`);
+        res.end();
+        return;
+      }
+      
+      console.log('[SSE] New connection from user:', (req as any).user?.spotifyId);
+      
+      // Set SSE headers
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache, no-transform',
+        'Connection': 'keep-alive',
+        'X-Accel-Buffering': 'no', // Disable proxy buffering
+        'Access-Control-Allow-Origin': req.headers.origin || '*',
+        'Access-Control-Allow-Credentials': 'true'
+      });
+
+      // Flush headers to ensure they're sent
+      res.flushHeaders();
+
+      // Send initial connection message after a small delay to ensure headers are processed
+      setTimeout(() => {
+        res.write(`data: ${JSON.stringify({ type: 'connected', timestamp: Date.now() })}\n\n`);
+      }, 10);
+
+      // Add error handling for write operations
+      res.on('error', (error) => {
+        console.error('[SSE] Response error for user:', (req as any).user?.spotifyId, error);
+      });
+
+      // Track connection state
+      let isConnectionActive = true;
+
+      // Listen for playback events
+      const handlePlaybackEvent = (event: any) => {
+        // Only send events for this user
+        if (event.userId === (req as any).user?.spotifyId && isConnectionActive) {
+          try {
+            res.write(`data: ${JSON.stringify(event)}\n\n`);
+          } catch (error) {
+            console.error('[SSE] Failed to write event:', error);
+            isConnectionActive = false;
+          }
+        }
+      };
+
+      playbackEventService.on('playback-event', handlePlaybackEvent);
+
+      // Send heartbeat every 30 seconds to keep connection alive
+      const heartbeat = setInterval(() => {
+        if (isConnectionActive) {
+          try {
+            res.write(': heartbeat\n\n');
+          } catch (error) {
+            console.error('[SSE] Failed to send heartbeat:', error);
+            isConnectionActive = false;
+            clearInterval(heartbeat);
+          }
+        }
+      }, 30000);
+
+      // Clean up on client disconnect
+      req.on('close', () => {
+        console.log('[SSE] Connection closed for user:', (req as any).user?.spotifyId);
+        isConnectionActive = false;
+        playbackEventService.removeListener('playback-event', handlePlaybackEvent);
+        clearInterval(heartbeat);
+      });
+      
+      // Log if connection closes unexpectedly
+      req.on('error', (error) => {
+        console.error('[SSE] Request error for user:', (req as any).user?.spotifyId, error);
+        isConnectionActive = false;
+      });
+      
+      // Ensure connection stays alive
+      req.socket.setKeepAlive(true);
+      req.socket.setNoDelay(true);
+      
+      console.log('[SSE] Connection fully established for user:', (req as any).user?.spotifyId);
+    });
 
     // Determine client URL based on environment
     const clientUrl = process.env.CLIENT_URL || 'http://127.0.0.1:5173';

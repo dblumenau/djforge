@@ -1,0 +1,1166 @@
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  track: 'If I Had a Heart',
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  album: '',
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  confidence: 0.9,
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  reasoning: "Given the user's affinity for artists like Lady Gaga and Nine Inch Nails, and genres like industrial rock and art pop, 'If I Had a Heart' by Fever Ray offers a dark, atmospheric, and electronic sound that aligns with their taste for intense and unique production, without being an obvious pick. It also has a cinematic quality that resonates with their 'soundtrack' interest.",
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  modifiers: {},
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  alternatives: [
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    'Purity Ring - Fineshrine',
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    'Slikback - Sick',
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    'Chelsea Wolfe - The Warden',
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    'HEALTH - BODY/PRISON',
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    'Bat For Lashes - Daniel',
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    'iamamiwhoami - Play'
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  ],
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  volume: undefined,
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  volume_level: undefined,
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  isAIDiscovery: false,
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  aiReasoning: '',
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  model: 'google/gemini-2.5-flash',
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  provider: 'openrouter',
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  flow: 'openrouter',
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  fallbackUsed: false,
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  actualModel: 'google/gemini-2.5-flash'
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]}
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Interpretation: {
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  command: 'Play something',
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  intent: 'play_specific_song',
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  confidence: 0.9,
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  model: 'google/gemini-2.5-flash'
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]}
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Spotify search: "artist:"Fever Ray" track:"If I Had a Heart""
+[2m2025-07-27T09:55:57Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Attempt 1 - Full search: artist:"Fever Ray" track:"If I Had a Heart"
+[2m2025-07-27T09:55:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Converting 6 alternatives to URI format
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Successfully converted 4 alternatives with URIs
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Final response alternatives: [
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  {
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    name: 'fineshrine',
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    artists: 'Purity Ring',
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    popularity: 57,
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    uri: 'spotify:track:5aJmSzmuhLI6fr1Rm0EnkS'
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  },
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  {
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    name: 'The Warden',
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    artists: 'Chelsea Wolfe',
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    popularity: 40,
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    uri: 'spotify:track:36lzO2VTPIBA6cHmv7JrPN'
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  },
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  {
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    name: 'BODY/PRISON',
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    artists: 'HEALTH, Perturbator',
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    popularity: 49,
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    uri: 'spotify:track:4pYuPkr13zQbrrDChQrfQs'
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  },
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  {
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    name: 'Daniel',
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    artists: 'Bat For Lashes',
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    popularity: 54,
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    uri: 'spotify:track:3jgGvWC8icBVtEj0ZzCvBf'
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  }
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]]
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Final response interpretation alternatives: [
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  {
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    name: 'fineshrine',
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    artists: 'Purity Ring',
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    popularity: 57,
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    uri: 'spotify:track:5aJmSzmuhLI6fr1Rm0EnkS'
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  },
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  {
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    name: 'The Warden',
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    artists: 'Chelsea Wolfe',
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    popularity: 40,
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    uri: 'spotify:track:36lzO2VTPIBA6cHmv7JrPN'
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  },
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  {
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    name: 'BODY/PRISON',
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    artists: 'HEALTH, Perturbator',
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    popularity: 49,
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    uri: 'spotify:track:4pYuPkr13zQbrrDChQrfQs'
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  },
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  {
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    name: 'Daniel',
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    artists: 'Bat For Lashes',
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    popularity: 54,
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    uri: 'spotify:track:3jgGvWC8icBVtEj0ZzCvBf'
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  }
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]]
+[2m2025-07-27T09:55:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Dialog state updated: mode=music, last_action=play
+[2m2025-07-27T10:21:45Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Auth status check - JWT token valid
+[2m2025-07-27T10:21:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Auth status check - JWT token valid
+[2m2025-07-27T10:21:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]🔄 Attempting to refresh access token...
+[2m2025-07-27T10:21:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Refresh token: AQB_7w0ipc_IFN5TghYf...
+[2m2025-07-27T10:21:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]❌ Token refresh failed: { error: 'invalid_grant', error_description: 'Refresh token revoked' }
+[2m2025-07-27T10:21:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Token refresh error: { error: 'invalid_grant', error_description: 'Refresh token revoked' }
+[2m2025-07-27T10:21:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]🔄 Attempting to refresh access token...
+[2m2025-07-27T10:21:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Refresh token: AQB_7w0ipc_IFN5TghYf...
+[2m2025-07-27T10:21:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]❌ Token refresh failed: { error: 'invalid_grant', error_description: 'Refresh token revoked' }
+[2m2025-07-27T10:21:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Token refresh failed: { error: 'invalid_grant', error_description: 'Refresh token revoked' }
+[2m2025-07-27T10:21:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]🔄 Attempting to refresh access token...
+[2m2025-07-27T10:21:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Refresh token: AQB_7w0ipc_IFN5TghYf...
+[2m2025-07-27T10:21:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]❌ Token refresh failed: { error: 'invalid_grant', error_description: 'Refresh token revoked' }
+[2m2025-07-27T10:21:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Token refresh failed: { error: 'invalid_grant', error_description: 'Refresh token revoked' }
+[2m2025-07-27T10:29:43Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]2025/07/27 10:29:43 INFO New SSH session email=dblumenau@gmail.com verified=true
+[2m2025-07-27T10:33:44Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Auth status check - JWT token valid
+[2m2025-07-27T10:33:45Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Auth status check - JWT token valid
+[2m2025-07-27T10:33:45Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]🔄 Attempting to refresh access token...
+[2m2025-07-27T10:33:45Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Refresh token: AQB_7w0ipc_IFN5TghYf...
+[2m2025-07-27T10:33:45Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]❌ Token refresh failed: { error: 'invalid_grant', error_description: 'Refresh token revoked' }
+[2m2025-07-27T10:33:45Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Token refresh error: { error: 'invalid_grant', error_description: 'Refresh token revoked' }
+[2m2025-07-27T10:33:45Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]🔄 Attempting to refresh access token...
+[2m2025-07-27T10:33:45Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Refresh token: AQB_7w0ipc_IFN5TghYf...
+[2m2025-07-27T10:33:45Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]🔄 Attempting to refresh access token...
+[2m2025-07-27T10:33:45Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Refresh token: AQB_7w0ipc_IFN5TghYf...
+[2m2025-07-27T10:33:45Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]❌ Token refresh failed: { error: 'invalid_grant', error_description: 'Refresh token revoked' }
+[2m2025-07-27T10:33:45Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Token refresh failed: { error: 'invalid_grant', error_description: 'Refresh token revoked' }
+[2m2025-07-27T10:33:45Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]❌ Token refresh failed: { error: 'invalid_grant', error_description: 'Refresh token revoked' }
+[2m2025-07-27T10:33:45Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Token refresh failed: { error: 'invalid_grant', error_description: 'Refresh token revoked' }
+[2m2025-07-27T10:33:47Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Auth status check - JWT token valid
+[2m2025-07-27T10:33:47Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]🔄 Attempting to refresh access token...
+[2m2025-07-27T10:33:47Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Refresh token: AQB_7w0ipc_IFN5TghYf...
+[2m2025-07-27T10:33:47Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Auth status check - JWT token valid
+[2m2025-07-27T10:33:47Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]❌ Token refresh failed: { error: 'invalid_grant', error_description: 'Refresh token revoked' }
+[2m2025-07-27T10:33:47Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Token refresh error: { error: 'invalid_grant', error_description: 'Refresh token revoked' }
+[2m2025-07-27T10:33:47Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]🔄 Attempting to refresh access token...
+[2m2025-07-27T10:33:47Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Refresh token: AQB_7w0ipc_IFN5TghYf...
+[2m2025-07-27T10:33:47Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]🔄 Attempting to refresh access token...
+[2m2025-07-27T10:33:47Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Refresh token: AQB_7w0ipc_IFN5TghYf...
+[2m2025-07-27T10:33:48Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]❌ Token refresh failed: { error: 'invalid_grant', error_description: 'Refresh token revoked' }
+[2m2025-07-27T10:33:48Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Token refresh failed: { error: 'invalid_grant', error_description: 'Refresh token revoked' }
+[2m2025-07-27T10:33:48Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]❌ Token refresh failed: { error: 'invalid_grant', error_description: 'Refresh token revoked' }
+[2m2025-07-27T10:33:48Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Token refresh failed: { error: 'invalid_grant', error_description: 'Refresh token revoked' }
+[2m2025-07-27T10:33:52Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Code verifier extracted from state parameter
+[2m2025-07-27T10:33:53Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Spotify user ID retrieved: fx80xytcki8d3pd43809yaatz
+[2m2025-07-27T10:33:53Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Auth successful, JWT generated with user ID
+[2m2025-07-27T10:33:53Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Auth status check - JWT token valid
+[2m2025-07-27T10:33:53Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Auth status check - JWT token valid
+[2m2025-07-27T10:35:06Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Processing command: I just warched 400 boys by Love Death Robots on Netflix. It was so shitty. Play me something to help coubteract such a terrible episode
+[2m2025-07-27T10:35:06Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]User ID: fx80xytcki8d3pd43809yaatz
+[2m2025-07-27T10:35:06Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Using user's preferred model: google/gemini-2.5-flash
+[2m2025-07-27T10:35:07Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Checking taste profile conditions: {
+[2m2025-07-27T10:35:07Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  userId: 'fx80xytcki8d3pd43809yaatz',
+[2m2025-07-27T10:35:07Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  hasLoggingService: true,
+[2m2025-07-27T10:35:07Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  hasRedisClient: true
+[2m2025-07-27T10:35:07Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]}
+[2m2025-07-27T10:35:07Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Detected request context type: discovery
+[2m2025-07-27T10:35:07Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][TasteProfile] Starting generation for user: fx80xytcki8d3pd43809yaatz
+[2m2025-07-27T10:35:07Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][TasteProfile] Cache miss, fetching fresh data...
+[2m2025-07-27T10:35:07Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][TasteProfile] Data fetched - Artists: 50, Tracks: 50, Recent: 50
+[2m2025-07-27T10:35:07Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][TasteProfile] Top genres: pop punk, k-pop, dansktop, nu metal, alternative metal, art pop, choral, pop, russelåter, epadunk
+[2m2025-07-27T10:35:07Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][TasteProfile] Profile cached successfully
+[2m2025-07-27T10:35:07Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Fetched discovery taste profile for user
+[2m2025-07-27T10:35:07Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Taste Profile Content: BACKGROUND - User's Musical Discovery Context:
+[2m2025-07-27T10:35:07Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]• Primary genres: pop punk, k-pop, dansktop, nu metal, alternative metal, art pop, choral, pop, russelåter, epadunk
+[2m2025-07-27T10:35:07Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]• Familiar artists: Taylor Swift, bbno$, BLACKPINK, Imagine Dragons, Robert Quinney, Tessa, Natasja, Mattstagraham, Todrick Hall, People R Ugly
+[2m2025-07-27T10:35:07Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]• Recent favorites: I WANNA BE YOUR SLAVE by Måneskin; Caffeine by Mattstagraham; Welcome to the Black Parade by My Chemical Romance; Austin (Boots Stop Workin') by Dasha; Teenage Dirtbag by Wheatus; boom by bbno$; BRAIN DEAD by People R Ugly; Lalala by Y2K, bbno$; In Too Deep by Sum 41; We Are Never Ever Getting Back Together by From Lambs to Lions
+[2m2025-07-27T10:35:07Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Past Discovery Patterns:
+[2m2025-07-27T10:35:07Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]• Successful discoveries they loved: Riverside by Agnes Obel
+[2m2025-07-27T10:35:07Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]DISCOVERY GUIDANCE: Use this context to find music that expands their horizons while respecting their taste patterns. Look for adjacent artists, similar vibes, or evolution of their favorite genres. Avoid their exact favorites unless they fit perfectly.
+[2m2025-07-27T10:35:07Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Combined music context being sent to LLM:
+[2m2025-07-27T10:35:07Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]---START OF MUSIC CONTEXT---
+[2m2025-07-27T10:35:07Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]BACKGROUND - User's Musical Discovery Context:
+[2m2025-07-27T10:35:07Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]• Primary genres: pop punk, k-pop, dansktop, nu metal, alternative metal, art pop, choral, pop, russelåter, epadunk
+[2m2025-07-27T10:35:07Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]• Familiar artists: Taylor Swift, bbno$, BLACKPINK, Imagine Dragons, Robert Quinney, Tessa, Natasja, Mattstagraham, Todrick Hall, People R Ugly
+[2m2025-07-27T10:35:07Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]• Recent favorites: I WANNA BE YOUR SLAVE by Måneskin; Caffeine by Mattstagraham; Welcome to the Black Parade by My Chemical Romance; Austin (Boots Stop Workin') by Dasha; Teenage Dirtbag by Wheatus; boom by bbno$; BRAIN DEAD by People R Ugly; Lalala by Y2K, bbno$; In Too Deep by Sum 41; We Are Never Ever Getting Back Together by From Lambs to Lions
+[2m2025-07-27T10:35:07Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Past Discovery Patterns:
+[2m2025-07-27T10:35:07Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]• Successful discoveries they loved: Riverside by Agnes Obel
+[2m2025-07-27T10:35:07Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]DISCOVERY GUIDANCE: Use this context to find music that expands their horizons while respecting their taste patterns. Look for adjacent artists, similar vibes, or evolution of their favorite genres. Avoid their exact favorites unless they fit perfectly.
+[2m2025-07-27T10:35:07Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Currently playing: "Walking On A Dream" by Empire Of The Sun from the album "Walking On A Dream (10th Anniversary Edition)"
+[2m2025-07-27T10:35:07Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]---END OF MUSIC CONTEXT---
+[2m2025-07-27T10:35:07Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Command: "I just warched 400 boys by Love Death Robots on Netflix. It was so shitty. Play me something to help coubteract such a terrible episode"
+[2m2025-07-27T10:35:07Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Music history length (filtered): 4
+[2m2025-07-27T10:35:07Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Relevant context length: 0
+[2m2025-07-27T10:35:07Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Dialog state last action: undefined - undefined
+[2m2025-07-27T10:35:07Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]🔄 Routing google/gemini-2.5-flash to openrouter
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]✅ openrouter validation passed for google/gemini-2.5-flash (music_command)
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]📤 google/gemini-2.5-flash response: {
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  "intent": "play_specific_song",
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  "artist": "HEALTH",
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  "track": "BODY/PRISON",
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  "album": "DISCO4 :: PART II",
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  "confidence": 0.95,
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  "reasoning": "Given the user's recent interest in nu-metal and alternative metal, and their strong negative reaction to a 'shitty' experience, I'm recommending something that's aggressively cathartic and sonically impactful. HEALTH creates intense, industrial-tinged noise rock that can effectively 'counteract' a bad vibe with sheer sonic force, without being overtly 'angry' or 'sad.' This track in particular has a driving, almost suffocating energy that should provide a strong contrast to anything 'shitty.'",
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  "alternatives": [
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    "Daughters - The Reason They Hate Me",
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    "Nine Inch Nails - March of the Pigs",
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    "Korn - Blind",
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    "Converge - Concubine",
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    "Clipping. - Body & Blood",
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    "Ministry - Jesus Built My Hotrod"
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  ]
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]}
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]LLM interpretation: {
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  intent: 'play_specific_song',
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  query: '',
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  artist: 'HEALTH',
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  track: 'BODY/PRISON',
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  album: 'DISCO4 :: PART II',
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  confidence: 0.95,
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  reasoning: "Given the user's recent interest in nu-metal and alternative metal, and their strong negative reaction to a 'shitty' experience, I'm recommending something that's aggressively cathartic and sonically impactful. HEALTH creates intense, industrial-tinged noise rock that can effectively 'counteract' a bad vibe with sheer sonic force, without being overtly 'angry' or 'sad.' This track in particular has a driving, almost suffocating energy that should provide a strong contrast to anything 'shitty.'",
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  modifiers: {},
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  alternatives: [
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    'Daughters - The Reason They Hate Me',
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    'Nine Inch Nails - March of the Pigs',
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    'Korn - Blind',
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    'Converge - Concubine',
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    'Clipping. - Body & Blood',
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    'Ministry - Jesus Built My Hotrod'
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  ],
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  volume: undefined,
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  volume_level: undefined,
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  isAIDiscovery: false,
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  aiReasoning: '',
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  model: 'google/gemini-2.5-flash',
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  provider: 'openrouter',
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  flow: 'openrouter',
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  fallbackUsed: false,
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  actualModel: 'google/gemini-2.5-flash'
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]}
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Interpretation: {
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  command: 'I just warched 400 boys by Love Death Robots on Netflix. It was so shitty. Play me something to help coubteract such a terrible episode',
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  intent: 'play_specific_song',
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  confidence: 0.95,
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  model: 'google/gemini-2.5-flash'
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]}
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Spotify search: "artist:"HEALTH" track:"BODY/PRISON" album:"DISCO4 :: PART II""
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Attempt 1 - Full search: artist:"HEALTH" track:"BODY/PRISON" album:"DISCO4 :: PART II"
+[2m2025-07-27T10:35:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Attempt 2 - Retry without album: artist:"HEALTH" track:"BODY/PRISON"
+[2m2025-07-27T10:35:11Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Converting 6 alternatives to URI format
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Successfully converted 5 alternatives with URIs
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Final response alternatives: [
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  {
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    name: 'The Reason They Hate Me',
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    artists: 'Daughters',
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    popularity: 35,
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    uri: 'spotify:track:2Z2CT4L3TdCOgF9K7yTAWo'
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  },
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  {
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    name: 'March Of The Pigs',
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    artists: 'Nine Inch Nails',
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    popularity: 60,
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    uri: 'spotify:track:56NATwQKP7m64hFLFlKzXe'
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  },
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  {
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    name: 'Blind',
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    artists: 'Korn',
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    popularity: 78,
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    uri: 'spotify:track:1pr9TZGOXeJUggIal1Wq3R'
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  },
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  {
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    name: 'Concubine',
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    artists: 'Converge',
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    popularity: 44,
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    uri: 'spotify:track:1ui9EPnCqTurWbYICi9Gld'
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  },
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  {
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    name: 'Body & Blood',
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    artists: 'clipping.',
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    popularity: 39,
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    uri: 'spotify:track:5TFwGYhhFWa92FZXyIB7K8'
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  }
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]]
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Final response interpretation alternatives: [
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  {
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    name: 'The Reason They Hate Me',
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    artists: 'Daughters',
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    popularity: 35,
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    uri: 'spotify:track:2Z2CT4L3TdCOgF9K7yTAWo'
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  },
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  {
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    name: 'March Of The Pigs',
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    artists: 'Nine Inch Nails',
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    popularity: 60,
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    uri: 'spotify:track:56NATwQKP7m64hFLFlKzXe'
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  },
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  {
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    name: 'Blind',
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    artists: 'Korn',
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    popularity: 78,
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    uri: 'spotify:track:1pr9TZGOXeJUggIal1Wq3R'
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  },
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  {
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    name: 'Concubine',
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    artists: 'Converge',
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    popularity: 44,
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    uri: 'spotify:track:1ui9EPnCqTurWbYICi9Gld'
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  },
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  {
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    name: 'Body & Blood',
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    artists: 'clipping.',
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    popularity: 39,
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    uri: 'spotify:track:5TFwGYhhFWa92FZXyIB7K8'
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  }
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]]
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]LLM Performance Issue: {
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  command: 'I just warched 400 boys by Love Death Robots on Netflix. It was so shitty. Play me something to help coubteract such a terrible episode',
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  responseTime: 5535,
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  success: true,
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  error: undefined
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]}
+[2m2025-07-27T10:35:12Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Dialog state updated: mode=music, last_action=play
+[2m2025-07-27T10:36:08Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Auth status check - JWT token valid
+[2m2025-07-27T10:36:08Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Auth status check - JWT token valid
+[2m2025-07-27T10:36:08Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]🔄 Attempting to refresh access token...
+[2m2025-07-27T10:36:08Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Refresh token: AQDWspa_B5hA8uwf3vma...
+[2m2025-07-27T10:36:08Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]✅ Token refresh successful
+[2m2025-07-27T10:39:55Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Processing command: I live in østerbro, copenhagen and today is cloudy by humid. Play something appropriate
+[2m2025-07-27T10:39:55Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]User ID: fx80xytcki8d3pd43809yaatz
+[2m2025-07-27T10:39:55Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Using user's preferred model: google/gemini-2.5-flash
+[2m2025-07-27T10:39:56Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Checking taste profile conditions: {
+[2m2025-07-27T10:39:56Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  userId: 'fx80xytcki8d3pd43809yaatz',
+[2m2025-07-27T10:39:56Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  hasLoggingService: true,
+[2m2025-07-27T10:39:56Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  hasRedisClient: true
+[2m2025-07-27T10:39:56Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]}
+[2m2025-07-27T10:39:56Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Detected request context type: discovery
+[2m2025-07-27T10:39:56Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][TasteProfile] Starting generation for user: fx80xytcki8d3pd43809yaatz
+[2m2025-07-27T10:39:56Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][TasteProfile] Returning cached discovery profile
+[2m2025-07-27T10:39:56Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Fetched discovery taste profile for user
+[2m2025-07-27T10:39:56Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Taste Profile Content: BACKGROUND - User's Musical Discovery Context:
+[2m2025-07-27T10:39:56Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]• Primary genres: pop punk, k-pop, dansktop, nu metal, alternative metal, art pop, choral, pop, russelåter, epadunk
+[2m2025-07-27T10:39:56Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]• Familiar artists: Taylor Swift, bbno$, BLACKPINK, Imagine Dragons, Robert Quinney, Tessa, Natasja, Mattstagraham, Todrick Hall, People R Ugly
+[2m2025-07-27T10:39:56Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]• Recent favorites: I WANNA BE YOUR SLAVE by Måneskin; Caffeine by Mattstagraham; Welcome to the Black Parade by My Chemical Romance; Austin (Boots Stop Workin') by Dasha; Teenage Dirtbag by Wheatus; boom by bbno$; BRAIN DEAD by People R Ugly; Lalala by Y2K, bbno$; In Too Deep by Sum 41; We Are Never Ever Getting Back Together by From Lambs to Lions
+[2m2025-07-27T10:39:56Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Past Discovery Patterns:
+[2m2025-07-27T10:39:56Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]• Successful discoveries they loved: Riverside by Agnes Obel
+[2m2025-07-27T10:39:56Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]DISCOVERY GUIDANCE: Use this context to find music that expands their horizons while respecting their taste patterns. Look for adjacent artists, similar vibes, or evolution of their favorite genres. Avoid their exact favorites unless they fit perfectly.
+[2m2025-07-27T10:39:56Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Combined music context being sent to LLM:
+[2m2025-07-27T10:39:56Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]---START OF MUSIC CONTEXT---
+[2m2025-07-27T10:39:56Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]BACKGROUND - User's Musical Discovery Context:
+[2m2025-07-27T10:39:56Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]• Primary genres: pop punk, k-pop, dansktop, nu metal, alternative metal, art pop, choral, pop, russelåter, epadunk
+[2m2025-07-27T10:39:56Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]• Familiar artists: Taylor Swift, bbno$, BLACKPINK, Imagine Dragons, Robert Quinney, Tessa, Natasja, Mattstagraham, Todrick Hall, People R Ugly
+[2m2025-07-27T10:39:56Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]• Recent favorites: I WANNA BE YOUR SLAVE by Måneskin; Caffeine by Mattstagraham; Welcome to the Black Parade by My Chemical Romance; Austin (Boots Stop Workin') by Dasha; Teenage Dirtbag by Wheatus; boom by bbno$; BRAIN DEAD by People R Ugly; Lalala by Y2K, bbno$; In Too Deep by Sum 41; We Are Never Ever Getting Back Together by From Lambs to Lions
+[2m2025-07-27T10:39:56Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Past Discovery Patterns:
+[2m2025-07-27T10:39:56Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]• Successful discoveries they loved: Riverside by Agnes Obel
+[2m2025-07-27T10:39:56Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]DISCOVERY GUIDANCE: Use this context to find music that expands their horizons while respecting their taste patterns. Look for adjacent artists, similar vibes, or evolution of their favorite genres. Avoid their exact favorites unless they fit perfectly.
+[2m2025-07-27T10:39:56Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Currently playing: "Dancing On My Own" by Robyn from the album "Body Talk"
+[2m2025-07-27T10:39:56Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]---END OF MUSIC CONTEXT---
+[2m2025-07-27T10:39:56Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Command: "I live in østerbro, copenhagen and today is cloudy by humid. Play something appropriate"
+[2m2025-07-27T10:39:56Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Music history length (filtered): 4
+[2m2025-07-27T10:39:56Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Relevant context length: 1
+[2m2025-07-27T10:39:56Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Dialog state last action: HEALTH - BODY/PRISON
+[2m2025-07-27T10:39:56Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Relevant context entries:
+[2m2025-07-27T10:39:56Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  1. play_specific_song: HEALTH - BODY/PRISON
+[2m2025-07-27T10:39:56Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]🔄 Routing google/gemini-2.5-flash to openrouter
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]✅ openrouter validation passed for google/gemini-2.5-flash (music_command)
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]📤 google/gemini-2.5-flash response: {
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  "intent": "play_specific_song",
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  "artist": "The Raveonettes",
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  "track": "Love in a Trashcan",
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  "album": "Ode to L.A.",
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  "confidence": 0.95,
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  "reasoning": "Given your location in Copenhagen, I thought a Danish band known for their moody, atmospheric sound would be perfect for a cloudy, humid day. The Raveonettes capture a certain melancholic cool that fits the vibe without being overtly 'sad'. They've got a great blend of noise and melody that aligns with your recent taste for artists like HEALTH and Nine Inch Nails, but with a more shoegaze-pop sensibility.",
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  "alternatives": [
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    "Spleen United - Suburbia",
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    "Trentemøller - Moan",
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    "Iceage - The Lord's Favorite",
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    "Lust for Youth - New Boys",
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    "Lower Dens - Brains",
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    "Savages - The Answer"
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  ]
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]}
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]LLM interpretation: {
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  intent: 'play_specific_song',
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  query: '',
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  artist: 'The Raveonettes',
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  track: 'Love in a Trashcan',
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  album: 'Ode to L.A.',
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  confidence: 0.95,
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  reasoning: "Given your location in Copenhagen, I thought a Danish band known for their moody, atmospheric sound would be perfect for a cloudy, humid day. The Raveonettes capture a certain melancholic cool that fits the vibe without being overtly 'sad'. They've got a great blend of noise and melody that aligns with your recent taste for artists like HEALTH and Nine Inch Nails, but with a more shoegaze-pop sensibility.",
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  modifiers: {},
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  alternatives: [
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    'Spleen United - Suburbia',
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    'Trentemller - Moan',
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    "Iceage - The Lord's Favorite",
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    'Lust for Youth - New Boys',
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    'Lower Dens - Brains',
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    'Savages - The Answer'
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  ],
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  volume: undefined,
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  volume_level: undefined,
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  isAIDiscovery: false,
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  aiReasoning: '',
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  model: 'google/gemini-2.5-flash',
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  provider: 'openrouter',
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  flow: 'openrouter',
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  fallbackUsed: false,
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  actualModel: 'google/gemini-2.5-flash'
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]}
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Interpretation: {
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  command: 'I live in østerbro, copenhagen and today is cloudy by humid. Play something appropriate',
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  intent: 'play_specific_song',
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  confidence: 0.95,
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  model: 'google/gemini-2.5-flash'
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]}
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Spotify search: "artist:"The Raveonettes" track:"Love in a Trashcan" album:"Ode to L.A.""
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Attempt 1 - Full search: artist:"The Raveonettes" track:"Love in a Trashcan" album:"Ode to L.A."
+[2m2025-07-27T10:39:58Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Attempt 2 - Retry without album: artist:"The Raveonettes" track:"Love in a Trashcan"
+[2m2025-07-27T10:39:59Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Converting 6 alternatives to URI format
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Successfully converted 4 alternatives with URIs
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Final response alternatives: [
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  {
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    name: 'Suburbia',
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    artists: 'Spleen United',
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    popularity: 31,
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    uri: 'spotify:track:6thT0JU0s0EiMs2ZrTzRtB'
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  },
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  {
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    name: "The Lord's Favorite",
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    artists: 'Iceage',
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    popularity: 32,
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    uri: 'spotify:track:3IT7md2GPWzVo9FvK8Qn0y'
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  },
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  {
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    name: 'New Boys',
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    artists: 'Lust For Youth',
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    popularity: 37,
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    uri: 'spotify:track:6zhpMUwlUI1qa9qskfAwoA'
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  },
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  {
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    name: 'Brains',
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    artists: 'Lower Dens',
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    popularity: 25,
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    uri: 'spotify:track:3ww9gVoQ48FTEgYKgkVbBf'
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  }
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]]
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Final response interpretation alternatives: [
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  {
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    name: 'Suburbia',
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    artists: 'Spleen United',
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    popularity: 31,
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    uri: 'spotify:track:6thT0JU0s0EiMs2ZrTzRtB'
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  },
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  {
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    name: "The Lord's Favorite",
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    artists: 'Iceage',
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    popularity: 32,
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    uri: 'spotify:track:3IT7md2GPWzVo9FvK8Qn0y'
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  },
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  {
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    name: 'New Boys',
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    artists: 'Lust For Youth',
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    popularity: 37,
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    uri: 'spotify:track:6zhpMUwlUI1qa9qskfAwoA'
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  },
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  {
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    name: 'Brains',
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    artists: 'Lower Dens',
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    popularity: 25,
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    uri: 'spotify:track:3ww9gVoQ48FTEgYKgkVbBf'
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  }
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]]
+[2m2025-07-27T10:40:00Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Dialog state updated: mode=music, last_action=play
+[2m2025-07-27T10:45:30Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Auth status check - JWT token valid
+[2m2025-07-27T10:48:23Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Auth status check - JWT token valid
+[2m2025-07-27T10:48:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Auth status check - JWT token valid
+[2m2025-07-27T10:48:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Auth status check - JWT token valid
+[2m2025-07-27T10:49:22Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Auth status check - JWT token valid
+[2m2025-07-27T10:49:22Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Auth status check - JWT token valid
+[2m2025-07-27T10:50:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Auth status check - JWT token valid
+[2m2025-07-27T10:50:10Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Auth status check - JWT token valid
+[2m2025-07-27T10:50:20Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Auth status check - JWT token valid
+[2m2025-07-27T10:50:25Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]🔄 Updating existing feedback for Riverside by Agnes Obel
+[2m2025-07-27T10:50:25Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Found existing playlist: DJ Forge (ID: 4diwiC1KzkVuhY7d9XVd3a)
+[2m2025-07-27T10:50:25Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Track already exists in DJ Forge playlist: spotify:track:7iHl6LcHD94l5VpmfrBUmG
+[2m2025-07-27T10:50:25Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]🎵 Added loved track to DJ Forge playlist: Riverside by Agnes Obel
+[2m2025-07-27T10:50:25Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]✅ Recorded loved feedback for Riverside by Agnes Obel
+[2m2025-07-27T10:50:27Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Auth status check - JWT token valid
+[2m2025-07-27T10:50:31Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Auth status check - JWT token valid
+[2m2025-07-27T10:55:19Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Auth status check - JWT token valid
+[2m2025-07-27T10:55:38Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Auth status check - JWT token valid
+[2m2025-07-27T10:55:39Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Auth status check - JWT token valid
+[2m2025-07-27T10:55:39Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Auth status check - JWT token valid
+[2m2025-07-27T10:55:43Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Auth status check - JWT token valid
+[2m2025-07-27T10:55:43Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Auth status check - JWT token valid
+[2m2025-07-27T10:56:42Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Auth status check - JWT token valid
+[2m2025-07-27T10:56:53Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Auth status check - JWT token valid
+[2m2025-07-27T10:56:53Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Auth status check - JWT token valid
+[2m2025-07-27T10:59:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Auth status check - JWT token valid
+[2m2025-07-27T10:59:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Auth status check - JWT token valid
+[2m2025-07-27T10:59:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]🔄 Attempting to refresh access token...
+[2m2025-07-27T10:59:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Refresh token: AQBcZ_9ageXrkUVqOpMQ...
+[2m2025-07-27T10:59:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]✅ Token refresh successful
+[2m2025-07-27T11:01:27Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Auth status check - JWT token valid
+[2m2025-07-27T12:06:21Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Auth status check - JWT token valid
+[2m2025-07-27T12:06:22Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]🔄 Attempting to refresh access token...
+[2m2025-07-27T12:06:22Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Refresh token: AQBaMLt_kVz9sVIvk0fv...
+[2m2025-07-27T12:06:22Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]✅ Token refresh successful
+[2m2025-07-27T12:11:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Processing command: play something for when i am having matcha tea and tiannamen square
+[2m2025-07-27T12:11:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]User ID: gogekian
+[2m2025-07-27T12:11:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Using user's preferred model: deepseek/deepseek-r1-0528
+[2m2025-07-27T12:11:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Checking taste profile conditions: { userId: 'gogekian', hasLoggingService: true, hasRedisClient: true }
+[2m2025-07-27T12:11:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Detected request context type: discovery
+[2m2025-07-27T12:11:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][TasteProfile] Starting generation for user: gogekian
+[2m2025-07-27T12:11:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][TasteProfile] Cache miss, fetching fresh data...
+[2m2025-07-27T12:11:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][TasteProfile] Data fetched - Artists: 50, Tracks: 50, Recent: 50
+[2m2025-07-27T12:11:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][TasteProfile] Top genres: soundtrack, pop, art pop, industrial rock, industrial, industrial metal, alternative metal, nu metal, hyperpop, soft pop
+[2m2025-07-27T12:11:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][TasteProfile] Profile cached successfully
+[2m2025-07-27T12:11:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Fetched discovery taste profile for user
+[2m2025-07-27T12:11:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Taste Profile Content: BACKGROUND - User's Musical Discovery Context:
+[2m2025-07-27T12:11:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]• Primary genres: soundtrack, pop, art pop, industrial rock, industrial, industrial metal, alternative metal, nu metal, hyperpop, soft pop
+[2m2025-07-27T12:11:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]• Familiar artists: Taylor Swift, Lady Gaga, Epic Mountain, Nine Inch Nails, Gracie Abrams, Regina Hardon, Lorde, Alex Warren, Sabrina Carpenter, Chappell Roan
+[2m2025-07-27T12:11:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]• Recent favorites: Abracadabra by Lady Gaga; What Was That by Lorde; Man Of The Year by Lorde; The Tortured Poets Department by Taylor Swift; Ordinary by Alex Warren; Gods and Monsters - From "American Horror Story" by American Horror Story Cast, Jessica Lange; Garden Of Eden by Lady Gaga; Say Don't Go (Taylor's Version) (From The Vault) by Taylor Swift; That’s So True by Gracie Abrams; Disease by Lady Gaga
+[2m2025-07-27T12:11:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Past Discovery Patterns:
+[2m2025-07-27T12:11:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]• Successful discoveries they loved: I miss you, I’m sorry by Gracie Abrams
+[2m2025-07-27T12:11:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]DISCOVERY GUIDANCE: Use this context to find music that expands their horizons while respecting their taste patterns. Look for adjacent artists, similar vibes, or evolution of their favorite genres. Avoid their exact favorites unless they fit perfectly.
+[2m2025-07-27T12:11:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Combined music context being sent to LLM:
+[2m2025-07-27T12:11:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]---START OF MUSIC CONTEXT---
+[2m2025-07-27T12:11:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]BACKGROUND - User's Musical Discovery Context:
+[2m2025-07-27T12:11:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]• Primary genres: soundtrack, pop, art pop, industrial rock, industrial, industrial metal, alternative metal, nu metal, hyperpop, soft pop
+[2m2025-07-27T12:11:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]• Familiar artists: Taylor Swift, Lady Gaga, Epic Mountain, Nine Inch Nails, Gracie Abrams, Regina Hardon, Lorde, Alex Warren, Sabrina Carpenter, Chappell Roan
+[2m2025-07-27T12:11:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]• Recent favorites: Abracadabra by Lady Gaga; What Was That by Lorde; Man Of The Year by Lorde; The Tortured Poets Department by Taylor Swift; Ordinary by Alex Warren; Gods and Monsters - From "American Horror Story" by American Horror Story Cast, Jessica Lange; Garden Of Eden by Lady Gaga; Say Don't Go (Taylor's Version) (From The Vault) by Taylor Swift; That’s So True by Gracie Abrams; Disease by Lady Gaga
+[2m2025-07-27T12:11:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Past Discovery Patterns:
+[2m2025-07-27T12:11:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]• Successful discoveries they loved: I miss you, I’m sorry by Gracie Abrams
+[2m2025-07-27T12:11:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]DISCOVERY GUIDANCE: Use this context to find music that expands their horizons while respecting their taste patterns. Look for adjacent artists, similar vibes, or evolution of their favorite genres. Avoid their exact favorites unless they fit perfectly.
+[2m2025-07-27T12:11:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]---END OF MUSIC CONTEXT---
+[2m2025-07-27T12:11:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Command: "play something for when i am having matcha tea and tiannamen square"
+[2m2025-07-27T12:11:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Music history length (filtered): 7
+[2m2025-07-27T12:11:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Relevant context length: 0
+[2m2025-07-27T12:11:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Dialog state last action: Fever Ray - If I Had a Heart
+[2m2025-07-27T12:11:46Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]🔄 Routing deepseek/deepseek-r1-0528 to openrouter
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Intent validation failed: {
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  type: 'music_command',
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  errors: [ 'All items in "alternatives" array must be strings' ],
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  warnings: [],
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  context: {
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    source: 'openrouter',
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    model: 'deepseek/deepseek-r1-0528',
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    timestamp: 1753618310635,
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    rawResponse: '{\n' +
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      '  "intent": "play_specific_song",\n' +
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      '  "artist": "Trent Reznor and Atticus Ross",\n' +
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      '  "track": "Gone Girl",\n' +
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      '  "album": "Gone Girl (Original Motion Picture Soundtrack)",\n' +
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      '  "confidence": 0.85,\n' +
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      `  "reasoning": "User requested music for matcha tea and Tiananmen Square - suggesting 'Gone Girl' soundtrack for its blend of contemplative tension and serene unease. Matches their industrial/art pop interests via Reznor's Nine Inch Nails connection.",\n` +
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      '  "alternatives": [\n' +
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      '    "Björk - Hyperballad", \t\t\t\t\t\t\t[60.0] \n' +
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      '   \t\t]\n' +
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      '  }'
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  }
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]}
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]❌ openrouter validation failed for deepseek/deepseek-r1-0528: [ 'All items in "alternatives" array must be strings' ]
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]📤 deepseek/deepseek-r1-0528 response: {
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  "intent": "play_specific_song",
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  "artist": "Trent Reznor and Atticus Ross",
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  "track": "Gone Girl",
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  "album": "Gone Girl (Original Motion Picture Soundtrack)",
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  "confidence": 0.85,
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  "reasoning": "User requested music for matcha tea and Tiananmen Square - suggesting 'Gone Girl' soundtrack for its blend of contemplative tension and serene unease. Matches their industrial/art pop interests via Reznor's Nine Inch Nails connection.",
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  "alternatives": [
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    "Björk - Hyperballad", 							[60.0]
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]   		]
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  }
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]LLM interpretation: {
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  intent: 'play_specific_song',
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  query: '',
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  artist: 'Trent Reznor and Atticus Ross',
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  track: 'Gone Girl',
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  album: 'Gone Girl (Original Motion Picture Soundtrack)',
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  confidence: 0.85,
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  reasoning: "User requested music for matcha tea and Tiananmen Square - suggesting 'Gone Girl' soundtrack for its blend of contemplative tension and serene unease. Matches their industrial/art pop interests via Reznor's Nine Inch Nails connection.",
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  modifiers: {},
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  alternatives: [ 'Bjrk - Hyperballad', [ 60 ] ],
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  volume: undefined,
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  volume_level: undefined,
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  isAIDiscovery: false,
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  aiReasoning: '',
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  model: 'deepseek/deepseek-r1-0528',
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  provider: 'openrouter',
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  flow: 'openrouter',
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  fallbackUsed: false,
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  actualModel: 'deepseek/deepseek-r1-0528'
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]}
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Interpretation: {
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  command: 'play something for when i am having matcha tea and tiannamen square',
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  intent: 'play_specific_song',
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  confidence: 0.85,
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  model: 'deepseek/deepseek-r1-0528'
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]}
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Spotify search: "artist:"Trent Reznor and Atticus Ross" track:"Gone Girl" album:"Gone Girl (Original Motion Picture Soundtrack)""
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Attempt 1 - Full search: artist:"Trent Reznor and Atticus Ross" track:"Gone Girl" album:"Gone Girl (Original Motion Picture Soundtrack)"
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Attempt 2 - Retry without album: artist:"Trent Reznor and Atticus Ross" track:"Gone Girl"
+[2m2025-07-27T12:11:50Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Attempt 3 - YOLO mode with just track: Gone Girl
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Converting 2 alternatives to URI format
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Error processing alternative: [ 60 ] TypeError: altString.split is not a function
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    at /app/dist/routes/simple-llm-interpreter.js:989:57
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Final response alternatives: [
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  {
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    album: {
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      album_type: 'single',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      artists: [Array],
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      available_markets: [Array],
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      external_urls: [Object],
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      href: 'https://api.spotify.com/v1/albums/7askKzi7oR1VpOswKLtMAN',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      id: '7askKzi7oR1VpOswKLtMAN',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      images: [Array],
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      is_playable: true,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      name: 'Gone Girl',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      release_date: '2021-07-22',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      release_date_precision: 'day',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      total_tracks: 1,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      type: 'album',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      uri: 'spotify:album:7askKzi7oR1VpOswKLtMAN'
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    },
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    artists: [ [Object], [Object] ],
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    available_markets: [
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'AR', 'AU', 'AT', 'BE', 'BO', 'BR', 'BG', 'CA', 'CL', 'CO',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'CR', 'CY', 'CZ', 'DK', 'DO', 'DE', 'EC', 'EE', 'SV', 'FI',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'FR', 'GR', 'GT', 'HN', 'HK', 'HU', 'IS', 'IE', 'IT', 'LV',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'LT', 'LU', 'MY', 'MT', 'MX', 'NL', 'NZ', 'NI', 'NO', 'PA',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'PY', 'PE', 'PH', 'PL', 'PT', 'SG', 'SK', 'ES', 'SE', 'CH',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'TW', 'TR', 'UY', 'US', 'GB', 'AD', 'LI', 'MC', 'ID', 'JP',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'TH', 'VN', 'RO', 'IL', 'ZA', 'SA', 'AE', 'BH', 'QA', 'OM',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'KW', 'EG', 'MA', 'DZ', 'TN', 'LB', 'JO', 'PS', 'IN', 'BY',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'KZ', 'MD', 'UA', 'AL', 'BA', 'HR', 'ME', 'MK', 'RS', 'SI',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'KR', 'BD', 'PK', 'LK', 'GH', 'KE', 'NG', 'TZ', 'UG', 'AG',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      ... 85 more items
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    ],
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    disc_number: 1,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    duration_ms: 253685,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    explicit: false,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    external_ids: { isrc: 'QMBZ92196465' },
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    external_urls: {
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      spotify: 'https://open.spotify.com/track/4SVjVLpHngzqTzGfQe0hGz'
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    },
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    href: 'https://api.spotify.com/v1/tracks/4SVjVLpHngzqTzGfQe0hGz',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    id: '4SVjVLpHngzqTzGfQe0hGz',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    is_local: false,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    is_playable: true,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    name: 'Gone Girl',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    popularity: 47,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    preview_url: null,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    track_number: 1,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    type: 'track',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    uri: 'spotify:track:4SVjVLpHngzqTzGfQe0hGz'
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  },
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  {
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    album: {
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      album_type: 'album',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      artists: [Array],
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      available_markets: [Array],
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      external_urls: [Object],
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      href: 'https://api.spotify.com/v1/albums/07w0rG5TETcyihsEIZR3qG',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      id: '07w0rG5TETcyihsEIZR3qG',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      images: [Array],
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      is_playable: true,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      name: 'SOS',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      release_date: '2022-12-09',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      release_date_precision: 'day',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      total_tracks: 23,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      type: 'album',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      uri: 'spotify:album:07w0rG5TETcyihsEIZR3qG'
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    },
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    artists: [ [Object] ],
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    available_markets: [
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'AR', 'AU', 'AT', 'BE', 'BO', 'BR', 'BG', 'CA', 'CL', 'CO',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'CR', 'CY', 'CZ', 'DK', 'DO', 'DE', 'EC', 'EE', 'SV', 'FI',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'FR', 'GR', 'GT', 'HN', 'HK', 'HU', 'IS', 'IE', 'IT', 'LV',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'LT', 'LU', 'MY', 'MT', 'MX', 'NL', 'NZ', 'NI', 'NO', 'PA',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'PY', 'PE', 'PH', 'PL', 'PT', 'SG', 'SK', 'ES', 'SE', 'CH',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'TW', 'TR', 'UY', 'US', 'GB', 'AD', 'LI', 'MC', 'ID', 'JP',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'TH', 'VN', 'RO', 'IL', 'ZA', 'SA', 'AE', 'BH', 'QA', 'OM',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'KW', 'EG', 'MA', 'DZ', 'TN', 'LB', 'JO', 'PS', 'IN', 'BY',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'KZ', 'MD', 'UA', 'AL', 'BA', 'HR', 'ME', 'MK', 'RS', 'SI',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'KR', 'BD', 'PK', 'LK', 'GH', 'KE', 'NG', 'TZ', 'UG', 'AG',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      ... 85 more items
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    ],
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    disc_number: 1,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    duration_ms: 244026,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    explicit: true,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    external_ids: { isrc: 'USRC12204593' },
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    external_urls: {
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      spotify: 'https://open.spotify.com/track/2Sjx8DWZO5zaTyTAmgo2gY'
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    },
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    href: 'https://api.spotify.com/v1/tracks/2Sjx8DWZO5zaTyTAmgo2gY',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    id: '2Sjx8DWZO5zaTyTAmgo2gY',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    is_local: false,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    is_playable: true,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    name: 'Gone Girl',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    popularity: 65,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    preview_url: null,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    track_number: 10,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    type: 'track',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    uri: 'spotify:track:2Sjx8DWZO5zaTyTAmgo2gY'
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  },
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  {
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    album: {
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      album_type: 'album',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      artists: [Array],
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      available_markets: [Array],
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      external_urls: [Object],
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      href: 'https://api.spotify.com/v1/albums/744hRVhicllSsld8xlPbnf',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      id: '744hRVhicllSsld8xlPbnf',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      images: [Array],
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      is_playable: true,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      name: 'From The Scratch',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      release_date: '2024-07-15',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      release_date_precision: 'day',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      total_tracks: 9,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      type: 'album',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      uri: 'spotify:album:744hRVhicllSsld8xlPbnf'
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    },
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    artists: [ [Object] ],
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    available_markets: [
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'AR', 'AU', 'AT', 'BE', 'BO', 'BR', 'BG', 'CA', 'CL', 'CO',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'CR', 'CY', 'CZ', 'DK', 'DO', 'DE', 'EC', 'EE', 'SV', 'FI',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'FR', 'GR', 'GT', 'HN', 'HK', 'HU', 'IS', 'IE', 'IT', 'LV',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'LT', 'LU', 'MY', 'MT', 'MX', 'NL', 'NZ', 'NI', 'NO', 'PA',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'PY', 'PE', 'PH', 'PL', 'PT', 'SG', 'SK', 'ES', 'SE', 'CH',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'TW', 'TR', 'UY', 'US', 'GB', 'AD', 'LI', 'MC', 'ID', 'JP',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'TH', 'VN', 'RO', 'IL', 'ZA', 'SA', 'AE', 'BH', 'QA', 'OM',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'KW', 'EG', 'MA', 'DZ', 'TN', 'LB', 'JO', 'PS', 'IN', 'BY',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'KZ', 'MD', 'UA', 'AL', 'BA', 'HR', 'ME', 'MK', 'RS', 'SI',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'KR', 'BD', 'PK', 'LK', 'GH', 'KE', 'NG', 'TZ', 'UG', 'AG',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      ... 85 more items
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    ],
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    disc_number: 1,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    duration_ms: 173609,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    explicit: false,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    external_ids: { isrc: 'QZTAS2428633' },
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    external_urls: {
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      spotify: 'https://open.spotify.com/track/08EEtV885wihoOR5Oj4Yq3'
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    },
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    href: 'https://api.spotify.com/v1/tracks/08EEtV885wihoOR5Oj4Yq3',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    id: '08EEtV885wihoOR5Oj4Yq3',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    is_local: false,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    is_playable: true,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    name: 'Gone Girl',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    popularity: 15,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    preview_url: null,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    track_number: 6,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    type: 'track',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    uri: 'spotify:track:08EEtV885wihoOR5Oj4Yq3'
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  },
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  {
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    album: {
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      album_type: 'album',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      artists: [Array],
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      available_markets: [Array],
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      external_urls: [Object],
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      href: 'https://api.spotify.com/v1/albums/1nrVofqDRs7cpWXJ49qTnP',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      id: '1nrVofqDRs7cpWXJ49qTnP',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      images: [Array],
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      is_playable: true,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      name: 'SOS',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      release_date: '2022-12-08',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      release_date_precision: 'day',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      total_tracks: 23,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      type: 'album',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      uri: 'spotify:album:1nrVofqDRs7cpWXJ49qTnP'
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    },
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    artists: [ [Object] ],
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    available_markets: [
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'AR', 'AU', 'AT', 'BE', 'BO', 'BR', 'BG', 'CA', 'CL', 'CO',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'CR', 'CY', 'CZ', 'DK', 'DO', 'EC', 'EE', 'SV', 'FI', 'FR',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'GR', 'GT', 'HN', 'HK', 'HU', 'IS', 'IE', 'IT', 'LV', 'LT',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'LU', 'MY', 'MT', 'MX', 'NL', 'NZ', 'NI', 'NO', 'PA', 'PY',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'PE', 'PH', 'PL', 'PT', 'SG', 'SK', 'ES', 'SE', 'CH', 'TW',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'TR', 'UY', 'US', 'GB', 'AD', 'LI', 'MC', 'ID', 'JP', 'TH',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'VN', 'RO', 'IL', 'ZA', 'SA', 'AE', 'BH', 'QA', 'OM', 'KW',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'EG', 'MA', 'DZ', 'TN', 'LB', 'JO', 'PS', 'IN', 'BY', 'KZ',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'MD', 'UA', 'AL', 'BA', 'HR', 'ME', 'MK', 'RS', 'SI', 'KR',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'BD', 'PK', 'LK', 'GH', 'KE', 'NG', 'TZ', 'UG', 'AG', 'AM',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      ... 84 more items
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    ],
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    disc_number: 1,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    duration_ms: 244026,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    explicit: false,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    external_ids: { isrc: 'USRC12204657' },
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    external_urls: {
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      spotify: 'https://open.spotify.com/track/4tNTlP9M5kN2TB8OK6PDqn'
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    },
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    href: 'https://api.spotify.com/v1/tracks/4tNTlP9M5kN2TB8OK6PDqn',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    id: '4tNTlP9M5kN2TB8OK6PDqn',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    is_local: false,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    is_playable: true,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    name: 'Gone Girl',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    popularity: 41,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    preview_url: null,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    track_number: 10,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    type: 'track',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    uri: 'spotify:track:4tNTlP9M5kN2TB8OK6PDqn'
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  }
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]]
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Final response interpretation alternatives: [
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  {
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    album: {
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      album_type: 'single',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      artists: [Array],
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      available_markets: [Array],
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      external_urls: [Object],
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      href: 'https://api.spotify.com/v1/albums/7askKzi7oR1VpOswKLtMAN',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      id: '7askKzi7oR1VpOswKLtMAN',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      images: [Array],
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      is_playable: true,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      name: 'Gone Girl',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      release_date: '2021-07-22',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      release_date_precision: 'day',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      total_tracks: 1,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      type: 'album',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      uri: 'spotify:album:7askKzi7oR1VpOswKLtMAN'
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    },
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    artists: [ [Object], [Object] ],
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    available_markets: [
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'AR', 'AU', 'AT', 'BE', 'BO', 'BR', 'BG', 'CA', 'CL', 'CO',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'CR', 'CY', 'CZ', 'DK', 'DO', 'DE', 'EC', 'EE', 'SV', 'FI',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'FR', 'GR', 'GT', 'HN', 'HK', 'HU', 'IS', 'IE', 'IT', 'LV',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'LT', 'LU', 'MY', 'MT', 'MX', 'NL', 'NZ', 'NI', 'NO', 'PA',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'PY', 'PE', 'PH', 'PL', 'PT', 'SG', 'SK', 'ES', 'SE', 'CH',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'TW', 'TR', 'UY', 'US', 'GB', 'AD', 'LI', 'MC', 'ID', 'JP',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'TH', 'VN', 'RO', 'IL', 'ZA', 'SA', 'AE', 'BH', 'QA', 'OM',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'KW', 'EG', 'MA', 'DZ', 'TN', 'LB', 'JO', 'PS', 'IN', 'BY',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'KZ', 'MD', 'UA', 'AL', 'BA', 'HR', 'ME', 'MK', 'RS', 'SI',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'KR', 'BD', 'PK', 'LK', 'GH', 'KE', 'NG', 'TZ', 'UG', 'AG',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      ... 85 more items
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    ],
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    disc_number: 1,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    duration_ms: 253685,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    explicit: false,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    external_ids: { isrc: 'QMBZ92196465' },
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    external_urls: {
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      spotify: 'https://open.spotify.com/track/4SVjVLpHngzqTzGfQe0hGz'
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    },
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    href: 'https://api.spotify.com/v1/tracks/4SVjVLpHngzqTzGfQe0hGz',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    id: '4SVjVLpHngzqTzGfQe0hGz',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    is_local: false,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    is_playable: true,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    name: 'Gone Girl',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    popularity: 47,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    preview_url: null,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    track_number: 1,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    type: 'track',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    uri: 'spotify:track:4SVjVLpHngzqTzGfQe0hGz'
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  },
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  {
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    album: {
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      album_type: 'album',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      artists: [Array],
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      available_markets: [Array],
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      external_urls: [Object],
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      href: 'https://api.spotify.com/v1/albums/07w0rG5TETcyihsEIZR3qG',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      id: '07w0rG5TETcyihsEIZR3qG',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      images: [Array],
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      is_playable: true,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      name: 'SOS',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      release_date: '2022-12-09',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      release_date_precision: 'day',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      total_tracks: 23,
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      type: 'album',
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      uri: 'spotify:album:07w0rG5TETcyihsEIZR3qG'
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    },
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    artists: [ [Object] ],
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    available_markets: [
+[2m2025-07-27T12:11:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]      'AR', 'AU', 'AT', 'BE', 'BO', 'BR', 'BG', 'CA', 'CL', 'CO',
+[2m2025-07-27T12:12:29Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Auth status check - JWT token valid
+[2m2025-07-27T12:12:29Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Auth status check - JWT token valid
+[2m2025-07-27T12:12:45Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Processing command: play something for having matcha tea in tiannamen square
+[2m2025-07-27T12:12:45Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]User ID: gogekian
+[2m2025-07-27T12:12:45Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Using user's preferred model: deepseek/deepseek-r1-0528
+[2m2025-07-27T12:12:45Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Checking taste profile conditions: { userId: 'gogekian', hasLoggingService: true, hasRedisClient: true }
+[2m2025-07-27T12:12:45Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Detected request context type: discovery
+[2m2025-07-27T12:12:45Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][TasteProfile] Starting generation for user: gogekian
+[2m2025-07-27T12:12:45Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][TasteProfile] Returning cached discovery profile
+[2m2025-07-27T12:12:45Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Fetched discovery taste profile for user
+[2m2025-07-27T12:12:45Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Taste Profile Content: BACKGROUND - User's Musical Discovery Context:
+[2m2025-07-27T12:12:45Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]• Primary genres: soundtrack, pop, art pop, industrial rock, industrial, industrial metal, alternative metal, nu metal, hyperpop, soft pop
+[2m2025-07-27T12:12:45Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]• Familiar artists: Taylor Swift, Lady Gaga, Epic Mountain, Nine Inch Nails, Gracie Abrams, Regina Hardon, Lorde, Alex Warren, Sabrina Carpenter, Chappell Roan
+[2m2025-07-27T12:12:45Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]• Recent favorites: Abracadabra by Lady Gaga; What Was That by Lorde; Man Of The Year by Lorde; The Tortured Poets Department by Taylor Swift; Ordinary by Alex Warren; Gods and Monsters - From "American Horror Story" by American Horror Story Cast, Jessica Lange; Garden Of Eden by Lady Gaga; Say Don't Go (Taylor's Version) (From The Vault) by Taylor Swift; That’s So True by Gracie Abrams; Disease by Lady Gaga
+[2m2025-07-27T12:12:45Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Past Discovery Patterns:
+[2m2025-07-27T12:12:45Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]• Successful discoveries they loved: I miss you, I’m sorry by Gracie Abrams
+[2m2025-07-27T12:12:45Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]DISCOVERY GUIDANCE: Use this context to find music that expands their horizons while respecting their taste patterns. Look for adjacent artists, similar vibes, or evolution of their favorite genres. Avoid their exact favorites unless they fit perfectly.
+[2m2025-07-27T12:12:45Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Combined music context being sent to LLM:
+[2m2025-07-27T12:12:45Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]---START OF MUSIC CONTEXT---
+[2m2025-07-27T12:12:45Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]BACKGROUND - User's Musical Discovery Context:
+[2m2025-07-27T12:12:45Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]• Primary genres: soundtrack, pop, art pop, industrial rock, industrial, industrial metal, alternative metal, nu metal, hyperpop, soft pop
+[2m2025-07-27T12:12:45Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]• Familiar artists: Taylor Swift, Lady Gaga, Epic Mountain, Nine Inch Nails, Gracie Abrams, Regina Hardon, Lorde, Alex Warren, Sabrina Carpenter, Chappell Roan
+[2m2025-07-27T12:12:45Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]• Recent favorites: Abracadabra by Lady Gaga; What Was That by Lorde; Man Of The Year by Lorde; The Tortured Poets Department by Taylor Swift; Ordinary by Alex Warren; Gods and Monsters - From "American Horror Story" by American Horror Story Cast, Jessica Lange; Garden Of Eden by Lady Gaga; Say Don't Go (Taylor's Version) (From The Vault) by Taylor Swift; That’s So True by Gracie Abrams; Disease by Lady Gaga
+[2m2025-07-27T12:12:45Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Past Discovery Patterns:
+[2m2025-07-27T12:12:45Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]• Successful discoveries they loved: I miss you, I’m sorry by Gracie Abrams
+[2m2025-07-27T12:12:45Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]DISCOVERY GUIDANCE: Use this context to find music that expands their horizons while respecting their taste patterns. Look for adjacent artists, similar vibes, or evolution of their favorite genres. Avoid their exact favorites unless they fit perfectly.
+[2m2025-07-27T12:12:45Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]---END OF MUSIC CONTEXT---
+[2m2025-07-27T12:12:45Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Command: "play something for having matcha tea in tiannamen square"
+[2m2025-07-27T12:12:45Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Music history length (filtered): 7
+[2m2025-07-27T12:12:45Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Relevant context length: 0
+[2m2025-07-27T12:12:45Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Dialog state last action: Trent Reznor and Atticus Ross - Gone Girl
+[2m2025-07-27T12:12:45Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]🔄 Routing deepseek/deepseek-r1-0528 to openrouter
+[2m2025-07-27T12:12:49Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]✅ openrouter validation passed for deepseek/deepseek-r1-0528 (music_command)
+[2m2025-07-27T12:12:49Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]📤 deepseek/deepseek-r1-0528 response: {"intent": "play_specific_song", "artist": "Lana Del Rey", "track": "Venice Bitch", "confidence": 0.9, "reasoning": "Lana Del Rey blends art pop and cinematic storytelling that fits the contemplative mood of sipping matcha, with 'Venice Bitch' offering a hypnotic 9-minute journey through dreamy soundscapes. It shares producers with Lorde's work and expands your taste beyond mainstream pop.", "alternatives": ["Björk - Hyperballad", "St. Vincent - New York", "Grimes - Oblivion", "Portishead - The Rip", "Massive Attack - Teardrop", "Cocteau Twins - Cherry-coloured Funk"]}
+[2m2025-07-27T12:12:49Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]LLM interpretation: {
+[2m2025-07-27T12:12:49Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  intent: 'play_specific_song',
+[2m2025-07-27T12:12:49Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  query: '',
+[2m2025-07-27T12:12:49Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  artist: 'Lana Del Rey',
+[2m2025-07-27T12:12:49Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  track: 'Venice Bitch',
+[2m2025-07-27T12:12:49Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  album: '',
+[2m2025-07-27T12:12:49Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  confidence: 0.9,
+[2m2025-07-27T12:12:49Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  reasoning: "Lana Del Rey blends art pop and cinematic storytelling that fits the contemplative mood of sipping matcha, with 'Venice Bitch' offering a hypnotic 9-minute journey through dreamy soundscapes. It shares producers with Lorde's work and expands your taste beyond mainstream pop.",
+[2m2025-07-27T12:12:49Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  modifiers: {},
+[2m2025-07-27T12:12:49Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  alternatives: [
+[2m2025-07-27T12:12:49Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    'Bjrk - Hyperballad',
+[2m2025-07-27T12:12:49Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    'St. Vincent - New York',
+[2m2025-07-27T12:12:49Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    'Grimes - Oblivion',
+[2m2025-07-27T12:12:49Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    'Portishead - The Rip',
+[2m2025-07-27T12:12:49Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    'Massive Attack - Teardrop',
+[2m2025-07-27T12:12:49Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    'Cocteau Twins - Cherry-coloured Funk'
+[2m2025-07-27T12:12:49Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  ],
+[2m2025-07-27T12:12:49Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  volume: undefined,
+[2m2025-07-27T12:12:49Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  volume_level: undefined,
+[2m2025-07-27T12:12:49Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  isAIDiscovery: false,
+[2m2025-07-27T12:12:49Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  aiReasoning: '',
+[2m2025-07-27T12:12:49Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  model: 'deepseek/deepseek-r1-0528',
+[2m2025-07-27T12:12:49Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  provider: 'openrouter',
+[2m2025-07-27T12:12:49Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  flow: 'openrouter',
+[2m2025-07-27T12:12:49Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  fallbackUsed: false,
+[2m2025-07-27T12:12:49Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  actualModel: 'deepseek/deepseek-r1-0528'
+[2m2025-07-27T12:12:49Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]}
+[2m2025-07-27T12:12:49Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Interpretation: {
+[2m2025-07-27T12:12:49Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  command: 'play something for having matcha tea in tiannamen square',
+[2m2025-07-27T12:12:49Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  intent: 'play_specific_song',
+[2m2025-07-27T12:12:49Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  confidence: 0.9,
+[2m2025-07-27T12:12:49Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  model: 'deepseek/deepseek-r1-0528'
+[2m2025-07-27T12:12:49Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]}
+[2m2025-07-27T12:12:49Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Spotify search: "artist:"Lana Del Rey" track:"Venice Bitch""
+[2m2025-07-27T12:12:49Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Attempt 1 - Full search: artist:"Lana Del Rey" track:"Venice Bitch"
+[2m2025-07-27T12:12:49Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Converting 6 alternatives to URI format
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Successfully converted 4 alternatives with URIs
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Final response alternatives: [
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  {
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    name: 'New York',
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    artists: 'St. Vincent',
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    popularity: 52,
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    uri: 'spotify:track:5IXTT9RvcVupmzLTFqIInj'
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  },
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  {
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    name: 'Oblivion',
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    artists: 'Grimes',
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    popularity: 71,
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    uri: 'spotify:track:4BY4V1T0RJK1HmD2Q0ClyK'
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  },
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  {
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    name: 'The Rip',
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    artists: 'Portishead',
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    popularity: 61,
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    uri: 'spotify:track:5KX2DSPC6aCA0pdDidTmBC'
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  },
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  {
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    name: 'Teardrop',
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    artists: 'Massive Attack, Elizabeth Fraser',
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    popularity: 75,
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    uri: 'spotify:track:67Hna13dNDkZvBpTXRIaOJ'
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  }
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]]
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Final response interpretation alternatives: [
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  {
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    name: 'New York',
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    artists: 'St. Vincent',
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    popularity: 52,
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    uri: 'spotify:track:5IXTT9RvcVupmzLTFqIInj'
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  },
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  {
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    name: 'Oblivion',
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    artists: 'Grimes',
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    popularity: 71,
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    uri: 'spotify:track:4BY4V1T0RJK1HmD2Q0ClyK'
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  },
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  {
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    name: 'The Rip',
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    artists: 'Portishead',
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    popularity: 61,
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    uri: 'spotify:track:5KX2DSPC6aCA0pdDidTmBC'
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  },
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  {
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    name: 'Teardrop',
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    artists: 'Massive Attack, Elizabeth Fraser',
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    popularity: 75,
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    uri: 'spotify:track:67Hna13dNDkZvBpTXRIaOJ'
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  }
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]]
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]LLM Performance Issue: {
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  command: 'play something for having matcha tea in tiannamen square',
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  responseTime: 5300,
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  success: true,
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  error: undefined
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]}
+[2m2025-07-27T12:12:51Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Dialog state updated: mode=music, last_action=play
+[2m2025-07-27T12:15:40Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Code verifier extracted from state parameter
+[2m2025-07-27T12:15:40Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Spotify user ID retrieved: gogekian
+[2m2025-07-27T12:15:40Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Auth successful, JWT generated with user ID
+[2m2025-07-27T12:15:41Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Auth status check - JWT token valid
+[2m2025-07-27T12:15:41Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Auth status check - JWT token valid
+[2m2025-07-27T12:16:25Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Processing command: why is that appropriate for tiannamen square
+[2m2025-07-27T12:16:25Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]User ID: gogekian
+[2m2025-07-27T12:16:25Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Using user's preferred model: deepseek/deepseek-r1-0528
+[2m2025-07-27T12:16:25Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Checking taste profile conditions: { userId: 'gogekian', hasLoggingService: true, hasRedisClient: true }
+[2m2025-07-27T12:16:25Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Detected request context type: conversational
+[2m2025-07-27T12:16:25Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][TasteProfile] Starting generation for user: gogekian
+[2m2025-07-27T12:16:25Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][TasteProfile] Cache miss, fetching fresh data...
+[2m2025-07-27T12:16:25Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][TasteProfile] Data fetched - Artists: 50, Tracks: 50, Recent: 50
+[2m2025-07-27T12:16:25Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][TasteProfile] Top genres: soundtrack, pop, art pop, industrial rock, industrial, industrial metal, alternative metal, nu metal, hyperpop, soft pop
+[2m2025-07-27T12:16:25Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][TasteProfile] Profile cached successfully
+[2m2025-07-27T12:16:25Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Fetched conversational taste profile for user
+[2m2025-07-27T12:16:25Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Taste Profile Content: BACKGROUND - User's Musical Knowledge Context:
+[2m2025-07-27T12:16:25Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]• Interested in genres: soundtrack, pop, art pop, industrial rock, industrial, industrial metal, alternative metal, nu metal, hyperpop, soft pop
+[2m2025-07-27T12:16:25Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]• Listens to artists like: Taylor Swift, Lady Gaga, Epic Mountain, Nine Inch Nails, Gracie Abrams, Regina Hardon, Lorde, Alex Warren, Sabrina Carpenter, Chappell Roan
+[2m2025-07-27T12:16:25Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]• Recent listening: Abracadabra by Lady Gaga; What Was That by Lorde; Man Of The Year by Lorde; The Tortured Poets Department by Taylor Swift; Ordinary by Alex Warren; Gods and Monsters - From "American Horror Story" by American Horror Story Cast, Jessica Lange; Garden Of Eden by Lady Gaga; Say Don't Go (Taylor's Version) (From The Vault) by Taylor Swift; That’s So True by Gracie Abrams; Disease by Lady Gaga
+[2m2025-07-27T12:16:25Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]CONVERSATIONAL CONTEXT: This is for music discussion. Use this context to understand their perspective and provide relevant insights about artists, songs, or genres they might know or be interested in.
+[2m2025-07-27T12:16:25Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Combined music context being sent to LLM:
+[2m2025-07-27T12:16:25Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]---START OF MUSIC CONTEXT---
+[2m2025-07-27T12:16:25Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]BACKGROUND - User's Musical Knowledge Context:
+[2m2025-07-27T12:16:25Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]• Interested in genres: soundtrack, pop, art pop, industrial rock, industrial, industrial metal, alternative metal, nu metal, hyperpop, soft pop
+[2m2025-07-27T12:16:25Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]• Listens to artists like: Taylor Swift, Lady Gaga, Epic Mountain, Nine Inch Nails, Gracie Abrams, Regina Hardon, Lorde, Alex Warren, Sabrina Carpenter, Chappell Roan
+[2m2025-07-27T12:16:25Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]• Recent listening: Abracadabra by Lady Gaga; What Was That by Lorde; Man Of The Year by Lorde; The Tortured Poets Department by Taylor Swift; Ordinary by Alex Warren; Gods and Monsters - From "American Horror Story" by American Horror Story Cast, Jessica Lange; Garden Of Eden by Lady Gaga; Say Don't Go (Taylor's Version) (From The Vault) by Taylor Swift; That’s So True by Gracie Abrams; Disease by Lady Gaga
+[2m2025-07-27T12:16:25Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]CONVERSATIONAL CONTEXT: This is for music discussion. Use this context to understand their perspective and provide relevant insights about artists, songs, or genres they might know or be interested in.
+[2m2025-07-27T12:16:25Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Currently playing: "Venice Bitch" by Lana Del Rey from the album "Norman Fucking Rockwell!"
+[2m2025-07-27T12:16:25Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]---END OF MUSIC CONTEXT---
+[2m2025-07-27T12:16:25Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Command: "why is that appropriate for tiannamen square"
+[2m2025-07-27T12:16:25Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Music history length (filtered): 8
+[2m2025-07-27T12:16:25Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Relevant context length: 1
+[2m2025-07-27T12:16:25Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Dialog state last action: Lana Del Rey - Venice Bitch
+[2m2025-07-27T12:16:25Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Relevant context entries:
+[2m2025-07-27T12:16:25Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  1. play_specific_song: Lana Del Rey - Venice Bitch
+[2m2025-07-27T12:16:25Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]🔄 Routing deepseek/deepseek-r1-0528 to openrouter
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]✅ openrouter validation passed for deepseek/deepseek-r1-0528 (music_command)
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]📤 deepseek/deepseek-r1-0528 response: {
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  "intent": "ask_question",
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  "confidence": 0.95,
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  "reasoning": "The user is asking for contextual explanation about the previously played song's relevance to their original request",
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  "responseMessage": "\"Venice Bitch\" suits the 'matcha tea in Tiananmen Square' scenario because its 9-minute psychedelic folk dreamscape mirrors the surreal juxtaposition of tranquility (tea ritual) within charged historical space. Lana's hypnotic vocals and distorted guitars create a dissociative, almost cinematic quality – perfect for finding personal stillness amidst grand-scale tension, much like sipping tea in an iconic plaza. That drifting California-to-Venice Beach imagery parallels your imagined East-meets-West moment."
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]}
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]LLM interpretation: {
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  intent: 'ask_question',
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  query: '',
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  artist: '',
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  track: '',
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  album: '',
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  confidence: 0.95,
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  reasoning: "The user is asking for contextual explanation about the previously played song's relevance to their original request",
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  modifiers: {},
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  alternatives: [],
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  volume: undefined,
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  volume_level: undefined,
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  isAIDiscovery: false,
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  aiReasoning: '',
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  responseMessage: `"Venice Bitch" suits the 'matcha tea in Tiananmen Square' scenario because its 9-minute psychedelic folk dreamscape mirrors the surreal juxtaposition of tranquility (tea ritual) within charged historical space. Lana's hypnotic vocals and distorted guitars create a dissociative, almost cinematic quality  perfect for finding personal stillness amidst grand-scale tension, much like sipping tea in an iconic plaza. That drifting California-to-Venice Beach imagery parallels your imagined East-meets-West moment.`,
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  model: 'deepseek/deepseek-r1-0528',
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  provider: 'openrouter',
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  flow: 'openrouter',
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  fallbackUsed: false,
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  actualModel: 'deepseek/deepseek-r1-0528'
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]}
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Interpretation: {
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  command: 'why is that appropriate for tiannamen square',
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  intent: 'ask_question',
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  confidence: 0.95,
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  model: 'deepseek/deepseek-r1-0528'
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]}
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]📝 Using Gemini responseMessage: "Venice Bitch" suits the 'matcha tea in Tiananmen Square' scenario because its 9-minute psychedelic folk dreamscape mirrors the surreal juxtaposition of tranquility (tea ritual) within charged historical space. Lana's hypnotic vocals and distorted guitars create a dissociative, almost cinematic quality  perfect for finding personal stillness amidst grand-scale tension, much like sipping tea in an iconic plaza. That drifting California-to-Venice Beach imagery parallels your imagined East-meets-West moment.
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Final response alternatives: undefined
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Final response interpretation alternatives: []
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]📝 Sending conversational response: {
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  success: true,
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  message: `"Venice Bitch" suits the 'matcha tea in Tiananmen Square' scenario because its 9-minute psychedelic folk dreamscape mirrors the surreal juxtaposition of tranquility (tea ritual) within charged historical space. Lana's hypnotic vocals and distorted guitars create a dissociative, almost cinematic quality  perfect for finding personal stillness amidst grand-scale tension, much like sipping tea in an iconic plaza. That drifting California-to-Venice Beach imagery parallels your imagined East-meets-West moment.`,
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  conversational: true
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]}
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]LLM Performance Issue: {
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  command: 'why is that appropriate for tiannamen square',
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  responseTime: 7348,
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  success: true,
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  error: undefined
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]}
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]📝 Storing conversational entry: {
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  command: 'why is that appropriate for tiannamen square',
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  intent: 'ask_question',
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  responseMessage: `"Venice Bitch" suits the 'matcha tea in Tiananmen Square' scenario because its 9-minute psychedelic folk dreamscape mirrors the surreal juxtaposition of tranquility (tea ritual) within charged historical space. Lana's hypnotic vocals and distorted guitars create a dissociative, almost cinematic quality  perfect for finding personal stillness amidst grand-scale tension, much like sipping tea in an iconic plaza. That drifting California-to-Venice Beach imagery parallels your imagined East-meets-West moment.`
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]}
+[2m2025-07-27T12:16:32Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Dialog state updated: mode=chat, last_action=play
+[2m2025-07-27T12:18:52Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Processing command: And what exactly happened in Tiananmen Square, that, to use your own words, is so tense, and make it "a charged historical space"
+[2m2025-07-27T12:18:52Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]User ID: gogekian
+[2m2025-07-27T12:18:52Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Using user's preferred model: deepseek/deepseek-r1-0528
+[2m2025-07-27T12:18:52Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Checking taste profile conditions: { userId: 'gogekian', hasLoggingService: true, hasRedisClient: true }
+[2m2025-07-27T12:18:52Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Detected request context type: specific
+[2m2025-07-27T12:18:52Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][TasteProfile] Starting generation for user: gogekian
+[2m2025-07-27T12:18:52Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][TasteProfile] Cache miss, fetching fresh data...
+[2m2025-07-27T12:18:52Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][TasteProfile] Data fetched - Artists: 50, Tracks: 50, Recent: 50
+[2m2025-07-27T12:18:52Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][TasteProfile] Top genres: soundtrack, pop, art pop, industrial rock, industrial, industrial metal, alternative metal, nu metal, hyperpop, soft pop
+[2m2025-07-27T12:18:52Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][TasteProfile] Profile cached successfully
+[2m2025-07-27T12:18:52Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Fetched specific taste profile for user
+[2m2025-07-27T12:18:52Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Taste Profile Content: BACKGROUND - User's Musical Context (for reference only):
+[2m2025-07-27T12:18:52Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]• Generally listens to: soundtrack, pop, art pop, industrial rock, industrial, industrial metal, alternative metal, nu metal, hyperpop, soft pop
+[2m2025-07-27T12:18:52Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]• Some familiar artists: Taylor Swift, Lady Gaga, Epic Mountain, Nine Inch Nails, Gracie Abrams, Regina Hardon, Lorde, Alex Warren, Sabrina Carpenter, Chappell Roan
+[2m2025-07-27T12:18:52Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]IMPORTANT: The user is asking for a specific song. Use this context only to understand their general style, but focus on finding the exact song they requested. Don't substitute with something from their taste profile unless the specific song cannot be found.
+[2m2025-07-27T12:18:52Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Combined music context being sent to LLM:
+[2m2025-07-27T12:18:52Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]---START OF MUSIC CONTEXT---
+[2m2025-07-27T12:18:52Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]BACKGROUND - User's Musical Context (for reference only):
+[2m2025-07-27T12:18:52Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]• Generally listens to: soundtrack, pop, art pop, industrial rock, industrial, industrial metal, alternative metal, nu metal, hyperpop, soft pop
+[2m2025-07-27T12:18:52Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]• Some familiar artists: Taylor Swift, Lady Gaga, Epic Mountain, Nine Inch Nails, Gracie Abrams, Regina Hardon, Lorde, Alex Warren, Sabrina Carpenter, Chappell Roan
+[2m2025-07-27T12:18:52Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]IMPORTANT: The user is asking for a specific song. Use this context only to understand their general style, but focus on finding the exact song they requested. Don't substitute with something from their taste profile unless the specific song cannot be found.
+[2m2025-07-27T12:18:52Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Currently playing: "Venice Bitch" by Lana Del Rey from the album "Norman Fucking Rockwell!"
+[2m2025-07-27T12:18:52Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]---END OF MUSIC CONTEXT---
+[2m2025-07-27T12:18:52Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Command: "And what exactly happened in Tiananmen Square, that, to use your own words, is so tense, and make it "a charged historical space""
+[2m2025-07-27T12:18:52Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Music history length (filtered): 7
+[2m2025-07-27T12:18:52Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Relevant context length: 1
+[2m2025-07-27T12:18:52Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Dialog state last action: Lana Del Rey - Venice Bitch
+[2m2025-07-27T12:18:52Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Relevant context entries:
+[2m2025-07-27T12:18:52Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  1. play_specific_song: Lana Del Rey - Venice Bitch
+[2m2025-07-27T12:18:52Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]🔄 Routing deepseek/deepseek-r1-0528 to openrouter
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]🔥 JSON parsing failed for openrouter deepseek/deepseek-r1-0528: SyntaxError: Unexpected token ` in JSON at position 0
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    at JSON.parse (<anonymous>)
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    at LLMOrchestrator.validateAndLogResponse (/app/dist/llm/orchestrator.js:406:33)
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    at LLMOrchestrator.callModel (/app/dist/llm/orchestrator.js:255:22)
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    at async LLMOrchestrator.complete (/app/dist/llm/orchestrator.js:157:30)
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    at async interpretCommand (/app/dist/routes/simple-llm-interpreter.js:398:26)
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]    at async /app/dist/routes/simple-llm-interpreter.js:889:32
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]📤 deepseek/deepseek-r1-0528 response: ```json
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]{
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  "intent": "ask_question",
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  "confidence": 0.98,
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  "reasoning": "User asked a direct historical question about Tiananmen Square unrelated to music playback or curation",
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  "responseMessage": "Tiananmen Square became a globally recognized symbol after the 1989 pro-democracy protests where Chinese students and workers gathered for seven weeks calling for political reform. On June 4th, the Chinese government deployed military forces to clear the square, resulting in civilian casualties that remain officially unacknowledged. This suppression transformed it into a charged historical space where discussions remain heavily censored in China, though it represents a pivotal moment in modern Chinese history where aspirations for democracy clashed with state control."
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]}
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]```
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]LLM interpretation: {
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  intent: 'ask_question',
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  query: '',
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  artist: '',
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  track: '',
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  album: '',
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  confidence: 0.98,
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  reasoning: 'User asked a direct historical question about Tiananmen Square unrelated to music playback or curation',
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  modifiers: {},
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  alternatives: [],
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  volume: undefined,
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  volume_level: undefined,
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  isAIDiscovery: false,
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  aiReasoning: '',
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  responseMessage: 'Tiananmen Square became a globally recognized symbol after the 1989 pro-democracy protests where Chinese students and workers gathered for seven weeks calling for political reform. On June 4th, the Chinese government deployed military forces to clear the square, resulting in civilian casualties that remain officially unacknowledged. This suppression transformed it into a charged historical space where discussions remain heavily censored in China, though it represents a pivotal moment in modern Chinese history where aspirations for democracy clashed with state control.',
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  model: 'deepseek/deepseek-r1-0528',
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  provider: 'openrouter',
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  flow: 'openrouter',
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  fallbackUsed: false,
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  actualModel: 'deepseek/deepseek-r1-0528'
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]}
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Interpretation: {
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  command: 'And what exactly happened in Tiananmen Square, that, to use your own words, is so tense, and make it "a charged historical space"',
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  intent: 'ask_question',
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  confidence: 0.98,
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  model: 'deepseek/deepseek-r1-0528'
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]}
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]📝 Using Gemini responseMessage: Tiananmen Square became a globally recognized symbol after the 1989 pro-democracy protests where Chinese students and workers gathered for seven weeks calling for political reform. On June 4th, the Chinese government deployed military forces to clear the square, resulting in civilian casualties that remain officially unacknowledged. This suppression transformed it into a charged historical space where discussions remain heavily censored in China, though it represents a pivotal moment in modern Chinese history where aspirations for democracy clashed with state control.
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Final response alternatives: undefined
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m][DEBUG] Final response interpretation alternatives: []
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]📝 Sending conversational response: {
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  success: true,
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  message: 'Tiananmen Square became a globally recognized symbol after the 1989 pro-democracy protests where Chinese students and workers gathered for seven weeks calling for political reform. On June 4th, the Chinese government deployed military forces to clear the square, resulting in civilian casualties that remain officially unacknowledged. This suppression transformed it into a charged historical space where discussions remain heavily censored in China, though it represents a pivotal moment in modern Chinese history where aspirations for democracy clashed with state control.',
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  conversational: true
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]}
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]LLM Performance Issue: {
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  command: 'And what exactly happened in Tiananmen Square, that, to use your own words, is so tense, and make it "a charged historical space"',
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  responseTime: 13716,
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  success: true,
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  error: undefined
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]}
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]📝 Storing conversational entry: {
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  command: 'And what exactly happened in Tiananmen Square, that, to use your own words, is so tense, and make it "a charged historical space"',
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  intent: 'ask_question',
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]  responseMessage: 'Tiananmen Square became a globally recognized symbol after the 1989 pro-democracy protests where Chinese students and workers gathered for seven weeks calling for political reform. On June 4th, the Chinese government deployed military forces to clear the square, resulting in civilian casualties that remain officially unacknowledged. This suppression transformed it into a charged historical space where discussions remain heavily censored in China, though it represents a pivotal moment in modern Chinese history where aspirations for democracy clashed with state control.'
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]}
+[2m2025-07-27T12:19:05Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Dialog state updated: mode=chat, last_action=play
+[2m2025-07-27T12:45:41Z[0m app[e7849d66cd5998] [32mfra[0m [[34minfo[0m]Auth status check - JWT token valid

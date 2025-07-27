@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import MusicLoader from './MusicLoader';
-import SpotifyPlayer from './SpotifyPlayer';
 import ModelSelector from './ModelSelector';
+import DeviceSelector from './DeviceSelector';
+import PlaybackControls from './PlaybackControls';
 import LLMLogsViewer from './LLMLogsViewer';
 import WeatherDisplay from './WeatherDisplay';
 import CommandHistorySkeleton from './skeletons/CommandHistorySkeleton';
+import HeartIcon from './HeartIcon';
+import ClarificationOptions from './ClarificationOptions';
 import { useSpotifyAuth } from '../hooks/useSpotifyAuth';
+import { useTrackLibrary } from '../hooks/useTrackLibrary';
 import { apiEndpoint } from '../config/api';
 import { authenticatedFetch, api } from '../utils/api';
 
@@ -41,11 +45,6 @@ const MainApp: React.FC = () => {
   const [checking, setChecking] = useState(true);
   const [command, setCommand] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  // Device management states (will be used for device selection UI)
-  // @ts-ignore - Will be used later
-  const [webPlayerDeviceId, setWebPlayerDeviceId] = useState<string | null>(null);
-  // @ts-ignore - Will be used later  
-  const [activeDeviceId, setActiveDeviceId] = useState<string | null>(null);
   const [currentModel, setCurrentModel] = useState<string>('');
   const [toast, setToast] = useState<string | null>(null);
   const [commandHistory, setCommandHistory] = useState<Array<{
@@ -67,10 +66,52 @@ const MainApp: React.FC = () => {
     aiReasoning?: string;
     feedback?: 'loved' | 'disliked';
     feedbackLoading?: boolean;
+    // Clarification mode fields
+    clarificationOptions?: Array<{
+      direction: string;
+      description: string;
+      example: string;
+      icon: string;
+      followUpQuery?: string;
+    }>;
+    currentContext?: {
+      rejected: string;
+      rejectionType: string;
+    };
+    uiType?: string;
   }>>([]);
   const [commandHistoryLoading, setCommandHistoryLoading] = useState(false);
+  // @ts-ignore - Will be used for device preference persistence
+  const [devicePreference, setDevicePreference] = useState<string>('auto');
+  
+  // Extract all track IDs from alternatives and main tracks in command history
+  const allTrackIds = commandHistory.reduce((ids: string[], item) => {
+    const trackIds: string[] = [];
+    
+    // Add main track ID if it exists
+    if (item.trackUri) {
+      const mainTrackId = item.trackUri.split(':')[2];
+      if (mainTrackId) trackIds.push(mainTrackId);
+    }
+    
+    // Add alternative track IDs
+    if (item.alternatives && typeof item.alternatives[0] === 'object') {
+      const alternativeIds = (item.alternatives as Array<{ uri: string }>)
+        .map(alt => alt.uri.split(':')[2])
+        .filter(Boolean);
+      trackIds.push(...alternativeIds);
+    }
+    
+    return [...ids, ...trackIds];
+  }, []);
+
+  // Track library hook for managing saved status
+  const { savedStatus, loading: libraryLoading, toggleSave } = useTrackLibrary({
+    trackIds: allTrackIds
+  });
+  
   // Authentication
-  const { isAuthenticated, accessToken, loading: authLoading, logout, checkAuthStatus, error: authError, login } = useSpotifyAuth();
+  const { isAuthenticated, loading: authLoading, logout, checkAuthStatus, error: authError, login } = useSpotifyAuth();
 
   // Check server connection
   useEffect(() => {
@@ -111,7 +152,7 @@ const MainApp: React.FC = () => {
       
       setCommandHistoryLoading(true);
       try {
-        const response = await authenticatedFetch(apiEndpoint('/api/claude/history'));
+        const response = await authenticatedFetch(apiEndpoint('/api/llm/simple/history'));
         if (response.ok) {
           const data = await response.json();
           if (data.history && Array.isArray(data.history)) {
@@ -284,7 +325,11 @@ const MainApp: React.FC = () => {
           trackUri: data.track?.uri,
           trackName: data.track?.name,
           artist: data.track?.artists?.map((a: any) => a.name).join(', '),
-          aiReasoning: data.interpretation?.aiReasoning
+          aiReasoning: data.interpretation?.aiReasoning,
+          // Clarification mode data
+          clarificationOptions: data.clarificationOptions,
+          currentContext: data.currentContext,
+          uiType: data.uiType
         };
         
         setCommandHistory(prev => [...prev, newMessage]);
@@ -339,9 +384,91 @@ const MainApp: React.FC = () => {
     updateModelPreference('default', model);
   };
 
-  const handleDeviceReady = (deviceId: string) => {
-    setWebPlayerDeviceId(deviceId);
-    setActiveDeviceId(deviceId);
+
+  const handleDeviceChange = async (deviceId: string | 'auto') => {
+    setDevicePreference(deviceId);
+    
+    // Send preference to backend
+    try {
+      await api.post('/api/control/device-preference', { preference: deviceId });
+    } catch (error) {
+      console.error('Failed to set device preference:', error);
+    }
+  };
+
+  const handleClarificationOption = async (direction: string, followUpQuery?: string) => {
+    // Use the followUpQuery or construct one from direction
+    const commandToSend = followUpQuery || `play ${direction} music`;
+    
+    // Set the command and trigger submit
+    setCommand(commandToSend);
+    setIsProcessing(true);
+    
+    try {
+      const response = await authenticatedFetch(apiEndpoint('/api/llm/simple/command'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          command: commandToSend
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.success) {
+        const newMessage = {
+          command: commandToSend,
+          response: data.response || data.message,
+          confidence: data.interpretation?.confidence,
+          isEnhanced: data.isEnhanced,
+          timestamp: Date.now(),
+          alternatives: data.interpretation?.alternatives,
+          intent: data.interpretation?.intent,
+          reasoning: data.interpretation?.reasoning,
+          model: data.interpretation?.model || currentModel,
+          interpretation: data.interpretation,
+          queuedSongs: data.queuedSongs,
+          isAIDiscovery: data.interpretation?.isAIDiscovery || false,
+          trackUri: data.track?.uri,
+          trackName: data.track?.name,
+          artist: data.track?.artists?.map((a: any) => a.name).join(', '),
+          aiReasoning: data.interpretation?.aiReasoning,
+          clarificationOptions: data.clarificationOptions,
+          currentContext: data.currentContext,
+          uiType: data.uiType
+        };
+        
+        setCommandHistory(prev => [...prev, newMessage]);
+      } else {
+        setCommandHistory(prev => [...prev, {
+          command: commandToSend,
+          response: data.error || data.message || 'An error occurred',
+          timestamp: Date.now(),
+          confidence: data.interpretation?.confidence,
+          intent: data.interpretation?.intent,
+          reasoning: data.interpretation?.reasoning,
+          model: data.interpretation?.model || currentModel,
+          interpretation: data.interpretation,
+          queuedSongs: data.queuedSongs
+        }]);
+      }
+    } catch (error) {
+      console.error('Clarification command error:', error);
+      setCommandHistory(prev => [...prev, {
+        command: commandToSend,
+        response: 'Network error. Please try again.',
+        timestamp: Date.now()
+      }]);
+    } finally {
+      setCommand(''); // Clear the input
+      setIsProcessing(false);
+    }
   };
 
   if (checking) {
@@ -422,9 +549,10 @@ const MainApp: React.FC = () => {
           <div className="mb-6">
             <div className="bg-zinc-800/50 border border-zinc-700/50 rounded-lg px-4 py-3">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                {/* Left: Model Selector */}
-                <div className="flex-shrink-0">
+                {/* Left: Model and Device Selectors */}
+                <div className="flex items-center gap-3 flex-shrink-0">
                   <ModelSelector onModelChange={handleModelSelect} />
+                  <DeviceSelector onDeviceChange={handleDeviceChange} />
                 </div>
 
                 {/* Center: Weather */}
@@ -532,12 +660,9 @@ const MainApp: React.FC = () => {
             </div>
           </div>
 
-          {/* Spotify Player */}
+          {/* Playback Controls */}
           <div className="mb-6">
-            <SpotifyPlayer 
-              token={accessToken || ''}
-              onDeviceReady={handleDeviceReady}
-            />
+            <PlaybackControls />
           </div>
 
           {/* Two-column layout - asymmetric for larger screens */}
@@ -702,9 +827,36 @@ const MainApp: React.FC = () => {
                           {item.response}
                         </div>
                         
+                        {/* Clarification Options */}
+                        {item.intent === 'clarification_mode' && item.clarificationOptions && (
+                          <div className="mt-2 pl-6">
+                            <ClarificationOptions
+                              response={{
+                                intent: 'clarification_mode',
+                                options: item.clarificationOptions,
+                                responseMessage: item.response,
+                                currentContext: item.currentContext,
+                                uiType: item.uiType
+                              }}
+                              onOptionSelect={handleClarificationOption}
+                            />
+                          </div>
+                        )}
+                        
                         {/* Feedback Buttons for AI Discoveries */}
                         {item.isAIDiscovery && item.trackUri && (
-                          <div className="flex gap-2 mt-2 pl-6 opacity-100">
+                          <div className="flex gap-2 mt-2 pl-6 opacity-100 items-center">
+                            {(() => {
+                              const trackId = item.trackUri.split(':')[2];
+                              return trackId ? (
+                                <HeartIcon
+                                  filled={savedStatus.get(trackId) || false}
+                                  loading={libraryLoading.get(trackId) || false}
+                                  size="md"
+                                  onClick={() => toggleSave(trackId)}
+                                />
+                              ) : null;
+                            })()}
                             <button
                               onClick={() => handleFeedback(item.trackUri!, 'loved')}
                               className={`px-3 py-1 rounded-lg transition-all ${
@@ -738,30 +890,41 @@ const MainApp: React.FC = () => {
                               <div className="space-y-2">
                                 <span className="text-xs text-gray-500 font-medium">Similar songs:</span>
                                 <div className="space-y-1">
-                                  {(item.alternatives as Array<{ name: string; artists: string; popularity: number; uri: string }>).map((alt, altIndex) => (
-                                    <div key={altIndex} className="flex items-center justify-between bg-zinc-900/50 rounded p-2 text-xs">
-                                      <div className="flex-1 text-gray-300">
-                                        <span className="font-medium">{alt.name}</span>
-                                        <span className="text-gray-500"> by {alt.artists}</span>
-                                      </div>
-                                      <div className="flex gap-1">
-                                        <button
-                                          onClick={() => handleAlternativeClick(alt, 'play')}
-                                          disabled={isProcessing}
-                                          className="px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                        >
-                                          Play
-                                        </button>
-                                        <button
-                                          onClick={() => handleAlternativeClick(alt, 'queue')}
-                                          disabled={isProcessing}
-                                          className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                        >
-                                          Queue
+                                  {(item.alternatives as Array<{ name: string; artists: string; popularity: number; uri: string }>).map((alt, altIndex) => {
+                                    const trackId = alt.uri.split(':')[2];
+                                    return (
+                                      <div key={altIndex} className="flex items-center justify-between bg-zinc-900/50 rounded p-2 text-xs">
+                                        <div className="flex-1 text-gray-300">
+                                          <span className="font-medium">{alt.name}</span>
+                                          <span className="text-gray-500"> by {alt.artists}</span>
+                                        </div>
+                                        <div className="flex gap-1 items-center">
+                                          {trackId && (
+                                            <HeartIcon
+                                              filled={savedStatus.get(trackId) || false}
+                                              loading={libraryLoading.get(trackId) || false}
+                                              size="sm"
+                                              onClick={() => toggleSave(trackId)}
+                                            />
+                                          )}
+                                          <button
+                                            onClick={() => handleAlternativeClick(alt, 'play')}
+                                            disabled={isProcessing}
+                                            className="px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                          >
+                                            Play
+                                          </button>
+                                          <button
+                                            onClick={() => handleAlternativeClick(alt, 'queue')}
+                                            disabled={isProcessing}
+                                            className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                          >
+                                            Queue
                                         </button>
                                       </div>
                                     </div>
-                                  ))}
+                                  );
+                                  })}
                                 </div>
                               </div>
                             ) : (

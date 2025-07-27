@@ -34,7 +34,33 @@ export const ANTI_VANILLA_GUIDELINES = `Internal selection criteria (DO NOT ment
 - Skip graduation songs, wedding standards, workout playlist clichés
 - Avoid songs with over 1 billion streams unless they specifically fit the context perfectly
 
-IMPORTANT: These are internal guidelines for song selection only. Never mention avoiding mainstream/popular songs in your responses.`;
+IMPORTANT: These are internal guidelines for song selection only. Never mention avoiding mainstream/popular songs in your responses.
+
+FRESHNESS RULE: If an artist appears in the user's recent favorites or was recommended in the last 5 interactions, actively seek alternatives unless specifically requested.`;
+
+export const CLARIFICATION_MODE_GUIDANCE = `When user expresses rejection or dissatisfaction:
+- DON'T immediately guess what they want
+- DO enter clarification_mode to understand their preference
+- Generate 4-5 CONTEXTUALLY INTELLIGENT alternatives based on what they rejected
+- Think creatively: decade change, vocal style, energy level, instrumentation, mood, tempo, gender, etc.
+- Make each option specific and appealing with concrete examples
+- Choose appropriate emojis that match each direction (⚡🎭📼☀️🎲🎸🎤🕺💃🎹🥁🎺🎷)
+
+SMART EXAMPLES:
+- Rejecting Lana Del Rey → "Female vocalist but upbeat", "80s synth-pop", "Electronic instead of indie", "Faster tempo", "Surprise me"  
+- Rejecting metal → "Acoustic version", "Same energy, different genre", "Instrumental", "Female vocals", "Softer but powerful"
+- Rejecting slow songs → "Same artist, faster songs", "Dance music", "Rock energy", "Happy pop", "Electronic beats"
+- Rejecting current pop → "Classic rock", "90s alternative", "Indie folk", "Jazz vocals", "World music"
+
+FOLLOWUP QUERY FORMAT: Always use "queue up several [genre/style] songs" format in followUpQuery to provide users with multiple song options instead of just one track.
+
+Use clarification_mode for:
+- "not this", "dislike", "don't like", "hate this"  
+- "something else", "different", "change it"
+- "not feeling", "not the vibe", "not my mood"
+- Any negative response to current playback
+
+Be creative and contextual - your music knowledge should shine through intelligent alternatives!`;
 
 export const ALTERNATIVES_APPROACH = `When generating alternatives, use the three-tier approach:
 - 60% should be comfort picks (within their apparent taste but not obvious)
@@ -63,7 +89,9 @@ export const FULL_CURATOR_GUIDELINES = `${MUSIC_CURATOR_PERSONALITY}
 
 ${NON_OBVIOUS_CHOICE_GUIDELINES}
 
-${ANTI_VANILLA_GUIDELINES}`;
+${ANTI_VANILLA_GUIDELINES}
+
+${CLARIFICATION_MODE_GUIDANCE}`;
 
 // Format user's music history for context
 export function formatMusicHistory(conversationHistory: any[]): string {

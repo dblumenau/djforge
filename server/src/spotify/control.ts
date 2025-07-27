@@ -3,6 +3,7 @@ import { SpotifyWebAPI } from './api';
 import { SpotifyAuthTokens, SpotifyTrack } from '../types';
 import { ensureValidToken } from './auth';
 import { logDebugError } from '../utils/error-logger';
+import { playbackEventService } from '../services/event-emitter.service';
 
 export const controlRouter = Router();
 
@@ -125,7 +126,18 @@ export class SpotifyControl {
           message = `Playing: ${selectedTrack.name} by ${selectedTrack.artists.map((a: { name: string }) => a.name).join(', ')}`;
           break;
         case 1:
-          message = `The exact song wasn't found on Spotify, so I'm playing: ${selectedTrack.name} by ${selectedTrack.artists.map((a: { name: string }) => a.name).join(', ')} instead`;
+          // Check if we found the exact requested track even though we had to retry without album
+          const foundExactTrack = artist && track && 
+            selectedTrack.artists.some((a: { name: string }) => a.name.toLowerCase() === artist.toLowerCase()) &&
+            selectedTrack.name.toLowerCase() === track.toLowerCase();
+          
+          if (foundExactTrack) {
+            // We found the exact song, just had to search without album (likely due to special characters)
+            message = `Playing: ${selectedTrack.name} by ${selectedTrack.artists.map((a: { name: string }) => a.name).join(', ')}`;
+          } else {
+            // We actually found a different song
+            message = `The exact song wasn't found on Spotify, so I'm playing: ${selectedTrack.name} by ${selectedTrack.artists.map((a: { name: string }) => a.name).join(', ')} instead`;
+          }
           break;
         case 2:
           message = `The requested song doesn't exist on Spotify, so I found the closest match: ${selectedTrack.name} by ${selectedTrack.artists.map((a: { name: string }) => a.name).join(', ')}`;
@@ -164,7 +176,18 @@ export class SpotifyControl {
           message = `Added to queue: ${selectedTrack.name} by ${selectedTrack.artists.map((a: { name: string }) => a.name).join(', ')}`;
           break;
         case 1:
-          message = `The exact song wasn't found on Spotify, so I added to queue: ${selectedTrack.name} by ${selectedTrack.artists.map((a: { name: string }) => a.name).join(', ')} instead`;
+          // Check if we found the exact requested track even though we had to retry without album
+          const foundExactTrack = artist && track && 
+            selectedTrack.artists.some((a: { name: string }) => a.name.toLowerCase() === artist.toLowerCase()) &&
+            selectedTrack.name.toLowerCase() === track.toLowerCase();
+          
+          if (foundExactTrack) {
+            // We found the exact song, just had to search without album (likely due to special characters)
+            message = `Added to queue: ${selectedTrack.name} by ${selectedTrack.artists.map((a: { name: string }) => a.name).join(', ')}`;
+          } else {
+            // We actually found a different song
+            message = `The exact song wasn't found on Spotify, so I added to queue: ${selectedTrack.name} by ${selectedTrack.artists.map((a: { name: string }) => a.name).join(', ')} instead`;
+          }
           break;
         case 2:
           message = `The requested song doesn't exist on Spotify, so I found the closest match and added to queue: ${selectedTrack.name} by ${selectedTrack.artists.map((a: { name: string }) => a.name).join(', ')}`;
@@ -189,7 +212,9 @@ export class SpotifyControl {
   async searchWithRetry(query: string, artist?: string, track?: string, album?: string): Promise<{ tracks: SpotifyTrack[], retryLevel: number }> {
     // Attempt 1: Full precision search
     console.log(`[DEBUG] Attempt 1 - Full search: ${query}`);
+    console.log(`[DEBUG] Search params - Artist: "${artist}", Track: "${track}", Album: "${album}"`);
     let tracks = await this.webAPI.search(query);
+    console.log(`[DEBUG] Attempt 1 found ${tracks.length} tracks`);
     
     if (tracks.length > 0) {
       return { tracks, retryLevel: 0 };
@@ -545,7 +570,26 @@ export class SpotifyControl {
   async getDevices() {
     try {
       const devices = await this.webAPI.getDevices();
-      return { success: true, devices };
+      const currentDevice = await this.webAPI.getCurrentDevice();
+      return { success: true, devices, currentDevice };
+    } catch (error: any) {
+      return { success: false, message: error.message };
+    }
+  }
+  
+  async setDevicePreference(preference: 'auto' | string) {
+    try {
+      this.webAPI.setDevicePreference(preference);
+      return { success: true, message: `Device preference set to: ${preference}` };
+    } catch (error: any) {
+      return { success: false, message: error.message };
+    }
+  }
+  
+  async transferPlayback(deviceId: string, play: boolean = false) {
+    try {
+      await this.webAPI.transferPlayback(deviceId, play);
+      return { success: true, message: `Playback transferred to device: ${deviceId}` };
     } catch (error: any) {
       return { success: false, message: error.message };
     }
@@ -615,14 +659,6 @@ export class SpotifyControl {
     }
   }
 
-  async transferPlayback(deviceId: string, play: boolean = true) {
-    try {
-      await this.webAPI.transferPlayback(deviceId, play);
-      return { success: true, message: `Playback transferred to device` };
-    } catch (error: any) {
-      return { success: false, message: error.message };
-    }
-  }
 
   async seekToPosition(positionSeconds: number) {
     try {
@@ -656,6 +692,43 @@ export class SpotifyControl {
       throw error;
     }
   }
+
+  // Library management methods
+  async saveToLibrary(trackIds: string[]) {
+    try {
+      await this.webAPI.saveTracksToLibrary(trackIds);
+      return { 
+        success: true, 
+        message: `Added ${trackIds.length} track${trackIds.length > 1 ? 's' : ''} to your library` 
+      };
+    } catch (error: any) {
+      return { success: false, message: error.message };
+    }
+  }
+
+  async removeFromLibrary(trackIds: string[]) {
+    try {
+      await this.webAPI.removeTracksFromLibrary(trackIds);
+      return { 
+        success: true, 
+        message: `Removed ${trackIds.length} track${trackIds.length > 1 ? 's' : ''} from your library` 
+      };
+    } catch (error: any) {
+      return { success: false, message: error.message };
+    }
+  }
+
+  async checkIfSaved(trackIds: string[]) {
+    try {
+      const savedStatus = await this.webAPI.checkIfTracksSaved(trackIds);
+      return { 
+        success: true, 
+        savedStatus // Array of booleans matching the order of trackIds
+      };
+    } catch (error: any) {
+      return { success: false, message: error.message };
+    }
+  }
 }
 
 // All endpoints now use ensureValidToken from auth.ts
@@ -665,6 +738,12 @@ controlRouter.post('/play', ensureValidToken, async (req, res) => {
   try {
     const webAPI = getWebAPI(req);
     await webAPI.play(req.body.deviceId);
+    
+    // Emit playback resumed event
+    if ((req as any).user?.spotifyId) {
+      playbackEventService.emitPlaybackResumed((req as any).user.spotifyId);
+    }
+    
     res.json({ success: true });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -675,6 +754,12 @@ controlRouter.post('/pause', ensureValidToken, async (req, res) => {
   try {
     const webAPI = getWebAPI(req);
     await webAPI.pause();
+    
+    // Emit playback paused event
+    if ((req as any).user?.spotifyId) {
+      playbackEventService.emitPlaybackPaused((req as any).user.spotifyId);
+    }
+    
     res.json({ success: true });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -685,6 +770,12 @@ controlRouter.post('/next', ensureValidToken, async (req, res) => {
   try {
     const webAPI = getWebAPI(req);
     await webAPI.nextTrack();
+    
+    // Emit track skipped event
+    if ((req as any).user?.spotifyId) {
+      playbackEventService.emitTrackSkipped((req as any).user.spotifyId);
+    }
+    
     res.json({ success: true });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -695,6 +786,12 @@ controlRouter.post('/previous', ensureValidToken, async (req, res) => {
   try {
     const webAPI = getWebAPI(req);
     await webAPI.previousTrack();
+    
+    // Emit track previous event
+    if ((req as any).user?.spotifyId) {
+      playbackEventService.emitTrackPrevious((req as any).user.spotifyId);
+    }
+    
     res.json({ success: true });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -712,6 +809,12 @@ controlRouter.post('/volume', ensureValidToken, async (req, res) => {
   try {
     const webAPI = getWebAPI(req);
     await webAPI.setVolume(volume, deviceId);
+    
+    // Emit volume changed event
+    if ((req as any).user?.spotifyId) {
+      playbackEventService.emitVolumeChanged((req as any).user.spotifyId, volume);
+    }
+    
     res.json({ success: true, volume });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -794,8 +897,10 @@ controlRouter.get('/devices', ensureValidToken, async (req, res) => {
   try {
     const webAPI = getWebAPI(req);
     const devices = await webAPI.getDevices();
-    res.json({ devices });
+    const currentDevice = await webAPI.getCurrentDevice();
+    res.json({ devices, currentDevice });
   } catch (error: any) {
+    console.error('[DEVICE] Error in /devices endpoint:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -812,6 +917,23 @@ controlRouter.post('/transfer', ensureValidToken, async (req, res) => {
     const webAPI = getWebAPI(req);
     await webAPI.transferPlayback(deviceId, play);
     res.json({ success: true, message: 'Playback transferred' });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Set device preference
+controlRouter.post('/device-preference', ensureValidToken, async (req, res) => {
+  const { preference } = req.body;
+  
+  if (!preference) {
+    return res.status(400).json({ error: 'Device preference is required' });
+  }
+  
+  try {
+    const webAPI = getWebAPI(req);
+    webAPI.setDevicePreference(preference);
+    res.json({ success: true, preference });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -880,6 +1002,127 @@ controlRouter.post('/seek', ensureValidToken, async (req, res) => {
     const webAPI = getWebAPI(req);
     await webAPI.seekToPosition(position * 1000); // Convert to milliseconds
     res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Clear queue
+controlRouter.post('/clear-queue', ensureValidToken, async (req, res) => {
+  try {
+    const webAPI = getWebAPI(req);
+    await webAPI.clearQueue();
+    
+    // Emit queue cleared event
+    if ((req as any).user?.spotifyId) {
+      playbackEventService.emitQueueCleared((req as any).user.spotifyId);
+    }
+    
+    res.json({ success: true, message: 'Queue cleared' });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Shuffle control
+controlRouter.post('/shuffle', ensureValidToken, async (req, res) => {
+  const { state } = req.body;
+  
+  if (typeof state !== 'boolean') {
+    return res.status(400).json({ error: 'State must be boolean' });
+  }
+  
+  try {
+    const webAPI = getWebAPI(req);
+    await webAPI.setShuffle(state);
+    
+    // Emit shuffle changed event
+    if ((req as any).user?.spotifyId) {
+      playbackEventService.emitShuffleChanged((req as any).user.spotifyId, state);
+    }
+    
+    res.json({ success: true, message: `Shuffle ${state ? 'on' : 'off'}` });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Repeat control
+controlRouter.post('/repeat', ensureValidToken, async (req, res) => {
+  const { state } = req.body;
+  
+  if (!['off', 'track', 'context'].includes(state)) {
+    return res.status(400).json({ error: 'State must be off, track, or context' });
+  }
+  
+  try {
+    const webAPI = getWebAPI(req);
+    await webAPI.setRepeat(state);
+    
+    // Emit repeat changed event
+    if ((req as any).user?.spotifyId) {
+      playbackEventService.emitRepeatChanged((req as any).user.spotifyId, state);
+    }
+    
+    res.json({ success: true, message: `Repeat set to ${state}` });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Volume control
+controlRouter.post('/volume', ensureValidToken, async (req, res) => {
+  const { volume } = req.body;
+  
+  if (typeof volume !== 'number' || volume < 0 || volume > 100) {
+    return res.status(400).json({ error: 'Volume must be between 0 and 100' });
+  }
+  
+  try {
+    const webAPI = getWebAPI(req);
+    await webAPI.setVolume(volume);
+    res.json({ success: true, message: `Volume set to ${volume}%` });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get current track and playback state
+controlRouter.get('/current-track', ensureValidToken, async (req, res) => {
+  try {
+    const webAPI = getWebAPI(req);
+    const playback = await webAPI.getCurrentPlayback();
+    
+    if (!playback || !playback.item) {
+      res.json({ 
+        success: true, 
+        message: 'No track playing',
+        track: null,
+        isPlaying: false,
+        shuffleState: false,
+        repeatState: 'off',
+        volume: 50
+      });
+    } else {
+      const track = playback.item;
+      res.json({ 
+        success: true,
+        track: {
+          name: track.name,
+          artist: track.artists.map((a: any) => a.name).join(', '),
+          album: track.album.name,
+          duration: track.duration_ms,
+          position: playback.progress_ms || 0,
+          id: track.id,
+          uri: track.uri
+        },
+        isPlaying: playback.is_playing,
+        shuffleState: playback.shuffle_state,
+        repeatState: playback.repeat_state,
+        volume: playback.device?.volume_percent || 50,
+        device: playback.device
+      });
+    }
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

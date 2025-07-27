@@ -17,6 +17,7 @@ import {
   formatMusicHistory 
 } from '../llm/music-curator-prompts';
 import { detectRequestContextType } from '../utils/requestContext';
+import { playbackEventService } from '../services/event-emitter.service';
 
 export const simpleLLMInterpreterRouter = Router();
 
@@ -64,7 +65,8 @@ interface TrackWithScore extends SpotifyTrack {
 function sanitizeResponse(response: string): string {
   return response
     .substring(0, MAX_RESPONSE_SIZE)
-    .replace(/[^\x20-\x7E\n\r\t]/g, ''); // ASCII only + common whitespace
+    // Allow ASCII + common whitespace + emoji ranges + other common unicode
+    .replace(/[^\x20-\x7E\n\r\t\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '');
 }
 
 // Normalize LLM response with defensive parsing
@@ -251,11 +253,17 @@ AVAILABLE INTENTS - Choose the most appropriate one:
 • chat - General music discussion ("what do you think of this artist", "how's the song")
 • ask_question - Questions about collaborations, facts ("did he collaborate with X", "has she ever worked with Y")
 • get_playback_info - Get information about what's currently playing ("what's playing", "current song", "what song is this")
+• clarification_mode - When user expresses rejection/dissatisfaction with current selection or gives vague directional requests
 
 CONVERSATIONAL TRIGGERS (these are NOT music actions):
 - Questions starting with: "did", "does", "has", "tell me about", "what do you think", "how is", "what's"
 - Playback info requests: "what's playing", "what song is this", "current track"
 - General discussion: "what do you think", "how do you feel", "your opinion"
+
+CLARIFICATION MODE TRIGGERS:
+- User expresses rejection: "not this", "dislike", "don't like", "hate this", "not feeling", "not the vibe"
+- Vague directional requests: "something else", "different", "change it", "not my mood", "another direction"
+- Any negative response to current playback when they want an alternative
 
 === SONG INTENTS (require specific song recommendations) ===
 • play_specific_song - Play a specific song based on vague/mood/cultural descriptions
@@ -275,7 +283,7 @@ CONVERSATIONAL TRIGGERS (these are NOT music actions):
 • get_current_track - Get currently playing track info
 • set_shuffle - Enable/disable shuffle (requires enabled field)
 • set_repeat - Enable/disable repeat (requires enabled field)
-• clear_queue - Clear the playback queue
+• clear_queue - Clear the playback queue (ONLY for explicit "clear queue" commands, NOT for rejection/dislike)
 
 === OTHER INTENTS ===
 • search - Search without playing (requires query)
@@ -310,7 +318,7 @@ CRITICAL DISTINCTIONS:
    - "tell me about this song" → ask_question (return info, don't play music)
    - "what do you think of this artist" → chat (return opinion, don't play music)
 
-4. KEY DISTINCTION:
+4. CRITICAL INTENT DISTINCTIONS:
    - If asking for A SONG (even by name) → use play_specific_song/queue_specific_song
    - If asking for MULTIPLE SONGS → use queue_multiple_songs
    - If asking for A PLAYLIST → use play_playlist/queue_playlist
@@ -318,6 +326,10 @@ CRITICAL DISTINCTIONS:
    - If asking "what's playing" or "current song" → use get_playback_info
    - The word "playlist" in the command is a strong indicator for playlist intents
    - Words like "multiple", "many", "several", "more songs", "a few songs" indicate queue_multiple_songs
+
+5. REJECTION vs CLEAR QUEUE DISTINCTION:
+   - Expressions of dislike or wanting alternatives → clarification_mode (offer alternatives)
+   - Explicit queue management commands → clear_queue (actual queue clearing)
 
 RESPONSE FORMAT:
 For specific song requests (both play and queue):
@@ -375,6 +387,34 @@ For conversational requests:
   "confidence": 0.8-1.0,
   "reasoning": "explain why this is conversational and what information to provide",
   "responseMessage": "The actual answer to the user's question about the artist/music. For 'this artist' questions, use the currently playing context to provide information about the specific artist. Include interesting facts, notable achievements, genre influences, and career highlights. Keep it 2-4 sentences."
+}
+
+For clarification mode (when user rejects/dislikes current selection):
+{
+  "intent": "clarification_mode",
+  "confidence": 0.9-1.0,
+  "reasoning": "explain why this requires clarification",
+  "responseMessage": "Friendly message acknowledging their preference and asking for direction",
+  "currentContext": {
+    "rejected": "what they disliked (artist name, genre, etc.)",
+    "rejectionType": "artist" or "genre" or "mood" or "song"
+  },
+  "options": [
+    // Generate 4-5 contextually relevant options based on what was rejected
+    // Examples of smart alternatives the AI might suggest:
+    // If rejecting Lana Del Rey: "Female vocalist but more upbeat", "Different decade (80s/90s)", "Electronic instead of indie", "Faster tempo", "Surprise me"
+    // If rejecting metal: "Acoustic version", "Same energy, different genre", "Instrumental", "Female vocals", "Softer but still powerful"
+    // If rejecting slow songs: "Same artist, faster songs", "Upbeat alternative", "Dance music", "Rock energy", "Happy pop"
+    {
+      "direction": "contextual_direction_1", // AI decides what makes sense
+      "description": "AI-generated description", // e.g. "Female vocals instead", "80s music", "Acoustic version"
+      "example": "AI-generated example", // e.g. "Like Stevie Nicks or Fleetwood Mac", "Think Bon Jovi era"
+      "icon": "🎵", // AI picks appropriate emoji: ⚡🎭📼☀️🎲🎸🎤🕺💃🎹🥁🎺🎷
+      "followUpQuery": "AI-generated follow-up" // e.g. "play female vocalist rock music", "play 80s pop hits"
+    }
+    // ... AI generates 4-5 total options that make contextual sense
+  ],
+  "uiType": "clarification_buttons"
 }
 
 For control intents:
@@ -832,7 +872,13 @@ simpleLLMInterpreterRouter.get('/history', ensureValidToken, async (req, res) =>
         interpretation: entry.interpretation,
         model: entry.interpretation?.model || undefined,
         intent: entry.interpretation?.intent,
-        reasoning: entry.interpretation?.reasoning
+        reasoning: entry.interpretation?.reasoning,
+        // Include clarification data if available
+        ...(entry.response && typeof entry.response === 'object' && entry.response.clarificationOptions && {
+          clarificationOptions: entry.response.clarificationOptions,
+          currentContext: entry.response.currentContext,
+          uiType: entry.response.uiType
+        })
       };
     }));
     
@@ -1027,17 +1073,23 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
     const intent = interpretation.intent || interpretation.action;
     
     // Handle conversational intents (return text, no Spotify action)
-    if (intent === 'chat' || intent === 'ask_question') {
+    if (intent === 'chat' || intent === 'ask_question' || intent === 'clarification_mode') {
       // Check if Gemini already provided the response in responseMessage field
       if (interpretation.responseMessage) {
         // Gemini provided the answer directly in the structured output
         result = {
           success: true,
           message: interpretation.responseMessage,
-          conversational: true // Flag to indicate no Spotify action
+          conversational: true, // Flag to indicate no Spotify action
+          // Include clarification data if this is clarification_mode
+          ...(intent === 'clarification_mode' && {
+            clarificationOptions: interpretation.options,
+            currentContext: interpretation.currentContext,
+            uiType: interpretation.uiType || 'clarification_buttons'
+          })
         };
         
-        console.log('📝 Using Gemini responseMessage:', interpretation.responseMessage);
+        console.log(`📝 Using Gemini responseMessage (${intent}):`, interpretation.responseMessage);
       } else {
         // OpenRouter path or Gemini without responseMessage - get answer separately
         // Get conversation history for context
@@ -1051,23 +1103,36 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
           ]);
         }
         
-        // Get actual answer from LLM
-        const answer = await handleConversationalQuery(
-          command,
-          intent,
-          conversationHistory,
-          dialogState,
-          preferredModel,
-          spotifyControl
-        );
-        
-        result = {
-          success: true,
-          message: answer,
-          conversational: true // Flag to indicate no Spotify action
-        };
-        
-        console.log('📝 Conversational answer from separate query:', answer);
+        // For clarification_mode, we should always have the structured response
+        if (intent === 'clarification_mode') {
+          result = {
+            success: true,
+            message: interpretation.responseMessage || "What direction would you like to go? Feel free to be more specific about what you're looking for.",
+            conversational: true,
+            clarificationOptions: interpretation.options || [],
+            currentContext: interpretation.currentContext,
+            uiType: interpretation.uiType || 'clarification_buttons'
+          };
+          console.log('📝 Using clarification_mode fallback structure');
+        } else {
+          // Get actual answer from LLM for chat/ask_question
+          const answer = await handleConversationalQuery(
+            command,
+            intent,
+            conversationHistory,
+            dialogState,
+            preferredModel,
+            spotifyControl
+          );
+          
+          result = {
+            success: true,
+            message: answer,
+            conversational: true // Flag to indicate no Spotify action
+          };
+          
+          console.log('📝 Conversational answer from separate query:', answer);
+        }
       }
     } else {
       // Use canonicalized intent for clean switch handling
@@ -1446,6 +1511,54 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
             success: false, 
             message: `I don't know how to: ${intent || command}`
           };
+          break;
+      }
+    }
+
+    // Emit events for successful Spotify actions
+    if (result.success && userId) {
+      switch (interpretation.intent) {
+        case 'play_specific_song':
+        case 'play_playlist':
+          playbackEventService.emitTrackStarted(
+            userId,
+            interpretation.track || (result as any).track?.name,
+            interpretation.artist || (result as any).track?.artists?.[0]?.name
+          );
+          break;
+        case 'queue_specific_song':
+        case 'queue_multiple_songs':
+          playbackEventService.emitTrackQueued(
+            userId,
+            interpretation.track || (result as any).track?.name,
+            interpretation.artist || (result as any).track?.artists?.[0]?.name
+          );
+          break;
+        case 'pause':
+          playbackEventService.emitPlaybackPaused(userId);
+          break;
+        case 'play':
+        case 'resume':
+          playbackEventService.emitPlaybackResumed(userId);
+          break;
+        case 'skip':
+        case 'next':
+          playbackEventService.emitTrackSkipped(userId);
+          break;
+        case 'previous':
+          playbackEventService.emitTrackPrevious(userId);
+          break;
+        case 'set_volume':
+          playbackEventService.emitVolumeChanged(userId, interpretation.volume_level || 50);
+          break;
+        case 'set_shuffle':
+          playbackEventService.emitShuffleChanged(userId, interpretation.shuffle_state || false);
+          break;
+        case 'set_repeat':
+          playbackEventService.emitRepeatChanged(userId, interpretation.repeat_mode || 'off');
+          break;
+        case 'clear_queue':
+          playbackEventService.emitQueueCleared(userId);
           break;
       }
     }

@@ -139,7 +139,10 @@ allLogsTransport.on('rotate', (oldFilename, newFilename) => {
 
 // Log when new file is created
 allLogsTransport.on('new', (filename) => {
-  logger.info(`New log file created: ${filename}`);
+  // Only log in development to avoid confusion during tsx restarts
+  if (!isProduction) {
+    logger.debug(`Log file opened: ${filename}`);
+  }
 });
 
 export default logger;

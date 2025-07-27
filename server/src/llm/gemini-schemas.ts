@@ -56,6 +56,7 @@ export const MusicCommandIntentSchema = {
         'get_playback_info',
         'chat',
         'ask_question',
+        'clarification_mode',
         'unknown'
       ]
     },
@@ -179,6 +180,56 @@ export const MusicCommandIntentSchema = {
     aiReasoning: {
       type: Type.STRING,
       description: 'Brief explanation (1-2 sentences) of why AI chose this when isAIDiscovery is true'
+    },
+    currentContext: {
+      type: Type.OBJECT,
+      properties: {
+        rejected: {
+          type: Type.STRING,
+          description: 'What the user rejected (artist name, genre, etc.)'
+        },
+        rejectionType: {
+          type: Type.STRING,
+          enum: ['artist', 'genre', 'mood', 'song', 'style'],
+          description: 'Type of rejection'
+        }
+      },
+      description: 'Context about what was rejected for clarification_mode'
+    },
+    options: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          direction: {
+            type: Type.STRING,
+            description: 'Unique identifier for this direction'
+          },
+          description: {
+            type: Type.STRING,
+            description: 'User-friendly description of this alternative'
+          },
+          example: {
+            type: Type.STRING,
+            description: 'Specific example or explanation'
+          },
+          icon: {
+            type: Type.STRING,
+            description: 'Emoji icon representing this direction'
+          },
+          followUpQuery: {
+            type: Type.STRING,
+            description: 'Command to send when user selects this option'
+          }
+        },
+        required: ['direction', 'description', 'example', 'icon']
+      },
+      description: 'Alternative directions for clarification_mode'
+    },
+    uiType: {
+      type: Type.STRING,
+      enum: ['clarification_buttons', 'text_response'],
+      description: 'UI type for rendering the response'
     }
   },
   required: ['intent', 'confidence', 'reasoning'],
@@ -392,7 +443,7 @@ Key guidelines:
 - Use enhanced Spotify search queries when possible
 - Be creative in interpreting vague requests while maintaining accuracy
 - IMPORTANT: For conversational intents (chat, ask_question), you MUST include the actual answer in the responseMessage field. ${CONVERSATIONAL_ASSISTANT_PROMPT}
-- IMPORTANT: For queue_multiple_songs intent, you MUST include a songs array with specific tracks (artist, track, album)
+- CRITICAL: For queue_multiple_songs intent, you MUST provide 5-8 specific songs in the songs array. Each song needs artist, track, and optionally album. Do NOT return queue_multiple_songs without the songs array!
 - IMPORTANT: For queue_multiple_songs, analyze the context (current song, recent plays) to suggest similar songs
 
 Supported intents: play_specific_song, queue_specific_song, queue_multiple_songs, play_playlist, queue_playlist, play, pause, skip, previous, volume, set_volume, resume, next, back, get_current_track, set_shuffle, set_repeat, clear_queue, get_devices, get_playlists, get_recently_played, search, get_playback_info, chat, ask_question, unknown.
