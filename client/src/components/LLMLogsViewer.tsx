@@ -17,6 +17,7 @@ interface LLMLogEntry {
     temperature: number;
     jsonMode?: boolean;
     grounding?: boolean;
+    fullRequest?: any; // Complete request object including all parameters
   };
   llmResponse: {
     content: string;
@@ -28,6 +29,12 @@ interface LLMLogEntry {
     latency: number;
     fallbackUsed?: boolean;
     actualModel?: string;
+    rawResponse?: any; // Complete raw response before any processing
+    processingSteps?: Array<{ // Steps taken to process the response
+      step: string;
+      before: any;
+      after: any;
+    }>;
   };
   result: {
     success: boolean;
@@ -69,6 +76,7 @@ const LLMLogsViewer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [filter, setFilter] = useState<'all' | 'openrouter' | 'gemini-direct'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedLog, setExpandedLog] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<Record<string, string>>({});
 
   // Check if user is admin and load logs
   useEffect(() => {
@@ -177,6 +185,22 @@ const LLMLogsViewer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const formatLatency = (latency: number) => {
     if (latency < 1000) return `${latency}ms`;
     return `${(latency / 1000).toFixed(1)}s`;
+  };
+
+  const formatStepName = (step: string): string => {
+    const stepNames: Record<string, string> = {
+      'extractContent': 'Extract Content from API Response',
+      'cleanJSONResponse': 'Clean JSON Formatting',
+      'parseJSON': 'Parse JSON',
+      'normalizeLLMResponse': 'Normalize LLM Response',
+      'schemaValidation': 'Validate Against Schema',
+      'noProcessingRequired': 'No Processing Required',
+      'geminiDirectResponse': 'Gemini Direct API Response',
+      'nativeStructuredOutput': 'Native Structured Output',
+      'validateStructuredOutput': 'Validate Structured Output',
+      'plainTextResponse': 'Plain Text Response'
+    };
+    return stepNames[step] || step;
   };
 
   return (
@@ -347,23 +371,133 @@ const LLMLogsViewer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                   
                   {expandedLog === log.id && (
                     <div className="mt-4 pt-4 border-t border-zinc-700">
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <h4 className="text-gray-400 mb-2 text-sm font-medium">Interpretation</h4>
-                          <pre className="bg-zinc-900 rounded p-2 text-xs overflow-x-auto whitespace-pre-wrap break-words max-w-full">
-                            {JSON.stringify(log.interpretation, null, 2)}
-                          </pre>
-                        </div>
-                        <div>
-                          <h4 className="text-gray-400 mb-2 text-sm font-medium">Response</h4>
-                          <pre className="bg-zinc-900 rounded p-2 text-xs overflow-x-auto whitespace-pre-wrap break-words max-w-full">
-                            {log.llmResponse.content}
-                          </pre>
-                        </div>
+                      {/* Tab navigation */}
+                      <div className="flex flex-wrap gap-1 mb-4 border-b border-zinc-800">
+                        {['Overview', 'Full Request', 'Raw Response', 'Processing Steps', 'Messages'].map((tab) => (
+                          <button
+                            key={tab}
+                            onClick={() => setActiveTab({ ...activeTab, [log.id]: tab })}
+                            className={`px-2 py-1 sm:px-3 sm:py-2 text-xs sm:text-sm transition-colors ${
+                              (activeTab[log.id] || 'Overview') === tab
+                                ? 'text-green-400 border-b-2 border-green-400'
+                                : 'text-gray-400 hover:text-white'
+                            }`}
+                          >
+                            {tab}
+                          </button>
+                        ))}
                       </div>
+
+                      {/* Tab content */}
                       <div className="mt-4">
-                        <h4 className="text-gray-400 mb-2 text-sm font-medium">Result</h4>
-                        <p className="text-gray-300 text-sm break-words">{log.result.message}</p>
+                        {/* Overview Tab */}
+                        {(activeTab[log.id] || 'Overview') === 'Overview' && (
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <h4 className="text-gray-400 mb-2 text-sm font-medium">Interpretation</h4>
+                              <pre className="bg-zinc-900 rounded p-2 text-xs overflow-x-auto whitespace-pre-wrap break-words max-w-full">
+                                {JSON.stringify(log.interpretation, null, 2)}
+                              </pre>
+                            </div>
+                            <div>
+                              <h4 className="text-gray-400 mb-2 text-sm font-medium">Processed Response</h4>
+                              <pre className="bg-zinc-900 rounded p-2 text-xs overflow-x-auto whitespace-pre-wrap break-words max-w-full">
+                                {log.llmResponse.content}
+                              </pre>
+                            </div>
+                            <div className="lg:col-span-2 mt-4">
+                              <h4 className="text-gray-400 mb-2 text-sm font-medium">Result</h4>
+                              <p className="text-gray-300 text-sm break-words">{log.result.message}</p>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Full Request Tab */}
+                        {activeTab[log.id] === 'Full Request' && (
+                          <div>
+                            <h4 className="text-gray-400 mb-2 text-sm font-medium">Complete Request Object</h4>
+                            {log.llmRequest.fullRequest ? (
+                              <pre className="bg-zinc-900 rounded p-3 text-xs overflow-x-auto whitespace-pre-wrap break-words max-w-full max-h-96 overflow-y-auto">
+                                {JSON.stringify(log.llmRequest.fullRequest, null, 2)}
+                              </pre>
+                            ) : (
+                              <p className="text-gray-500 text-sm italic">Full request data not available</p>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Raw Response Tab */}
+                        {activeTab[log.id] === 'Raw Response' && (
+                          <div>
+                            <h4 className="text-gray-400 mb-2 text-sm font-medium">Raw LLM Response</h4>
+                            {log.llmResponse.rawResponse ? (
+                              <pre className="bg-zinc-900 rounded p-3 text-xs overflow-x-auto whitespace-pre-wrap break-words max-w-full max-h-96 overflow-y-auto">
+                                {JSON.stringify(log.llmResponse.rawResponse, null, 2)}
+                              </pre>
+                            ) : (
+                              <p className="text-gray-500 text-sm italic">Raw response data not available</p>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Processing Steps Tab */}
+                        {activeTab[log.id] === 'Processing Steps' && (
+                          <div>
+                            <h4 className="text-gray-400 mb-2 text-sm font-medium">Response Processing Steps</h4>
+                            {log.llmResponse.processingSteps && log.llmResponse.processingSteps.length > 0 ? (
+                              <div className="space-y-4">
+                                {log.llmResponse.processingSteps.map((step, index) => (
+                                  <div key={index} className="border border-zinc-800 rounded-lg p-3">
+                                    <h5 className="text-green-400 text-sm font-medium mb-2">
+                                      Step {index + 1}: {formatStepName(step.step)}
+                                    </h5>
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                      <div>
+                                        <p className="text-gray-500 text-xs mb-1">Before:</p>
+                                        <pre className="bg-zinc-900 rounded p-2 text-xs overflow-x-auto whitespace-pre-wrap break-words max-w-full max-h-40 overflow-y-auto">
+                                          {typeof step.before === 'string' ? step.before : JSON.stringify(step.before, null, 2)}
+                                        </pre>
+                                      </div>
+                                      <div>
+                                        <p className="text-gray-500 text-xs mb-1">After:</p>
+                                        <pre className="bg-zinc-900 rounded p-2 text-xs overflow-x-auto whitespace-pre-wrap break-words max-w-full max-h-40 overflow-y-auto">
+                                          {typeof step.after === 'string' ? step.after : JSON.stringify(step.after, null, 2)}
+                                        </pre>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-gray-500 text-sm italic">No processing steps recorded</p>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Messages Tab */}
+                        {activeTab[log.id] === 'Messages' && (
+                          <div>
+                            <h4 className="text-gray-400 mb-2 text-sm font-medium">Conversation Messages</h4>
+                            <div className="space-y-3">
+                              {log.llmRequest.messages.map((message, index) => (
+                                <div key={index} className="border border-zinc-800 rounded-lg p-3">
+                                  <div className="flex items-center mb-2">
+                                    <span className={`text-xs px-2 py-1 rounded ${
+                                      message.role === 'system' ? 'bg-purple-600/20 text-purple-400' :
+                                      message.role === 'user' ? 'bg-blue-600/20 text-blue-400' :
+                                      'bg-green-600/20 text-green-400'
+                                    }`}>
+                                      {message.role}
+                                    </span>
+                                  </div>
+                                  <pre className="bg-zinc-900 rounded p-2 text-xs overflow-x-auto whitespace-pre-wrap break-words max-w-full">
+                                    {message.content}
+                                  </pre>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}

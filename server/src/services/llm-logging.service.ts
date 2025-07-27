@@ -22,6 +22,7 @@ export interface LLMLogEntry {
     temperature: number;
     jsonMode?: boolean;    // Whether JSON mode was requested
     grounding?: boolean;   // Whether grounding was enabled (Gemini only)
+    fullRequest?: any;     // Complete request object including all parameters
   };
   llmResponse: {
     content: string;
@@ -29,6 +30,12 @@ export interface LLMLogEntry {
     latency: number;
     fallbackUsed?: boolean; // Whether a fallback model was used
     actualModel?: string;   // Actual model if different from requested
+    rawResponse?: any;     // Complete raw response before any processing
+    processingSteps?: Array<{ // Steps taken to process the response
+      step: string;
+      before: any;
+      after: any;
+    }>;
   };
   result: {
     success: boolean;

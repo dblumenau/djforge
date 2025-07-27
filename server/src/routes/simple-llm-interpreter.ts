@@ -464,14 +464,17 @@ CRITICAL: You must use the discriminated union pattern - when intent is "play_sp
             messages,
             temperature: 0.7,
             jsonMode: true,
-            grounding: response.flow === 'gemini-direct' && process.env.GEMINI_SEARCH_GROUNDING === 'true'
+            grounding: response.flow === 'gemini-direct' && process.env.GEMINI_SEARCH_GROUNDING === 'true',
+            fullRequest: response.fullRequest // Include the complete request
           },
           llmResponse: {
             content: response.content,
             usage: response.usage,
             latency,
             fallbackUsed: response.fallbackUsed,
-            actualModel: response.actualModel
+            actualModel: response.actualModel,
+            rawResponse: response.rawResponse, // Include the raw response
+            processingSteps: response.processingSteps // Include processing steps
           },
           result: {
             success: normalized.intent !== 'unknown',
@@ -1447,6 +1450,20 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
       }
     }
 
+    // Get current device info if playback operation was successful
+    let currentDevice = null;
+    const playbackIntents = ['play', 'play_specific_song', 'play_playlist', 'skip', 'previous', 'pause', 'resume'];
+    if (result.success && playbackIntents.includes(interpretation.intent)) {
+      try {
+        currentDevice = await spotifyControl.getApi().getCurrentDevice();
+        if (currentDevice) {
+          console.log(`[DEVICE] Current playback device: "${currentDevice.name}" (${currentDevice.type})`);
+        }
+      } catch (error) {
+        console.log('[DEVICE] Could not get current device info:', error);
+      }
+    }
+
     const responseData = {
       ...result,
       interpretation: {
@@ -1471,6 +1488,8 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
           uri: ((result as any).track || (result as any).data?.track)?.uri || `ai-discovery:${encodeURIComponent(interpretation.track)}-${encodeURIComponent(interpretation.artist || 'unknown')}`
         }
       }),
+      // Include device info if available
+      ...(currentDevice && { currentDevice }),
       timestamp: new Date().toISOString(),
       // Include refreshed tokens if they were updated
       ...(refreshedTokens ? { refreshedTokens } : {})

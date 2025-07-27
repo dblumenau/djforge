@@ -42,6 +42,13 @@ export interface LLMResponse {
   flow?: 'openrouter' | 'gemini-direct';
   fallbackUsed?: boolean;
   actualModel?: string;
+  rawResponse?: any;  // Complete raw response before processing
+  fullRequest?: any;  // Complete request object
+  processingSteps?: Array<{
+    step: string;
+    before: any;
+    after: any;
+  }>;
 }
 
 // OpenRouter Models (Updated 2025-07-12)
@@ -245,20 +252,62 @@ export class LLMOrchestrator {
     if (this.isGeminiModel(model) && this.geminiService) {
       console.log(`🔄 Routing ${model} to Google AI Direct API (Native Structured Output)`);
       try {
+        // Store the full request for logging
+        const fullRequest = {
+          ...request,
+          model,
+          provider: 'google-direct'
+        };
+        
         const response = await this.geminiService.complete(request);
         
-        // Validate structured output if JSON format was requested
+        // Store raw response and processing steps
+        const processingSteps: Array<{ step: string; before: any; after: any }> = [];
+        
+        // Step 1: Record that we received a response from Gemini
+        processingSteps.push({
+          step: 'geminiDirectResponse',
+          before: { model, provider: 'google-direct' },
+          after: { 
+            contentType: typeof response.content,
+            hasContent: !!response.content,
+            model: response.model 
+          }
+        });
+        
+        // Step 2: Gemini provides native structured output
         if (request.response_format?.type === 'json_object') {
+          processingSteps.push({
+            step: 'nativeStructuredOutput',
+            before: 'Gemini native JSON mode',
+            after: response.content
+          });
+          
+          // Validate structured output
           this.validateAndLogResponse(response, 'gemini-direct', model);
+          processingSteps.push({
+            step: 'validateStructuredOutput',
+            before: response.content,
+            after: { status: 'validated', flow: 'gemini-direct' }
+          });
+        } else {
+          processingSteps.push({
+            step: 'plainTextResponse',
+            before: 'No JSON processing required',
+            after: response.content
+          });
         }
         
         // Log the actual model response
         console.log(`📤 ${model} response:`, response.content);
         
-        // Add flow information
+        // Add flow information and enhanced logging data
         return {
           ...response,
-          flow: 'gemini-direct'
+          flow: 'gemini-direct',
+          rawResponse: response,
+          fullRequest,
+          processingSteps
         };
       } catch (error) {
         console.error(`Google AI Direct failed for ${model}:`, error);
@@ -280,6 +329,14 @@ export class LLMOrchestrator {
     // Prepare request based on provider
     const requestBody = this.prepareRequest(provider, model, request);
     
+    // Store the full request for logging
+    const fullRequest = {
+      ...request,
+      model,
+      provider: provider.name,
+      requestBody
+    };
+    
     try {
       const response = await axios.post(
         `${provider.baseURL}/chat/completions`,
@@ -295,27 +352,89 @@ export class LLMOrchestrator {
         }
       );
 
+      // Store raw response and processing steps
+      const rawResponse = response.data;
+      const processingSteps: Array<{ step: string; before: any; after: any }> = [];
+      
       // Extract and validate response
       let content = response.data.choices[0].message.content;
+      const originalContent = content;
+      
+      // Step 1: Extract content from API response
+      processingSteps.push({
+        step: 'extractContent',
+        before: { choices: response.data.choices?.length || 0, model: response.data.model },
+        after: originalContent
+      });
       
       // If schema provided, validate JSON response
       if (request.schema && request.response_format?.type === 'json_object') {
         try {
-          // Clean common JSON formatting issues
+          // Step 2: Clean common JSON formatting issues
+          const beforeCleaning = content;
           content = this.cleanJSONResponse(content);
-          let parsed = JSON.parse(content);
+          processingSteps.push({
+            step: 'cleanJSONResponse',
+            before: beforeCleaning,
+            after: content
+          });
           
-          // Normalize the response before validation
+          // Step 3: Parse JSON
+          let parsed;
+          try {
+            parsed = JSON.parse(content);
+            processingSteps.push({
+              step: 'parseJSON',
+              before: content,
+              after: parsed
+            });
+          } catch (parseError: any) {
+            processingSteps.push({
+              step: 'parseJSON',
+              before: content,
+              after: { error: parseError.message || 'Failed to parse JSON' }
+            });
+            throw parseError;
+          }
+          
+          // Step 4: Normalize the response
+          const beforeNormalization = JSON.parse(JSON.stringify(parsed)); // Deep copy
           parsed = normalizeLLMResponse(parsed);
+          processingSteps.push({
+            step: 'normalizeLLMResponse',
+            before: beforeNormalization,
+            after: parsed
+          });
           
-          // Validate against schema
-          request.schema.parse(parsed);
+          // Step 5: Validate against schema
+          try {
+            request.schema.parse(parsed);
+            processingSteps.push({
+              step: 'schemaValidation',
+              before: parsed,
+              after: { status: 'valid', schema: 'Zod' }
+            });
+          } catch (validationError: any) {
+            processingSteps.push({
+              step: 'schemaValidation',
+              before: parsed,
+              after: { status: 'invalid', error: validationError.message || 'Schema validation failed' }
+            });
+            throw validationError;
+          }
           
           // Return the normalized content
           content = JSON.stringify(parsed);
         } catch (error) {
           throw new Error(`Invalid JSON response format: ${error}`);
         }
+      } else {
+        // For non-JSON responses, record that no processing was needed
+        processingSteps.push({
+          step: 'noProcessingRequired',
+          before: 'Plain text response',
+          after: content
+        });
       }
 
       const llmResponse = {
@@ -323,7 +442,10 @@ export class LLMOrchestrator {
         usage: response.data.usage,
         model: response.data.model || model,
         provider: provider.name,
-        flow: 'openrouter' as const
+        flow: 'openrouter' as const,
+        rawResponse,
+        fullRequest,
+        processingSteps
       };
 
       // Validate structured output if JSON format was requested
