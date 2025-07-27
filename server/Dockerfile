@@ -41,6 +41,9 @@ COPY --from=builder /app/dist ./dist
 # Create sessions directory for file-based fallback
 RUN mkdir -p sessions && chown nodejs:nodejs sessions
 
+# Create /tmp/logs directory for optional file logging in production
+RUN mkdir -p /tmp/logs && chown nodejs:nodejs /tmp/logs
+
 # Switch to non-root user
 USER nodejs
 

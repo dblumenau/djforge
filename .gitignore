@@ -20,6 +20,8 @@ yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
 .pnpm-debug.log*
+logs/
+*.log
 
 # OS files
 .DS_Store

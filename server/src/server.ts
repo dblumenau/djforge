@@ -19,6 +19,10 @@ import { createRedisClient, checkRedisHealth } from './config/redis';
 import { RedisUtils } from './utils/redis-utils';
 import weatherRouter from './routes/weather';
 import userDataRouter from './routes/user-data';
+import { overrideConsole, logger } from './utils/logger';
+
+// Override console methods to use Winston logger
+overrideConsole();
 
 // Fallback to file store if Redis is unavailable
 const FileStore = require('session-file-store')(session);
@@ -26,6 +30,7 @@ const FileStore = require('session-file-store')(session);
 dotenv.config({ path: '../.env' });
 console.log('🔐 JWT_SECRET loaded:', process.env.JWT_SECRET ? 'Yes' : 'No');
 console.log('🔐 SESSION_SECRET loaded:', process.env.SESSION_SECRET ? 'Yes' : 'No');
+logger.info('🚀 Starting Spotify Claude Controller server...');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
