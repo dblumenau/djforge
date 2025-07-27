@@ -153,12 +153,19 @@ const MainApp: React.FC = () => {
     }
   }, [isConnected, checking, checkAuthStatus]);
 
-  // Auto-scroll to bottom when new messages are added
+  // Auto-scroll to bottom when new messages are added or on initial load
   useEffect(() => {
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
   }, [commandHistory]);
+
+  // Auto-scroll to bottom on initial page load
+  useEffect(() => {
+    if (chatContainerRef.current && !commandHistoryLoading) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, [commandHistoryLoading]);
 
   // Load command history from Redis when authenticated
   useEffect(() => {

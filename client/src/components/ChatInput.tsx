@@ -32,10 +32,6 @@ const ChatInput: React.FC<ChatInputProps> = ({
                 disabled={isProcessing}
                 className="w-full px-4 py-3 pr-32 bg-zinc-800 border border-zinc-700 rounded-full text-white placeholder-gray-500 focus:outline-none focus:border-green-500 transition-colors"
                 autoFocus
-                autoComplete="off"
-                autoCorrect="off"
-                autoCapitalize="off"
-                spellCheck={false}
                 inputMode="text"
                 enterKeyHint="send"
               />
