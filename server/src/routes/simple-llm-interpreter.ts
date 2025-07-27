@@ -1835,11 +1835,9 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
         command: command,
         interpretation: interpretation,
         timestamp: Date.now(),
-        response: {
-          success: result.success,
-          message: result.message || (result.success ? 'Success' : 'Failed')
-        }
+        response: result // Store full result object to preserve all UI data
       };
+      
       
       // Debug log for conversational responses
       if (interpretation.intent === 'chat' || interpretation.intent === 'ask_question') {

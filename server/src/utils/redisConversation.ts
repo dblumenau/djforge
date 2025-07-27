@@ -18,10 +18,7 @@ export interface ConversationEntry {
     searchQuery?: string;
   };
   timestamp: number;
-  response?: {
-    success: boolean;
-    message: string;
-  };
+  response?: any; // Allow full response object to preserve UI data
 }
 
 export interface DialogState {
