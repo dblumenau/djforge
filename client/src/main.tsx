@@ -11,10 +11,17 @@ Sentry.init({
   sendDefaultPii: true,
   integrations: [
     Sentry.browserTracingIntegration({
-      // Only create spans for fetch requests to your actual API
+      // Enable navigation instrumentation
+      enableInp: true,
+      enableLongTask: true,
+      // Configure fetch instrumentation carefully
+      instrumentPageLoad: true,
+      instrumentNavigation: true,
+      // Don't add sentry-trace headers to requests by default
       shouldCreateSpanForRequest: (url) => {
-        // Only trace requests to your API endpoints
-        return url.includes('/api/');
+        // Only create spans for your API requests
+        const urlString = typeof url === 'string' ? url : url.toString();
+        return urlString.includes('127.0.0.1:4001') || urlString.includes('localhost:4001');
       },
     }),
     Sentry.replayIntegration({
@@ -24,13 +31,11 @@ Sentry.init({
   ],
   // Tracing
   tracesSampleRate: import.meta.env.MODE === 'production' ? 0.2 : 1.0, // 20% in production, 100% in development
-  // Set 'tracePropagationTargets' to control for which URLs distributed tracing should be enabled
+  // IMPORTANT: Only add trace headers to your own backend
   tracePropagationTargets: [
-    "localhost",
-    "127.0.0.1",
-    /^https:\/\/api\.djforge\.fly\.dev/,
     /^http:\/\/localhost:4001/,
-    /^http:\/\/127\.0\.0\.1:4001/
+    /^http:\/\/127\.0\.0\.1:4001/,
+    /^https:\/\/api\.djforge\.fly\.dev/
   ],
   // Session Replay
   replaysSessionSampleRate: import.meta.env.MODE === 'production' ? 0.1 : 0.5, // 10% in production, 50% in development
@@ -44,6 +49,10 @@ Sentry.init({
       const error = hint.originalException;
       // Don't send network errors in development
       if (import.meta.env.MODE === 'development' && error?.message?.includes('Network request failed')) {
+        return null;
+      }
+      // Don't send health check errors
+      if (error?.message?.includes('/api/health')) {
         return null;
       }
     }

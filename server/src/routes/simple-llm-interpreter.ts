@@ -242,6 +242,15 @@ The above context provides background about the user's listening habits. Use thi
 • For mood-based requests (like "something sad"), prioritize the mood over sticking to their usual artists
 • Only use their favorite artists if they specifically ask for them or if those artists genuinely have the perfect song for the request
 
+CRITICAL PRIORITY RULE:
+When the user makes a SPECIFIC REQUEST (like "songs where someone talks over a beat", "80s synth", "death metal", "K-pop", etc.) that clearly doesn't match their usual taste profile:
+1. IGNORE the taste profile completely - it's irrelevant for this request
+2. Focus ONLY on finding songs that match the specific criteria they asked for
+3. The taste profile is just background info - it should NEVER limit your recommendations
+4. If they want spoken-word tracks, give them spoken-word tracks regardless of genre
+5. If they want death metal but usually listen to pop, give them death metal
+6. Their request ALWAYS overrides their listening history
+
 ` : ''}
 ${contextBlock}
 [DEBUG: Relevant context entries: ${relevantContext.length}]
