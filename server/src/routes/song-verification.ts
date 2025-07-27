@@ -69,7 +69,11 @@ function findBestMatch(tracks: any[], artist: string, trackName: string) {
 // Verify song availability endpoint
 songVerificationRouter.get('/verify', ensureValidToken, async (req, res) => {
   try {
-    const tokens = req.tokens;
+    const tokens = req.spotifyTokens;
+    if (!tokens) {
+      return res.status(401).json({ error: 'No tokens available' });
+    }
+    
     const spotifyAPI = new SpotifyWebAPI(tokens, (newTokens) => {
       // Token refresh callback - not needed for this verification
     });
@@ -166,7 +170,7 @@ songVerificationRouter.get('/verify', ensureValidToken, async (req, res) => {
     console.error('Verification error:', error);
     res.status(500).json({
       success: false,
-      error: error.message || 'Failed to verify songs'
+      error: error instanceof Error ? error.message : 'Failed to verify songs'
     });
   }
 });

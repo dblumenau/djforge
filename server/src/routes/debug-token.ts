@@ -7,7 +7,7 @@ export const debugTokenRouter = Router();
 // Debug endpoint to verify songs using current user's token
 debugTokenRouter.get('/verify-songs', ensureValidToken, async (req, res) => {
   try {
-    const tokens = req.tokens;
+    const tokens = req.spotifyTokens;
     if (!tokens) {
       return res.status(401).json({ error: 'No tokens available' });
     }
@@ -142,7 +142,7 @@ debugTokenRouter.get('/verify-songs', ensureValidToken, async (req, res) => {
       console.log(verdict);
       console.log('\nSongs NOT found:');
       results.filter(r => !r.found).forEach(song => {
-        console.log(`  - ${song.artist} - ${song.track} (${song.reason})`);
+        console.log(`  - ${song.artist} - ${song.track} (${(song as any).reason || 'No reason provided'})`);
       });
     } else {
       verdict = `📊 Found ${availableCount} songs (different from frontend claim of 3)`;
@@ -168,7 +168,7 @@ debugTokenRouter.get('/verify-songs', ensureValidToken, async (req, res) => {
     console.error('Verification error:', error);
     res.status(500).json({
       success: false,
-      error: error.message || 'Failed to verify songs'
+      error: error instanceof Error ? error.message : 'Failed to verify songs'
     });
   }
 });
