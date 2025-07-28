@@ -15,11 +15,9 @@ import { authenticatedFetch, api } from '../utils/api';
 import { useModel } from '../contexts/ModelContext';
 
 // Helper component for clickable example lists
-const ExampleList: React.FC<{ examples: string[] }> = ({ examples }) => {
-  const copyToClipboard = (text: string) => {
-    // Remove bullet point and quotes
-    const cleanText = text.replace(/^[•"] /, '').replace(/"$/, '');
-    navigator.clipboard.writeText(cleanText);
+const ExampleList: React.FC<{ examples: string[]; onSelectExample: (example: string) => void }> = ({ examples, onSelectExample }) => {
+  const handleClick = (text: string) => {
+    onSelectExample(text);
   };
   
   return (
@@ -28,7 +26,7 @@ const ExampleList: React.FC<{ examples: string[] }> = ({ examples }) => {
         <li 
           key={index}
           className="hover:text-green-400 cursor-pointer transition-colors"
-          onClick={() => copyToClipboard(example)}
+          onClick={() => handleClick(example)}
         >
           • "{example}"
         </li>
@@ -40,6 +38,7 @@ const ExampleList: React.FC<{ examples: string[] }> = ({ examples }) => {
 const MainApp: React.FC = () => {
   const navigate = useNavigate();
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const typeAnimationRef = useRef<NodeJS.Timeout | null>(null);
   useIOSKeyboardFix();
   const { currentModel } = useModel();
   const [showExamplesModal, setShowExamplesModal] = useState(false);
@@ -121,6 +120,15 @@ const MainApp: React.FC = () => {
   
   // Authentication
   const { isAuthenticated, loading: authLoading, checkAuthStatus, error: authError, login } = useSpotifyAuth();
+
+  // Cleanup animation on unmount
+  useEffect(() => {
+    return () => {
+      if (typeAnimationRef.current) {
+        clearTimeout(typeAnimationRef.current);
+      }
+    };
+  }, []);
 
   // Check server connection
   useEffect(() => {
@@ -228,6 +236,33 @@ const MainApp: React.FC = () => {
   const showToast = (message: string) => {
     setToast(message);
     setTimeout(() => setToast(null), 3000);
+  };
+
+  // Typing animation function
+  const animateTyping = (text: string, onComplete?: () => void) => {
+    // Clear any existing animation
+    if (typeAnimationRef.current) {
+      clearTimeout(typeAnimationRef.current);
+    }
+    
+    // Clear the input first
+    setCommand('');
+    
+    let currentIndex = 0;
+    const typeNextChar = () => {
+      if (currentIndex < text.length) {
+        setCommand(text.slice(0, currentIndex + 1));
+        currentIndex++;
+        typeAnimationRef.current = setTimeout(typeNextChar, 40); // 40ms per character
+      } else {
+        // Typing complete
+        typeAnimationRef.current = null;
+        onComplete?.();
+      }
+    };
+    
+    // Start typing
+    typeNextChar();
   };
 
   const handleFeedback = async (trackUri: string, feedback: 'loved' | 'disliked') => {
@@ -581,7 +616,7 @@ const MainApp: React.FC = () => {
   return (
     <div className="chat-container">
       {/* Chat Messages Container */}
-      <div className="chat-messages pb-20">
+      <div className="chat-messages pb-28">
         {/* Auth Error Message */}
         {authError && (
           <div className="mx-4 mt-4 bg-yellow-900/50 border border-yellow-600 rounded-lg p-4" style={{ maxWidth: '1440px', marginLeft: 'auto', marginRight: 'auto' }}>
@@ -693,7 +728,14 @@ const MainApp: React.FC = () => {
             <div className="grid md:grid-cols-3 gap-6">
               <div>
                 <h3 className="text-lg font-semibold mb-3 text-green-400">Basic Playback</h3>
-                <ExampleList examples={[
+                <ExampleList 
+                  onSelectExample={(example) => {
+                    setShowExamplesModal(false);
+                    setTimeout(() => {
+                      animateTyping(example);
+                    }, 100);
+                  }}
+                  examples={[
                   "Play",
                   "Pause",
                   "Resume",
@@ -716,7 +758,14 @@ const MainApp: React.FC = () => {
               
               <div>
                 <h3 className="text-lg font-semibold mb-3 text-green-400">Search & Play Specific</h3>
-                <ExampleList examples={[
+                <ExampleList 
+                  onSelectExample={(example) => {
+                    setShowExamplesModal(false);
+                    setTimeout(() => {
+                      animateTyping(example);
+                    }, 100);
+                  }}
+                  examples={[
                   "Play Bohemian Rhapsody by Queen",
                   "Play Like a Rolling Stone by Bob Dylan",
                   "Play the Beatles",
@@ -738,7 +787,14 @@ const MainApp: React.FC = () => {
               
               <div>
                 <h3 className="text-lg font-semibold mb-3 text-green-400">Queue Management</h3>
-                <ExampleList examples={[
+                <ExampleList 
+                  onSelectExample={(example) => {
+                    setShowExamplesModal(false);
+                    setTimeout(() => {
+                      animateTyping(example);
+                    }, 100);
+                  }}
+                  examples={[
                   "Add Hotel California to the queue",
                   "Queue some rock music",
                   "Add Taylor Swift to the queue",
@@ -757,7 +813,14 @@ const MainApp: React.FC = () => {
             <div className="grid md:grid-cols-3 gap-6 mt-6">
               <div>
                 <h3 className="text-lg font-semibold mb-3 text-green-400">Mood & Genre</h3>
-                <ExampleList examples={[
+                <ExampleList 
+                  onSelectExample={(example) => {
+                    setShowExamplesModal(false);
+                    setTimeout(() => {
+                      animateTyping(example);
+                    }, 100);
+                  }}
+                  examples={[
                   "Play some jazz",
                   "Play classical music",
                   "Play some blues",
@@ -779,7 +842,14 @@ const MainApp: React.FC = () => {
               
               <div>
                 <h3 className="text-lg font-semibold mb-3 text-green-400">Activity & Context</h3>
-                <ExampleList examples={[
+                <ExampleList 
+                  onSelectExample={(example) => {
+                    setShowExamplesModal(false);
+                    setTimeout(() => {
+                      animateTyping(example);
+                    }, 100);
+                  }}
+                  examples={[
                   "Play workout music",
                   "Play music for studying",
                   "Play relaxing music",
@@ -801,7 +871,14 @@ const MainApp: React.FC = () => {
               
               <div>
                 <h3 className="text-lg font-semibold mb-3 text-green-400">Discovery & Obscure</h3>
-                <ExampleList examples={[
+                <ExampleList 
+                  onSelectExample={(example) => {
+                    setShowExamplesModal(false);
+                    setTimeout(() => {
+                      animateTyping(example);
+                    }, 100);
+                  }}
+                  examples={[
                   "Play something new",
                   "Play something I might like",
                   "Play obscure Beatles tracks",
@@ -825,7 +902,14 @@ const MainApp: React.FC = () => {
             <div className="grid md:grid-cols-3 gap-6 mt-6">
               <div>
                 <h3 className="text-lg font-semibold mb-3 text-green-400">Time-Based</h3>
-                <ExampleList examples={[
+                <ExampleList 
+                  onSelectExample={(example) => {
+                    setShowExamplesModal(false);
+                    setTimeout(() => {
+                      animateTyping(example);
+                    }, 100);
+                  }}
+                  examples={[
                   "Play music from the 60s",
                   "Play 70s rock",
                   "Play 80s hits",
@@ -847,7 +931,14 @@ const MainApp: React.FC = () => {
               
               <div>
                 <h3 className="text-lg font-semibold mb-3 text-green-400">Similarity & Vibes</h3>
-                <ExampleList examples={[
+                <ExampleList 
+                  onSelectExample={(example) => {
+                    setShowExamplesModal(false);
+                    setTimeout(() => {
+                      animateTyping(example);
+                    }, 100);
+                  }}
+                  examples={[
                   "Play something like Bohemian Rhapsody",
                   "Play artists similar to Radiohead",
                   "Play music that sounds like rain",
@@ -869,7 +960,14 @@ const MainApp: React.FC = () => {
               
               <div>
                 <h3 className="text-lg font-semibold mb-3 text-green-400">Smart & Complex</h3>
-                <ExampleList examples={[
+                <ExampleList 
+                  onSelectExample={(example) => {
+                    setShowExamplesModal(false);
+                    setTimeout(() => {
+                      animateTyping(example);
+                    }, 100);
+                  }}
+                  examples={[
                   "Play that song from the desert scene in Breaking Bad",
                   "Play the song from the Stranger Things finale",
                   "Play upbeat 80s music but not the hits",
@@ -892,7 +990,7 @@ const MainApp: React.FC = () => {
             
             <div className="mt-6 text-center">
               <p className="text-gray-400 text-sm">
-                Click any example to copy it to your clipboard
+                Click any example to use it as your command
               </p>
             </div>
           </div>
