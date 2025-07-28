@@ -7,3 +7,26 @@
   --color-spotify-darkgray: #121212;
   --color-spotify-lightgray: #b3b3b3;
 }
+
+/* iPhone PWA Safe Area Support */
+html, body {
+  margin: 0;
+  height: 100%;
+}
+
+/* Fixed header with safe area support */
+.app-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 64px; /* 16 * 4 = 64px (h-16 in Tailwind) */
+  padding-top: env(safe-area-inset-top);
+  z-index: 30;
+}
+
+/* Main content with safe area padding */
+.app-main {
+  padding-top: calc(64px + env(safe-area-inset-top));
+  padding-bottom: env(safe-area-inset-bottom);
+}

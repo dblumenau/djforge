@@ -135,8 +135,8 @@ const AppLayoutInner: React.FC<AppLayoutProps> = ({ children }) => {
         onLogout={logout}
       />
 
-      {/* Main Content Area with padding for fixed header */}
-      <div className="flex-1 flex flex-col pt-16">
+      {/* Main Content Area with padding for fixed header and safe area */}
+      <div className="app-main flex-1 flex flex-col">
         {children || <Outlet />}
       </div>
     </div>
