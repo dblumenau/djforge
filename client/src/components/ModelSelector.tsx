@@ -4,9 +4,10 @@ import { ModelAPI, ModelPreferencesResponse, ModelInfo } from '../utils/modelApi
 interface ModelSelectorProps {
   onModelChange?: (modelId: string) => void;
   compact?: boolean;
+  fullWidth?: boolean;
 }
 
-const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange, compact = false }) => {
+const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange, compact = false, fullWidth = false }) => {
   const [models, setModels] = useState<ModelPreferencesResponse | null>(null);
   const [selectedModel, setSelectedModel] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
@@ -86,7 +87,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange, compact = 
   }
 
   return (
-    <div className="relative">
+    <div className={`relative ${fullWidth ? 'w-full' : ''}`}>
       {/* Model Selector Button */}
       <button
         onClick={() => setShowDropdown(!showDropdown)}
@@ -95,6 +96,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange, compact = 
           bg-gray-800 border border-gray-700 hover:border-green-500
           transition-all duration-200 text-sm
           ${showDropdown ? 'border-green-500' : ''}
+          ${fullWidth ? 'w-full justify-between' : ''}
         `}
       >
         <svg className="w-4 h-4 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">

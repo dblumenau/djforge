@@ -114,7 +114,7 @@ const AppLayoutInner: React.FC<AppLayoutProps> = ({ children }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 text-white flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 text-white">
       {/* Shared Header Navigation */}
       <HeaderNav
         onModelChange={handleModelSelect}
@@ -135,8 +135,8 @@ const AppLayoutInner: React.FC<AppLayoutProps> = ({ children }) => {
         onLogout={logout}
       />
 
-      {/* Main Content Area with padding for fixed header and safe area */}
-      <div className="app-main flex-1 flex flex-col">
+      {/* Main Content Area */}
+      <div className="app-main">
         {children || <Outlet />}
       </div>
     </div>

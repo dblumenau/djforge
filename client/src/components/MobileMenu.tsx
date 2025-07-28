@@ -62,6 +62,7 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
         className={`fixed top-0 right-0 h-full w-80 bg-zinc-900 border-l border-zinc-800 z-50 transform transition-transform duration-300 md:hidden ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
+        style={{ paddingTop: 'env(safe-area-inset-top)' }}
       >
         <div className="flex flex-col h-full">
           {/* Header */}
@@ -90,18 +91,18 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
             <div className="space-y-4">
               <div>
                 <h3 className="text-sm font-medium text-gray-400 mb-2">AI Model</h3>
-                <ModelSelector onModelChange={onModelChange} />
+                <ModelSelector onModelChange={onModelChange} fullWidth />
               </div>
               <div>
                 <h3 className="text-sm font-medium text-gray-400 mb-2">Playback Device</h3>
-                <DeviceSelector onDeviceChange={onDeviceChange} />
+                <DeviceSelector onDeviceChange={onDeviceChange} fullWidth />
               </div>
             </div>
 
             {/* Playback Controls */}
             <div>
               <h3 className="text-sm font-medium text-gray-400 mb-2">Playback</h3>
-              <PlaybackControls onShowQueue={() => setShowQueue(true)} />
+              <PlaybackControls onShowQueue={() => setShowQueue(true)} isMobile />
             </div>
 
             {/* Navigation */}
@@ -153,7 +154,7 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
           </div>
 
           {/* Footer */}
-          <div className="p-4 border-t border-zinc-800">
+          <div className="p-4 border-t border-zinc-800" style={{ paddingBottom: 'calc(16px + env(safe-area-inset-bottom))' }}>
             <button
               onClick={() => {
                 onLogout();

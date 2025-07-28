@@ -23,9 +23,8 @@ const HeaderNav: React.FC<HeaderNavProps> = ({
   const navigate = useNavigate();
 
   return (
-    <header className="app-header border-b border-zinc-800">
-      <div className="container mx-auto px-4" style={{ maxWidth: '1440px' }}>
-        <div className="h-16 flex items-center justify-between">
+    <header className="app-header">
+      <div className="h-16 flex items-center justify-between px-4" style={{ maxWidth: '1440px', margin: '0 auto' }}>
           {/* Left: Logo and Title */}
           <div className="flex items-center gap-3">
             <img 
@@ -117,7 +116,6 @@ const HeaderNav: React.FC<HeaderNavProps> = ({
               </svg>
             </button>
           </div>
-        </div>
       </div>
     </header>
   );

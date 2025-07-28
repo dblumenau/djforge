@@ -12,9 +12,10 @@ interface SpotifyDevice {
 interface DeviceSelectorProps {
   onDeviceChange?: (deviceId: string | 'auto') => void;
   compact?: boolean;
+  fullWidth?: boolean;
 }
 
-const DeviceSelector: React.FC<DeviceSelectorProps> = ({ onDeviceChange, compact = false }) => {
+const DeviceSelector: React.FC<DeviceSelectorProps> = ({ onDeviceChange, compact = false, fullWidth = false }) => {
   const [devices, setDevices] = useState<SpotifyDevice[]>([]);
   const [selectedDevice, setSelectedDevice] = useState<string>('auto');
   const [isOpen, setIsOpen] = useState(false);
@@ -111,10 +112,10 @@ const DeviceSelector: React.FC<DeviceSelectorProps> = ({ onDeviceChange, compact
   };
 
   return (
-    <div className="relative">
+    <div className={`relative ${fullWidth ? 'w-full' : ''}`}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`flex items-center gap-2 ${compact ? 'px-3 py-1.5' : 'px-3 py-2'} bg-gray-800 border border-gray-700 rounded-lg hover:bg-gray-700 transition-colors text-sm`}
+        className={`flex items-center gap-2 ${compact ? 'px-3 py-1.5' : 'px-3 py-2'} bg-gray-800 border border-gray-700 rounded-lg hover:bg-gray-700 transition-colors text-sm ${fullWidth ? 'w-full justify-between' : ''}`}
         title="Select Spotify playback device"
       >
         <span className={`text-gray-400 ${compact ? 'hidden' : ''}`}>Device:</span>

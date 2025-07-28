@@ -19,7 +19,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
   currentModel
 }) => {
   return (
-    <div className="border-t border-zinc-800">
+    <div className="chat-input-container">
       <div className="container mx-auto px-4 py-4" style={{ maxWidth: '1440px' }}>
         <form onSubmit={onSubmit} className="relative">
           <div className="flex items-center gap-3">
@@ -31,7 +31,6 @@ const ChatInput: React.FC<ChatInputProps> = ({
                 placeholder="Type your command..."
                 disabled={isProcessing}
                 className="w-full px-4 py-3 pr-32 bg-zinc-800 border border-zinc-700 rounded-full text-white placeholder-gray-500 focus:outline-none focus:border-green-500 transition-colors"
-                autoFocus
                 inputMode="text"
                 enterKeyHint="send"
               />

@@ -156,11 +156,10 @@ const MainApp: React.FC = () => {
 
   // Function to scroll to bottom
   const scrollToBottom = () => {
-    if (chatContainerRef.current) {
-      const scrollElement = chatContainerRef.current.parentElement;
-      if (scrollElement) {
-        scrollElement.scrollTop = scrollElement.scrollHeight;
-      }
+    // Find the chat-messages container
+    const scrollElement = document.querySelector('.chat-messages');
+    if (scrollElement) {
+      scrollElement.scrollTop = scrollElement.scrollHeight;
     }
   };
 
@@ -582,7 +581,7 @@ const MainApp: React.FC = () => {
   return (
     <div className="chat-container">
       {/* Chat Messages Container */}
-      <div className="chat-messages">
+      <div className="chat-messages pb-20">
         {/* Auth Error Message */}
         {authError && (
           <div className="mx-4 mt-4 bg-yellow-900/50 border border-yellow-600 rounded-lg p-4" style={{ maxWidth: '1440px', marginLeft: 'auto', marginRight: 'auto' }}>
@@ -627,7 +626,7 @@ const MainApp: React.FC = () => {
           )}
 
           {/* Auth Test Panel - Only in development */}
-          {process.env.NODE_ENV === 'development' && (
+          {import.meta.env.DEV && (
             <div className="mb-4">
               <AuthTestPanel />
             </div>
@@ -668,16 +667,14 @@ const MainApp: React.FC = () => {
       </div>
 
       {/* Chat Input */}
-      <div className="chat-input-container">
-        <ChatInput
+      <ChatInput
         value={command}
         onChange={setCommand}
         onSubmit={handleSubmit}
         isProcessing={isProcessing}
         onShowExamples={() => setShowExamplesModal(true)}
         currentModel={currentModel}
-        />
-      </div>
+      />
 
       {/* Examples Modal */}
       {showExamplesModal && (
