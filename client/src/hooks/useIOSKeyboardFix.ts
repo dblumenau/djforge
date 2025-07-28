@@ -8,49 +8,35 @@ export const useIOSKeyboardFix = () => {
                         (window.navigator as any).standalone === true;
 
     if (isIOS && isStandalone) {
-      // Force input focus to work properly on iOS PWA
-      const handleTouchStart = (e: TouchEvent) => {
-        const target = e.target as HTMLElement;
-        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
-          target.style.transform = 'translateZ(0)';
-          target.focus();
-          
-          // Force keyboard to show
-          setTimeout(() => {
-            target.focus();
-            target.click();
-          }, 100);
-        }
+      // Use Visual Viewport API to detect keyboard state
+      if (!window.visualViewport) {
+        console.warn('Visual Viewport API not supported');
+        return;
+      }
+
+      const updateViewportState = () => {
+        const vh = window.visualViewport?.height || window.innerHeight;
+        const windowHeight = window.innerHeight;
+        
+        // Detect keyboard with 150px threshold
+        const isKeyboardVisible = (windowHeight - vh) > 150;
+        const keyboardHeight = isKeyboardVisible ? windowHeight - vh : 0;
+
+        // Use CSS custom properties instead of transforms
+        document.documentElement.style.setProperty('--keyboard-height', `${keyboardHeight}px`);
+        document.documentElement.classList.toggle('keyboard-visible', isKeyboardVisible);
       };
 
-      // Prevent viewport issues when keyboard shows
-      const handleFocusIn = () => {
-        if (isIOS) {
-          window.scrollTo(0, 0);
-          document.body.scrollTop = 0;
-        }
-      };
+      // Initialize state
+      updateViewportState();
 
-      // Fix viewport when keyboard hides
-      const handleFocusOut = () => {
-        if (isIOS) {
-          window.scrollTo(0, 0);
-          // Force viewport to reset
-          const viewport = document.querySelector('meta[name=viewport]');
-          if (viewport) {
-            viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
-          }
-        }
-      };
-
-      document.addEventListener('touchstart', handleTouchStart, { passive: true });
-      document.addEventListener('focusin', handleFocusIn);
-      document.addEventListener('focusout', handleFocusOut);
+      // Listen for viewport changes
+      window.visualViewport?.addEventListener('resize', updateViewportState);
+      window.visualViewport?.addEventListener('scroll', updateViewportState);
 
       return () => {
-        document.removeEventListener('touchstart', handleTouchStart);
-        document.removeEventListener('focusin', handleFocusIn);
-        document.removeEventListener('focusout', handleFocusOut);
+        window.visualViewport?.removeEventListener('resize', updateViewportState);
+        window.visualViewport?.removeEventListener('scroll', updateViewportState);
       };
     }
   }, []);

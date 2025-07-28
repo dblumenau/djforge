@@ -38,7 +38,7 @@ const ExampleList: React.FC<{ examples: string[]; onSelectExample: (example: str
 const MainApp: React.FC = () => {
   const navigate = useNavigate();
   const chatContainerRef = useRef<HTMLDivElement>(null);
-  const typeAnimationRef = useRef<NodeJS.Timeout | null>(null);
+  const typeAnimationRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useIOSKeyboardFix();
   const { currentModel } = useModel();
   const [showExamplesModal, setShowExamplesModal] = useState(false);
@@ -616,7 +616,7 @@ const MainApp: React.FC = () => {
   return (
     <div className="chat-container">
       {/* Chat Messages Container */}
-      <div className="chat-messages pb-28">
+      <div className="chat-messages">
         {/* Auth Error Message */}
         {authError && (
           <div className="mx-4 mt-4 bg-yellow-900/50 border border-yellow-600 rounded-lg p-4" style={{ maxWidth: '1440px', marginLeft: 'auto', marginRight: 'auto' }}>

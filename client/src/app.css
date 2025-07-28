@@ -54,6 +54,9 @@ html, body {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   min-height: 0; /* Important for proper scrolling */
+  /* Base padding plus keyboard space */
+  padding-bottom: calc(7rem + var(--keyboard-height, 0)); /* 7rem = 112px for input area */
+  transition: padding-bottom 0.2s ease-in-out;
 }
 
 /* Fixed chat input at bottom */
@@ -67,4 +70,6 @@ html, body {
   border-top: 1px solid rgb(63 63 70); /* zinc-700 */
   padding-bottom: env(safe-area-inset-bottom);
   z-index: 20;
+  /* Ensure proper positioning without transforms */
+  transform: none !important;
 }
