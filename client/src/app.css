@@ -8,25 +8,131 @@
   --color-spotify-lightgray: #b3b3b3;
 }
 
-/* iPhone PWA Safe Area Support */
-html, body {
-  margin: 0;
-  height: 100%;
+/* Root-level safe area and color handling */
+:root {
+  --header-height: 64px;
+  --safe-top: env(safe-area-inset-top);
+  --safe-bottom: env(safe-area-inset-bottom);
+  --safe-left: env(safe-area-inset-left);
+  --safe-right: env(safe-area-inset-right);
 }
 
-/* Fixed header with safe area support */
+/* iPhone PWA Safe Area Support */
+html {
+  height: 100%;
+  /* Extend background color to cover entire viewport including safe areas */
+  background-color: #18181b; /* zinc-900 */
+}
+
+body {
+  margin: 0;
+  height: 100%;
+  background-color: #18181b; /* zinc-900 */
+  /* Prevent overscroll bounce on iOS */
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+  /* Extend background into safe areas */
+  padding: 0;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* Root app container */
+#root {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(to bottom right, #18181b, #27272a, #18181b);
+}
+
+/* Fixed header with proper safe area extension */
 .app-header {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  height: 64px; /* 16 * 4 = 64px (h-16 in Tailwind) */
-  padding-top: env(safe-area-inset-top);
+  height: var(--header-height);
+  /* Extend header background into safe area */
+  padding-top: var(--safe-top);
+  /* Total height including safe area */
+  min-height: calc(var(--header-height) + var(--safe-top));
   z-index: 30;
+  /* Solid background to cover safe area */
+  background-color: #18181b;
+  /* Add subtle border only at the actual header bottom */
+  box-shadow: 0 1px 0 0 rgb(63 63 70 / 0.5);
 }
 
-/* Main content with safe area padding */
+/* Adjust the header content wrapper */
+.app-header > div {
+  height: var(--header-height);
+  display: flex;
+  align-items: center;
+}
+
+/* Main app container with proper spacing */
 .app-main {
-  padding-top: calc(64px + env(safe-area-inset-top));
-  padding-bottom: env(safe-area-inset-bottom);
+  position: fixed;
+  top: calc(var(--header-height) + var(--safe-top));
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Chat container - fills available space */
+.chat-container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* Scrollable chat messages area */
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  /* Add bottom padding for input area */
+  padding-bottom: 100px;
+  /* Ensure content doesn't get cut off */
+  min-height: 0;
+}
+
+/* Fixed chat input at bottom */
+.chat-input-container {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: #18181b;
+  /* Add safe area padding at bottom */
+  padding-bottom: var(--safe-bottom);
+  /* Ensure it stays above content */
+  z-index: 20;
+  /* Add top border */
+  border-top: 1px solid rgb(63 63 70 / 0.5);
+}
+
+/* Ensure modals and overlays work properly */
+.fixed {
+  position: fixed;
+}
+
+/* Prevent content from being hidden under notch in landscape */
+@supports (padding: max(0px)) {
+  .app-header,
+  .chat-messages,
+  .chat-input-container {
+    padding-left: max(16px, var(--safe-left));
+    padding-right: max(16px, var(--safe-right));
+  }
 }

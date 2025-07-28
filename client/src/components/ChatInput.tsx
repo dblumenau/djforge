@@ -19,7 +19,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
   currentModel
 }) => {
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-zinc-900/95 backdrop-blur-sm border-t border-zinc-800 z-20">
+    <div className="border-t border-zinc-800">
       <div className="container mx-auto px-4 py-4" style={{ maxWidth: '1440px' }}>
         <form onSubmit={onSubmit} className="relative">
           <div className="flex items-center gap-3">

@@ -23,7 +23,7 @@ const HeaderNav: React.FC<HeaderNavProps> = ({
   const navigate = useNavigate();
 
   return (
-    <header className="app-header bg-zinc-900/95 backdrop-blur-sm border-b border-zinc-800">
+    <header className="app-header border-b border-zinc-800">
       <div className="container mx-auto px-4" style={{ maxWidth: '1440px' }}>
         <div className="h-16 flex items-center justify-between">
           {/* Left: Logo and Title */}

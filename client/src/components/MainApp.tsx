@@ -6,6 +6,7 @@ import CommandHistorySkeleton from './skeletons/CommandHistorySkeleton';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
 import QueueDisplay from './QueueDisplay';
+import { AuthTestPanel } from './AuthTestPanel';
 import { useSpotifyAuth } from '../hooks/useSpotifyAuth';
 import { useTrackLibrary } from '../hooks/useTrackLibrary';
 import { useIOSKeyboardFix } from '../hooks/useIOSKeyboardFix';
@@ -153,19 +154,34 @@ const MainApp: React.FC = () => {
     }
   }, [isConnected, checking, checkAuthStatus]);
 
-  // Auto-scroll to bottom when new messages are added or on initial load
-  useEffect(() => {
+  // Function to scroll to bottom
+  const scrollToBottom = () => {
     if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+      const scrollElement = chatContainerRef.current.parentElement;
+      if (scrollElement) {
+        scrollElement.scrollTop = scrollElement.scrollHeight;
+      }
     }
+  };
+
+  // Auto-scroll to bottom when new messages are added
+  useEffect(() => {
+    scrollToBottom();
   }, [commandHistory]);
 
-  // Auto-scroll to bottom on initial page load
+  // Auto-scroll to bottom when history finishes loading
   useEffect(() => {
-    if (chatContainerRef.current && !commandHistoryLoading) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    if (!commandHistoryLoading) {
+      // Use a small timeout to ensure DOM is fully updated
+      setTimeout(scrollToBottom, 100);
     }
   }, [commandHistoryLoading]);
+
+  // Auto-scroll on initial mount
+  useEffect(() => {
+    // Give the page time to fully render
+    setTimeout(scrollToBottom, 500);
+  }, []);
 
   // Load command history from Redis when authenticated
   useEffect(() => {
@@ -564,9 +580,9 @@ const MainApp: React.FC = () => {
   }
 
   return (
-    <div className="flex-1 flex flex-col">
-      {/* Main Content Area with padding for input */}
-      <div className="flex-1 flex flex-col pb-20">
+    <div className="chat-container">
+      {/* Chat Messages Container */}
+      <div className="chat-messages">
         {/* Auth Error Message */}
         {authError && (
           <div className="mx-4 mt-4 bg-yellow-900/50 border border-yellow-600 rounded-lg p-4" style={{ maxWidth: '1440px', marginLeft: 'auto', marginRight: 'auto' }}>
@@ -592,12 +608,12 @@ const MainApp: React.FC = () => {
           </div>
         </div>
 
-        {/* Chat Messages Container */}
+        {/* Messages Content */}
         <div 
-          ref={chatContainerRef}
-          className="flex-1 overflow-y-auto px-4"
+          className="px-4"
           style={{ maxWidth: '1440px', margin: '0 auto', width: '100%' }}
         >
+          <div ref={chatContainerRef}>
           {/* Clear History Button */}
           {commandHistory.length > 0 && (
             <div className="flex justify-end mb-4">
@@ -607,6 +623,13 @@ const MainApp: React.FC = () => {
               >
                 Clear History
               </button>
+            </div>
+          )}
+
+          {/* Auth Test Panel - Only in development */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="mb-4">
+              <AuthTestPanel />
             </div>
           )}
 
@@ -640,19 +663,21 @@ const MainApp: React.FC = () => {
               ))
             )}
           </div>
+          </div>
         </div>
       </div>
 
       {/* Chat Input */}
-      <ChatInput
+      <div className="chat-input-container">
+        <ChatInput
         value={command}
         onChange={setCommand}
         onSubmit={handleSubmit}
         isProcessing={isProcessing}
         onShowExamples={() => setShowExamplesModal(true)}
         currentModel={currentModel}
-      />
-
+        />
+      </div>
 
       {/* Examples Modal */}
       {showExamplesModal && (

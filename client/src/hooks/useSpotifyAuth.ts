@@ -151,7 +151,7 @@ export const useSpotifyAuth = () => {
       console.log('📋 useSpotifyAuth: Auth check response data:', data);
       
       if (data.authenticated && data.accessToken) {
-        console.log('✅ useSpotifyAuth: Setting authenticated state');
+        console.log('✅ useSpotifyAuth: Setting authenticated state with valid access token');
         
         // Update Sentry user context
         setSentryUserContext(jwtToken);
@@ -162,9 +162,9 @@ export const useSpotifyAuth = () => {
           loading: false,
           error: null
         });
-      } else if (!data.authenticated && data.tokenExpired && data.hasRefreshToken && jwtToken) {
-        // JWT is valid but Spotify tokens are expired - attempt refresh
-        console.log('🔄 useSpotifyAuth: Tokens expired but refresh available, attempting refresh');
+      } else if (data.authenticated && data.tokenExpired && data.hasRefreshToken && jwtToken) {
+        // User is authenticated but Spotify tokens are expired - attempt refresh
+        console.log('🔄 useSpotifyAuth: User authenticated but tokens expired, attempting automatic refresh');
         try {
           await attemptTokenRefresh(jwtToken);
           // If refresh succeeds, attemptTokenRefresh will set the auth state
@@ -174,8 +174,9 @@ export const useSpotifyAuth = () => {
           // The user should stay "authenticated" but with expired tokens
         }
         return; // Don't continue to the else clause
-      } else {
-        console.log('❌ useSpotifyAuth: Setting unauthenticated state');
+      } else if (!data.authenticated) {
+        // Only mark as unauthenticated if server explicitly says so (no refresh token)
+        console.log('❌ useSpotifyAuth: User not authenticated - no valid session or refresh token');
         setAuthState({
           isAuthenticated: false,
           accessToken: null,
@@ -203,10 +204,11 @@ export const useSpotifyAuth = () => {
   useEffect(() => {
     if (!authState.isAuthenticated) return;
 
-    // Check auth status every 30 minutes
+    // Check auth status every 45 minutes (Spotify tokens last 60 minutes)
+    // This gives us a 15-minute buffer before actual expiry
     const interval = setInterval(() => {
       checkAuthStatus();
-    }, 30 * 60 * 1000);
+    }, 45 * 60 * 1000);
 
     return () => clearInterval(interval);
   }, [authState.isAuthenticated, checkAuthStatus]);

@@ -240,8 +240,12 @@ authRouter.get('/status', (req, res) => {
     // User is authenticated if tokens are valid or if we can potentially refresh them
     const effectivelyAuthenticated = isAuthenticated && !isExpired;
     
+    // User is authenticated if they have a valid JWT/session, regardless of Spotify token expiry
+    // This allows the client to attempt refresh without forcing re-login
+    const hasValidAuth = !!tokens?.refresh_token; // Valid if we have refresh capability
+    
     res.json({ 
-      authenticated: effectivelyAuthenticated,
+      authenticated: hasValidAuth, // True as long as we have refresh capability
       tokenExpired: isExpired,
       hasRefreshToken: !!tokens.refresh_token,
       accessToken: effectivelyAuthenticated ? tokens.access_token : null
