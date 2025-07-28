@@ -188,6 +188,10 @@ export async function ensureValidToken(req: any, res: any, next: any) {
         // For JWT auth, we can't refresh in place - client needs to get new JWT
         // BUT we must use the refreshed tokens with the NEW refresh_token
         req.spotifyTokens = refreshedTokens; // Use refreshed tokens, not old ones!
+        
+        // CRITICAL: Tell client to refresh their JWT!
+        res.setHeader('X-Token-Refreshed', 'true');
+        console.log('🚨 Token refreshed - client needs new JWT');
       } else {
         // Session-based: update session
         req.session.spotifyTokens = refreshedTokens;
