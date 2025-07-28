@@ -107,21 +107,21 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange, compact = 
         </span>
         {!compact && (
           <>
-            {selectedModelInfo?.supportsJSON && (
+            {/* {selectedModelInfo?.supportsJSON && (
               <span className="hidden sm:inline text-xs text-green-400 bg-green-900/30 px-2 py-0.5 rounded">
                 JSON
               </span>
-            )}
-            {selectedModelInfo?.providerInfo?.supportsGrounding && (
+            )} */}
+            {/* {selectedModelInfo?.providerInfo?.supportsGrounding && (
               <span className="hidden sm:inline text-xs text-blue-400 bg-blue-900/30 px-2 py-0.5 rounded">
                 🔍 Grounding
               </span>
-            )}
-            {selectedModelInfo?.providerInfo?.isDirect && (
+            )} */}
+            {/* {selectedModelInfo?.providerInfo?.isDirect && (
               <span className="hidden sm:inline text-xs text-yellow-400 bg-yellow-900/30 px-2 py-0.5 rounded">
                 Direct
               </span>
-            )}
+            )} */}
           </>
         )}
         <svg 

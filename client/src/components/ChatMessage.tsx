@@ -85,21 +85,23 @@ const ChatMessage: React.FC<MessageProps> = ({
   isProcessing
 }) => {
   return (
-    <div className="group hover:bg-zinc-900/30 rounded-lg transition-colors p-4">
+    <div className="mb-6">
       {/* User Command */}
-      <div className="flex items-start gap-3 mb-3">
-        <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
-          <span className="text-xs font-bold text-black">U</span>
+      <div className="flex items-start gap-2 mb-4">
+        <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
+          <span className="text-xs font-semibold text-white">U</span>
         </div>
         <div className="flex-1">
-          <div className="flex items-baseline gap-2">
-            <span className="font-medium text-green-400">{command}</span>
-            {timestamp && (
-              <span className="text-xs text-gray-500">{new Date(timestamp).toLocaleTimeString()}</span>
-            )}
+          <div className="bg-blue-500/80 rounded-2xl px-4 py-3 inline-block max-w-[85%]">
+            <span className="text-white">{command}</span>
           </div>
+          {timestamp && (
+            <div className="mt-1 px-4">
+              <span className="text-xs text-gray-500">{new Date(timestamp).toLocaleTimeString()}</span>
+            </div>
+          )}
           {/* Badges */}
-          <div className="flex items-center gap-2 mt-1">
+          <div className="flex items-center gap-2 mt-2 px-4">
             {isEnhanced && (
               <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">
                 Enhanced
@@ -121,12 +123,24 @@ const ChatMessage: React.FC<MessageProps> = ({
       </div>
 
       {/* AI Response */}
-      <div className="flex items-start gap-3">
-        <ModelIcon model={model} size="md" className="flex-shrink-0" />
-        <div className="flex-1 space-y-2">
-          {/* Intent and confidence */}
+      <div className="flex items-start gap-2">
+        <ModelIcon model={model} size="sm" className="flex-shrink-0" />
+        <div className="flex-1">
+          <div className="bg-green-500 rounded-2xl px-4 py-3 inline-block max-w-[85%]">
+            {/* Response text */}
+            <div className="text-gray-100 whitespace-pre-line">
+              {response.split(/(\*\*[^*]+\*\*)/).map((part, index) => {
+                if (part.startsWith('**') && part.endsWith('**')) {
+                  return <strong key={index} className="font-bold text-white">{part.slice(2, -2)}</strong>;
+                }
+                return part;
+              })}
+            </div>
+          </div>
+          
+          {/* Intent and confidence below message bubble */}
           {(intent || confidence !== undefined) && (
-            <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-3 flex-wrap mt-2 px-4">
               {intent && (
                 <span className={`text-xs px-2 py-1 rounded ${
                   intent === 'play_specific_song' ? 'bg-purple-500/20 text-purple-400' :
@@ -172,15 +186,6 @@ const ChatMessage: React.FC<MessageProps> = ({
             </div>
           )}
 
-          {/* Response text */}
-          <div className="text-gray-300 whitespace-pre-line">
-            {response.split(/(\*\*[^*]+\*\*)/).map((part, index) => {
-              if (part.startsWith('**') && part.endsWith('**')) {
-                return <strong key={index} className="font-bold text-white">{part.slice(2, -2)}</strong>;
-              }
-              return part;
-            })}
-          </div>
 
           {/* Clarification Options */}
           {intent === 'clarification_mode' && clarificationOptions && (

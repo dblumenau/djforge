@@ -166,7 +166,16 @@ const MainApp: React.FC = () => {
   const scrollToBottom = () => {
     // Find the chat-messages container
     const scrollElement = document.querySelector('.chat-messages');
-    if (scrollElement) {
+    const chatInput = document.querySelector('.chat-input-container');
+    
+    if (scrollElement && chatInput) {
+      // Get the actual height of the chat input container
+      const inputHeight = chatInput.getBoundingClientRect().height;
+      
+      // Set a CSS variable for the actual input height
+      document.documentElement.style.setProperty('--chat-input-height', `${inputHeight}px`);
+      
+      // Scroll to the bottom
       scrollElement.scrollTop = scrollElement.scrollHeight;
     }
   };
@@ -188,6 +197,23 @@ const MainApp: React.FC = () => {
   useEffect(() => {
     // Give the page time to fully render
     setTimeout(scrollToBottom, 500);
+  }, []);
+
+  // Monitor chat input height changes
+  useEffect(() => {
+    const chatInput = document.querySelector('.chat-input-container');
+    if (!chatInput) return;
+
+    const resizeObserver = new ResizeObserver(() => {
+      const inputHeight = chatInput.getBoundingClientRect().height;
+      document.documentElement.style.setProperty('--chat-input-height', `${inputHeight}px`);
+    });
+
+    resizeObserver.observe(chatInput);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
   }, []);
 
   // Load command history from Redis when authenticated
@@ -644,7 +670,7 @@ const MainApp: React.FC = () => {
 
         {/* Messages Content */}
         <div 
-          className="px-4"
+          className="px-3 md:px-4"
           style={{ maxWidth: '1440px', margin: '0 auto', width: '100%' }}
         >
           <div ref={chatContainerRef}>
@@ -668,7 +694,7 @@ const MainApp: React.FC = () => {
           )}
 
           {/* Messages */}
-          <div className="space-y-4 pb-4">
+          <div className="space-y-4 mb-1 md:mb-32">
             {commandHistoryLoading ? (
               <CommandHistorySkeleton count={3} />
             ) : commandHistory.length === 0 ? (
