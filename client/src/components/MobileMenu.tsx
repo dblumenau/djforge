@@ -149,6 +149,15 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
                   <span>📋</span>
                   <span>Logs</span>
                 </button>
+                <button
+                  onClick={() => {
+                    window.location.reload();
+                  }}
+                  className="w-full px-4 py-2 bg-blue-900/20 hover:bg-blue-900/30 text-blue-300 hover:text-blue-200 border border-blue-800/50 hover:border-blue-700/50 rounded-lg transition-all flex items-center gap-2"
+                >
+                  <span>🔄</span>
+                  <span>Refresh</span>
+                </button>
               </nav>
             </div>
           </div>
