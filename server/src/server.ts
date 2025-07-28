@@ -27,6 +27,7 @@ import weatherRouter from './routes/weather';
 import userDataRouter from './routes/user-data';
 import { overrideConsole, logger } from './utils/logger';
 import { playbackEventService } from './services/event-emitter.service';
+import { sseConnectionManager } from './services/sse-connection-manager';
 import { setSentryUserContext } from './middleware/sentry-auth';
 
 // Override console methods to use Winston logger
@@ -280,7 +281,13 @@ async function initializeAndStart() {
         return;
       }
       
-      console.log('[SSE] New connection from user:', (req as any).user?.spotifyId);
+      const userId = (req as any).user?.spotifyId;
+      const connectionId = `${userId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      
+      console.log('[SSE] New connection from user:', userId);
+      
+      // Add connection to manager
+      sseConnectionManager.addConnection(connectionId, userId, res);
       
       // Set SSE headers
       res.writeHead(200, {
@@ -311,12 +318,15 @@ async function initializeAndStart() {
       // Listen for playback events
       const handlePlaybackEvent = (event: any) => {
         // Only send events for this user
-        if (event.userId === (req as any).user?.spotifyId && isConnectionActive) {
+        if (event.userId === userId && isConnectionActive) {
           try {
             res.write(`data: ${JSON.stringify(event)}\n\n`);
+            // Update activity on successful write
+            sseConnectionManager.updateActivity(connectionId);
           } catch (error) {
             console.error('[SSE] Failed to write event:', error);
             isConnectionActive = false;
+            sseConnectionManager.removeConnection(connectionId);
           }
         }
       };
@@ -328,33 +338,38 @@ async function initializeAndStart() {
         if (isConnectionActive) {
           try {
             res.write(': heartbeat\n\n');
+            // Update activity on successful heartbeat
+            sseConnectionManager.updateActivity(connectionId);
           } catch (error) {
             console.error('[SSE] Failed to send heartbeat:', error);
             isConnectionActive = false;
             clearInterval(heartbeat);
+            sseConnectionManager.removeConnection(connectionId);
           }
         }
       }, 30000);
 
       // Clean up on client disconnect
       req.on('close', () => {
-        console.log('[SSE] Connection closed for user:', (req as any).user?.spotifyId);
+        console.log('[SSE] Connection closed for user:', userId);
         isConnectionActive = false;
         playbackEventService.removeListener('playback-event', handlePlaybackEvent);
         clearInterval(heartbeat);
+        sseConnectionManager.removeConnection(connectionId);
       });
       
       // Log if connection closes unexpectedly
       req.on('error', (error) => {
-        console.error('[SSE] Request error for user:', (req as any).user?.spotifyId, error);
+        console.error('[SSE] Request error for user:', userId, error);
         isConnectionActive = false;
+        sseConnectionManager.removeConnection(connectionId);
       });
       
       // Ensure connection stays alive
       req.socket.setKeepAlive(true);
       req.socket.setNoDelay(true);
       
-      console.log('[SSE] Connection fully established for user:', (req as any).user?.spotifyId);
+      console.log(`[SSE] Connection ${connectionId} fully established for user: ${userId} (Total: ${sseConnectionManager.getConnectionCount()}, User: ${sseConnectionManager.getUserConnectionCount(userId)})`);
     });
 
     // Determine client URL based on environment

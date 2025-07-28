@@ -419,6 +419,8 @@ export async function refreshAccessToken(refreshToken: string): Promise<SpotifyA
       );
       
       console.log('✅ Token refresh successful');
+      console.log('Refresh response contains:', Object.keys(response.data));
+      console.log('New refresh_token in response:', !!response.data.refresh_token);
       return response.data;
     } catch (error: any) {
       console.error('❌ Token refresh failed:', error.response?.data || error.message);
