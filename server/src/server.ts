@@ -21,6 +21,7 @@ import { directActionRouter, setRedisClient as setDirectActionRedisClient } from
 import { feedbackRouter, setRedisClient as setFeedbackRedisClient } from './routes/feedback';
 import songVerificationRouter from './routes/song-verification';
 import debugTokenRouter from './routes/debug-token';
+import adminSSERouter from './routes/admin-sse';
 import { createRedisClient, checkRedisHealth } from './config/redis';
 import { RedisUtils } from './utils/redis-utils';
 import weatherRouter from './routes/weather';
@@ -202,6 +203,8 @@ async function initializeAndStart() {
     app.use('/api/songs', songVerificationRouter);
     // Debug token endpoint
     app.use('/api/debug', debugTokenRouter);
+    // Admin SSE management endpoint
+    app.use('/api/admin/sse', adminSSERouter);
 
 
     // IMPORTANT: The Sentry error handler must be registered before any other error middleware and after all controllers

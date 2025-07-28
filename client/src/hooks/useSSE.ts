@@ -132,6 +132,38 @@ export function useSSE(options: UseSSEOptions = {}) {
       }
     });
     
+    // Handle SSE close events from server (connection limit, timeout)
+    eventSource.addEventListener('close', (event: MessageEvent) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.warn('[SSE] Server requested close:', data);
+        
+        // Handle specific close reasons
+        if (data.code === 'CONNECTION_LIMIT') {
+          console.warn('[SSE] Connection limit reached, will reconnect with backoff');
+          // Close current connection
+          eventSource.close();
+          eventSourceRef.current = null;
+          setIsConnected(false);
+          onDisconnectRef.current?.();
+          
+          // Reconnect after a delay to avoid hammering the server
+          setTimeout(() => {
+            console.log('[SSE] Attempting reconnection after connection limit');
+            connect();
+          }, 5000); // 5 second delay
+        } else if (data.code === 'TIMEOUT') {
+          console.warn('[SSE] Connection timed out, closing');
+          eventSource.close();
+          eventSourceRef.current = null;
+          setIsConnected(false);
+          onDisconnectRef.current?.();
+        }
+      } catch (e) {
+        // Not a JSON close event, ignore
+      }
+    });
+    
     eventSourceRef.current = eventSource;
   }, []); // EMPTY ARRAY - This is the key fix!
   

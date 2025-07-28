@@ -404,23 +404,44 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue, isMobi
               <div className="text-sm text-gray-500">No track playing</div>
             )}
           </div>
-          <button className="p-1 hover:bg-zinc-600 rounded transition-colors">
-            <svg 
-              className={`w-4 h-4 text-gray-400 transition-transform ${
-                isMinimized ? 'rotate-180' : ''
-              }`} 
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Connection Status Indicator */}
+            <div className="flex items-center gap-1" title={sseConnected ? 'Live updates active' : 'Live updates disconnected'}>
+              <span className={`w-2 h-2 rounded-full ${
+                sseConnected ? 'bg-green-500' : 'bg-red-500 animate-pulse'
+              }`} />
+              {!sseConnected && (
+                <span className="text-xs text-red-400">Offline</span>
+              )}
+            </div>
+            <button className="p-1 hover:bg-zinc-600 rounded transition-colors">
+              <svg 
+                className={`w-4 h-4 text-gray-400 transition-transform ${
+                  isMinimized ? 'rotate-180' : ''
+                }`} 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+          </div>
         </div>
 
       {/* Expanded Content */}
       {!isMinimized && (
         <div className="p-4 pt-0">
+          {/* Connection Status - Always visible */}
+          <div className="mb-2 flex items-center gap-2 text-xs">
+            <span className={`w-2 h-2 rounded-full ${
+              sseConnected ? 'bg-green-500' : 'bg-red-500 animate-pulse'
+            }`} />
+            <span className="text-gray-500">
+              Live updates: {sseConnected ? 'Connected' : 'Disconnected'}
+            </span>
+          </div>
+          
           {/* Dev mode indicators */}
           {import.meta.env.DEV && (
             <div className="mb-2 space-y-1 text-xs">
@@ -439,12 +460,6 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue, isMobi
                     style={{ width: `${Math.min((apiCallCount.length / 180) * 100, 100)}%` }}
                   />
                 </div>
-                <span className={`w-2 h-2 rounded-full ${
-                  sseConnected ? 'bg-green-500' : 'bg-red-500'
-                }`} />
-                <span className="text-gray-500">
-                  SSE: {sseConnected ? 'On' : 'Off'}
-                </span>
               </div>
             </div>
           )}

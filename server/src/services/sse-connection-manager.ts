@@ -137,6 +137,29 @@ class SSEConnectionManager {
   getUserConnectionCount(userId: string): number {
     return this.userConnectionCount.get(userId) || 0;
   }
+
+  clearAllConnections(): void {
+    console.log(`[SSE] Force-clearing all ${this.connections.size} connections`);
+    
+    // Send close event to all connections
+    for (const [id, info] of this.connections.entries()) {
+      try {
+        info.res.write(`event: close\ndata: ${JSON.stringify({ 
+          reason: 'Server restart', 
+          code: 'SERVER_RESTART' 
+        })}\n\n`);
+        info.res.end();
+      } catch (error) {
+        console.error('[SSE] Error closing connection during clear:', error);
+      }
+    }
+    
+    // Clear all tracking
+    this.connections.clear();
+    this.userConnectionCount.clear();
+    
+    console.log('[SSE] All connections cleared');
+  }
 }
 
 export const sseConnectionManager = new SSEConnectionManager();
