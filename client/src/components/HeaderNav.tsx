@@ -79,6 +79,13 @@ const HeaderNav: React.FC<HeaderNavProps> = ({
                 <span className="lg:hidden">📋</span>
               </button>
               <button 
+                className="px-2 lg:px-3 py-1.5 bg-blue-900/20 hover:bg-blue-900/30 text-blue-300 hover:text-blue-200 border border-blue-800/50 hover:border-blue-700/50 rounded-md transition-all text-xs font-medium"
+                onClick={() => window.location.reload()}
+              >
+                <span className="hidden lg:inline">🔄 Refresh</span>
+                <span className="lg:hidden">🔄</span>
+              </button>
+              <button 
                 className="px-2 lg:px-3 py-1.5 bg-red-900/20 hover:bg-red-900/30 text-red-300 hover:text-red-200 border border-red-800/50 hover:border-red-700/50 rounded-md transition-all text-xs font-medium"
                 onClick={onLogout}
               >
