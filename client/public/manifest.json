@@ -4,8 +4,8 @@
   "description": "Control your Spotify music with natural language",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#000000",
-  "theme_color": "#1DB954",
+  "background_color": "#151518",
+  "theme_color": "#151518",
   "orientation": "portrait",
   "icons": [
     {
