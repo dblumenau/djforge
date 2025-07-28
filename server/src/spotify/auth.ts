@@ -383,30 +383,55 @@ authRouter.post('/logout', (req, res) => {
   });
 });
 
+// In-memory refresh promise cache to prevent thundering herd
+const refreshPromises = new Map<string, Promise<SpotifyAuthTokens>>();
+
 // Refresh token if needed
 export async function refreshAccessToken(refreshToken: string): Promise<SpotifyAuthTokens> {
-  console.log('🔄 Attempting to refresh access token...');
-  console.log('Refresh token:', refreshToken.substring(0, 20) + '...');
+  // Use first 20 chars as key (tokens are longer but this is enough for uniqueness)
+  const tokenKey = refreshToken.substring(0, 20);
   
-  try {
-    const response = await axios.post(
-      SPOTIFY_TOKEN_URL,
-      new URLSearchParams({
-        grant_type: 'refresh_token',
-        refresh_token: refreshToken,
-        client_id: process.env.SPOTIFY_CLIENT_ID!
-      }),
-      {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
-        }
-      }
-    );
-    
-    console.log('✅ Token refresh successful');
-    return response.data;
-  } catch (error: any) {
-    console.error('❌ Token refresh failed:', error.response?.data || error.message);
-    throw error;
+  // Check if a refresh is already in progress for this token
+  const existingPromise = refreshPromises.get(tokenKey);
+  if (existingPromise) {
+    console.log('🔄 Reusing existing refresh request for token...');
+    return existingPromise;
   }
+  
+  console.log('🔄 Attempting to refresh access token...');
+  console.log('Refresh token:', tokenKey + '...');
+  
+  // Create the refresh promise and store it
+  const refreshPromise = (async () => {
+    try {
+      const response = await axios.post(
+        SPOTIFY_TOKEN_URL,
+        new URLSearchParams({
+          grant_type: 'refresh_token',
+          refresh_token: refreshToken,
+          client_id: process.env.SPOTIFY_CLIENT_ID!
+        }),
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          }
+        }
+      );
+      
+      console.log('✅ Token refresh successful');
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Token refresh failed:', error.response?.data || error.message);
+      throw error;
+    } finally {
+      // Clean up the promise from the cache after 1 second
+      // This delay prevents issues if there are follow-up requests
+      setTimeout(() => {
+        refreshPromises.delete(tokenKey);
+      }, 1000);
+    }
+  })();
+  
+  refreshPromises.set(tokenKey, refreshPromise);
+  return refreshPromise;
 }
