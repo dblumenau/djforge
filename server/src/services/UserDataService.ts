@@ -508,6 +508,14 @@ export class UserDataService {
         await this.redis.zAdd(targetKey, { score: Date.now(), value: JSON.stringify(discoveryData) });
         await this.redis.expire(targetKey, 86400 * 30); // 30 days
         
+        // Update the original discovery in the ai_discoveries list with feedback status
+        const discoveryIndex = discoveries.indexOf(targetDiscovery);
+        if (discoveryIndex !== -1) {
+          // Update the discovery in the list
+          await this.redis.lSet(discoveriesKey, discoveryIndex, JSON.stringify(discoveryData));
+          console.log(`🔄 Updated original discovery with ${feedback} feedback: ${discoveryData.trackName} by ${discoveryData.artist}`);
+        }
+        
         // If the feedback is 'loved', add the track to DJ Forge playlist
         if (feedback === 'loved') {
           try {
@@ -530,6 +538,7 @@ export class UserDataService {
 
   async removeFeedback(trackUri: string): Promise<void> {
     try {
+      const discoveriesKey = `user:${this.userId}:ai_discoveries`;
       const lovedKey = `user:${this.userId}:ai_loved`;
       const dislikedKey = `user:${this.userId}:ai_disliked`;
       
@@ -552,10 +561,36 @@ export class UserDataService {
       });
       
       if (targetMember) {
+        // Remove from feedback lists
         await Promise.all([
           this.redis.zRem(lovedKey, targetMember),
           this.redis.zRem(dislikedKey, targetMember)
         ]);
+        
+        // Update the original discovery in the ai_discoveries list to remove feedback status
+        const discoveries = await this.redis.lRange(discoveriesKey, 0, -1);
+        const targetDiscovery = discoveries.find((discovery: string) => {
+          try {
+            const parsed = JSON.parse(discovery);
+            const memberData = JSON.parse(targetMember);
+            return parsed.trackUri === memberData.trackUri;
+          } catch {
+            return false;
+          }
+        });
+        
+        if (targetDiscovery) {
+          const discoveryData = JSON.parse(targetDiscovery);
+          // Remove feedback fields
+          delete discoveryData.feedback;
+          delete discoveryData.feedbackAt;
+          
+          const discoveryIndex = discoveries.indexOf(targetDiscovery);
+          if (discoveryIndex !== -1) {
+            await this.redis.lSet(discoveriesKey, discoveryIndex, JSON.stringify(discoveryData));
+            console.log(`🔄 Removed feedback from original discovery: ${discoveryData.trackName} by ${discoveryData.artist}`);
+          }
+        }
       }
     } catch (error) {
       console.error('Error removing feedback:', error);
