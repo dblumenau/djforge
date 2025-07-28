@@ -53,7 +53,13 @@ export class SpotifyWebAPI {
         if (error.response?.status === 401 && this.tokens.refresh_token) {
           try {
             const newTokens = await refreshAccessToken(this.tokens.refresh_token);
-            this.tokens = { ...this.tokens, ...newTokens };
+            // CRITICAL: Always use the new refresh_token if Spotify provides one
+            this.tokens = {
+              ...this.tokens,
+              ...newTokens,
+              // Explicitly ensure refresh_token is updated if present in response
+              refresh_token: newTokens.refresh_token || this.tokens.refresh_token
+            };
             this.onTokenRefresh(this.tokens);
             
             // Retry original request with new token

@@ -176,12 +176,18 @@ export async function ensureValidToken(req: any, res: any, next: any) {
   if (tokenAge > expiresIn - 600000) {
     try {
       const newTokens = await refreshAccessToken(tokens.refresh_token);
-      const refreshedTokens = { ...tokens, ...newTokens };
+      // CRITICAL: Always use the new refresh_token if Spotify provides one
+      const refreshedTokens = {
+        ...tokens,
+        ...newTokens,
+        // Explicitly ensure refresh_token is updated if present in response
+        refresh_token: newTokens.refresh_token || tokens.refresh_token
+      };
       
       if (jwtToken) {
         // For JWT auth, we can't refresh in place - client needs to get new JWT
-        // For now, just use the current tokens and let client handle refresh
-        req.spotifyTokens = tokens;
+        // BUT we must use the refreshed tokens with the NEW refresh_token
+        req.spotifyTokens = refreshedTokens; // Use refreshed tokens, not old ones!
       } else {
         // Session-based: update session
         req.session.spotifyTokens = refreshedTokens;
@@ -278,7 +284,13 @@ authRouter.post('/refresh', async (req, res) => {
     
     // Refresh the Spotify tokens
     const newTokens = await refreshAccessToken(spotifyTokens.refresh_token);
-    const refreshedTokens = { ...spotifyTokens, ...newTokens };
+    // CRITICAL: Always use the new refresh_token if Spotify provides one
+    const refreshedTokens = {
+      ...spotifyTokens,
+      ...newTokens,
+      // Explicitly ensure refresh_token is updated if present in response
+      refresh_token: newTokens.refresh_token || spotifyTokens.refresh_token
+    };
     
     // Generate new JWT with refreshed tokens
     const { generateJWT } = require('../utils/jwt');
@@ -421,6 +433,9 @@ export async function refreshAccessToken(refreshToken: string): Promise<SpotifyA
       console.log('✅ Token refresh successful');
       console.log('Refresh response contains:', Object.keys(response.data));
       console.log('New refresh_token in response:', !!response.data.refresh_token);
+      if (response.data.refresh_token) {
+        console.log('🔄 Spotify rotated refresh token - old token now invalid');
+      }
       return response.data;
     } catch (error: any) {
       console.error('❌ Token refresh failed:', error.response?.data || error.message);
