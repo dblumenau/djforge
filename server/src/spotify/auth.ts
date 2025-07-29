@@ -226,7 +226,7 @@ export async function ensureValidToken(req: any, res: any, next: any) {
         
         // Clear session-based auth
         if (req.session) {
-          req.session.destroy((err) => {
+          req.session.destroy((err: any) => {
             if (err) console.error('Error destroying session:', err);
           });
         }

@@ -696,7 +696,6 @@ const MainApp: React.FC = () => {
         )}
 
         {/* Playback Controls or Web Player - Floating on desktop, in menu on mobile */}
-        {console.log('[MainApp] Rendering decision:', { devicePreference, hasAccessToken: !!accessToken })}
         {devicePreference === 'web-player' && accessToken ? (
           <div className="hidden md:block fixed top-20 left-1/2 -translate-x-1/2 z-10" style={{ maxWidth: '600px', width: '90%' }}>
             <div className="bg-zinc-900/95 backdrop-blur-sm border border-zinc-700 rounded-lg shadow-lg">

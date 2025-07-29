@@ -76,7 +76,7 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
     window.addEventListener('storage', handleStorageChange);
     
     // Also check periodically when menu is open
-    let interval: NodeJS.Timeout | null = null;
+    let interval: ReturnType<typeof setInterval> | null = null;
     if (isOpen) {
       interval = setInterval(checkDevicePreference, 1000);
     }
