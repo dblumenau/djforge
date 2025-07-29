@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
+// WARNING: Using temporary auth bypass during auth system refactor
+import { tempAuthUtils } from '../utils/temp-auth';
 
 const AuthDebug: React.FC = () => {
   const [debugInfo, setDebugInfo] = useState<any>({});
@@ -10,29 +12,20 @@ const AuthDebug: React.FC = () => {
     setRenderCount(prev => prev + 1);
     
     const checkDebugInfo = async () => {
-      const jwtToken = localStorage.getItem('spotify_jwt');
+      // WARNING: JWT system disabled during auth system refactor
+      const jwtToken = tempAuthUtils.getToken();
       
-      let authResponse = null;
-      if (jwtToken) {
-        try {
-          const response = await fetch('http://127.0.0.1:4001/api/auth/status', {
-            headers: {
-              'Authorization': `Bearer ${jwtToken}`,
-              'Content-Type': 'application/json'
-            },
-            credentials: 'include'
-          });
-          authResponse = await response.json();
-        } catch (error) {
-          authResponse = { error: error instanceof Error ? error.message : String(error) };
-        }
-      }
+      let authResponse = {
+        authenticated: false,
+        message: 'Auth system disabled during refactor',
+        error: null
+      };
       
       setDebugInfo({
         currentPath: location.pathname,
         hasJWT: !!jwtToken,
-        jwtExists: jwtToken ? 'YES' : 'NO',
-        jwtLength: jwtToken?.length || 0,
+        jwtExists: jwtToken ? 'YES' : 'NO (temp disabled)',
+        jwtLength: 0,
         authResponse,
         timestamp: new Date().toISOString()
       });
@@ -42,29 +35,14 @@ const AuthDebug: React.FC = () => {
   }, [location.pathname]);
 
   const clearToken = () => {
-    localStorage.removeItem('spotify_jwt');
+    // WARNING: Using temp auth utils during refactor
+    tempAuthUtils.logout();
     window.location.reload();
   };
 
   const testAuth = async () => {
-    const jwtToken = localStorage.getItem('spotify_jwt');
-    if (jwtToken) {
-      try {
-        const response = await fetch('http://127.0.0.1:3001/api/auth/status', {
-          headers: {
-            'Authorization': `Bearer ${jwtToken}`,
-            'Content-Type': 'application/json'
-          },
-          credentials: 'include'
-        });
-        const data = await response.json();
-        alert(`Auth Status: ${JSON.stringify(data, null, 2)}`);
-      } catch (error) {
-        alert(`Auth Error: ${error instanceof Error ? error.message : String(error)}`);
-      }
-    } else {
-      alert('No JWT token found');
-    }
+    // WARNING: Auth testing disabled during auth system refactor
+    alert('Auth testing disabled during auth system refactor');
   };
 
   return (

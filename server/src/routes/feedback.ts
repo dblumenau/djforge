@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import { ensureValidToken } from '../spotify/auth';
+import { requireValidTokens } from '../middleware/session-auth';
 import { SpotifyControl } from '../spotify/control';
 import { UserDataService } from '../services/UserDataService';
-import { verifyJWT } from '../utils/jwt';
+// TODO: Replace with new auth system
 import { AIDiscoveredTrack } from '../types';
 
 export const feedbackRouter = Router();
@@ -15,24 +15,13 @@ export function setRedisClient(client: any) {
   console.log('✅ Redis client initialized for feedback routes');
 }
 
-// Helper to get user ID from JWT
-function getUserIdFromJWT(req: any): string | null {
-  try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return null;
-    }
-    
-    const token = authHeader.substring(7);
-    const decoded = verifyJWT(token);
-    return decoded?.spotify_user_id || null;
-  } catch (error) {
-    return null;
-  }
+// Helper to get user ID from session
+function getUserIdFromSession(req: any): string | null {
+  return req.userId || null; // Provided by requireValidTokens middleware
 }
 
 // Record AI discovery feedback
-feedbackRouter.post('/ai-discovery', ensureValidToken, async (req, res) => {
+feedbackRouter.post('/ai-discovery', requireValidTokens, async (req: any, res) => {
   try {
     const { trackUri, feedback } = req.body;
     
@@ -44,14 +33,14 @@ feedbackRouter.post('/ai-discovery', ensureValidToken, async (req, res) => {
       return res.status(400).json({ error: 'Invalid feedback value' });
     }
     
-    const userId = getUserIdFromJWT(req);
+    const userId = getUserIdFromSession(req);
     if (!userId || !redisClient) {
       return res.status(401).json({ error: 'Authentication required' });
     }
     
     const spotifyControl = new SpotifyControl(
-      req.spotifyTokens!,
-      (tokens) => { req.spotifyTokens = tokens; }
+      req.tokens!,
+      (tokens) => { req.tokens = tokens; }
     );
     
     const userDataService = new UserDataService(redisClient, spotifyControl.getApi(), userId);
@@ -78,16 +67,16 @@ feedbackRouter.post('/ai-discovery', ensureValidToken, async (req, res) => {
 });
 
 // Get AI discoveries with feedback
-feedbackRouter.get('/ai-discoveries', ensureValidToken, async (req, res) => {
+feedbackRouter.get('/ai-discoveries', requireValidTokens, async (req: any, res) => {
   try {
-    const userId = getUserIdFromJWT(req);
+    const userId = getUserIdFromSession(req);
     if (!userId || !redisClient) {
       return res.status(401).json({ error: 'Authentication required' });
     }
     
     const spotifyControl = new SpotifyControl(
-      req.spotifyTokens!,
-      (tokens) => { req.spotifyTokens = tokens; }
+      req.tokens!,
+      (tokens) => { req.tokens = tokens; }
     );
     
     const userDataService = new UserDataService(redisClient, spotifyControl.getApi(), userId);
@@ -109,16 +98,16 @@ feedbackRouter.get('/ai-discoveries', ensureValidToken, async (req, res) => {
 });
 
 // GET /api/feedback/dashboard - Get all feedback data for dashboard
-feedbackRouter.get('/dashboard', ensureValidToken, async (req, res) => {
+feedbackRouter.get('/dashboard', requireValidTokens, async (req: any, res) => {
   try {
-    const userId = getUserIdFromJWT(req);
+    const userId = getUserIdFromSession(req);
     if (!userId) {
       return res.status(401).json({ success: false, error: 'User ID not found' });
     }
 
     const spotifyControl = new SpotifyControl(
-      req.spotifyTokens!,
-      (tokens) => { req.spotifyTokens = tokens; }
+      req.tokens!,
+      (tokens) => { req.tokens = tokens; }
     );
 
     const userDataService = new UserDataService(

@@ -53,24 +53,49 @@ export class GeminiService {
       
       // Handle conversation context
       let tasteProfile = '';
+      let currentlyPlayingTrack = '';
       let conversationContext = '';
       
       if (request.conversationContext) {
-        // Check if the context includes a taste profile
-        const tasteProfileMatch = request.conversationContext.match(/User's Music Taste Profile:[\s\S]*?(?=\n\n|$)/);
-        if (tasteProfileMatch) {
-          // Extract taste profile
-          tasteProfile = tasteProfileMatch[0];
-          // Remove taste profile from conversation context
-          conversationContext = request.conversationContext.replace(tasteProfileMatch[0], '').trim();
-        } else {
-          conversationContext = request.conversationContext;
+        // Split the context into sections
+        const lines = request.conversationContext.split('\n').filter(line => line.trim());
+        
+        // Extract currently playing track
+        const currentlyPlayingLine = lines.find(line => line.includes('Currently playing:'));
+        if (currentlyPlayingLine) {
+          currentlyPlayingTrack = currentlyPlayingLine;
         }
         
-        // Only add conversation context to system prompt (not taste profile)
-        if (conversationContext) {
-          systemPrompt += `\n\nCONVERSATION CONTEXT:\n${conversationContext}`;
+        // Extract taste profile
+        const tasteProfileMatch = request.conversationContext.match(/User's Music Taste Profile:[\s\S]*?(?=\n\n|$)/);
+        if (tasteProfileMatch) {
+          tasteProfile = tasteProfileMatch[0];
         }
+        
+        // Extract conversation history (anything after "Recent music plays:")
+        const conversationMatch = request.conversationContext.match(/Recent music plays:[\s\S]*$/);
+        if (conversationMatch) {
+          conversationContext = conversationMatch[0];
+        }
+        
+        // Build the context sections for the system prompt
+        let contextSections = '';
+        
+        if (currentlyPlayingTrack) {
+          contextSections += `\n\n### Currently Playing Track ###\n${currentlyPlayingTrack}`;
+        } else {
+          contextSections += `\n\n### Currently Playing Track ###\nNo track currently playing`;
+        }
+        
+        if (tasteProfile) {
+          contextSections += `\n\n### User Taste Profile (Secondary Reference) ###\n${tasteProfile}`;
+        }
+        
+        if (conversationContext) {
+          contextSections += `\n\n### Conversation History ###\n${conversationContext}`;
+        }
+        
+        systemPrompt += contextSections;
       }
       
       console.log(`🎯 Using @google/genai API with native responseSchema for intent: ${intentType}`);

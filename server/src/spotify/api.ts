@@ -1,6 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
 import { SpotifyAuthTokens, SpotifyTrack } from '../types';
-import { refreshAccessToken } from './auth';
+// Token refresh is now handled by the session-auth middleware
 
 export interface SpotifyDevice {
   id: string;
@@ -50,24 +50,12 @@ export class SpotifyWebAPI {
     this.api.interceptors.response.use(
       response => response,
       async error => {
-        if (error.response?.status === 401 && this.tokens.refresh_token) {
-          try {
-            const newTokens = await refreshAccessToken(this.tokens.refresh_token);
-            // CRITICAL: Always use the new refresh_token if Spotify provides one
-            this.tokens = {
-              ...this.tokens,
-              ...newTokens,
-              // Explicitly ensure refresh_token is updated if present in response
-              refresh_token: newTokens.refresh_token || this.tokens.refresh_token
-            };
-            this.onTokenRefresh(this.tokens);
-            
-            // Retry original request with new token
-            error.config.headers['Authorization'] = `Bearer ${newTokens.access_token}`;
-            return this.api.request(error.config);
-          } catch (refreshError) {
-            throw refreshError;
-          }
+        if (error.response?.status === 401) {
+          // NOTE: Token refresh is now handled by the session-auth middleware
+          // The tokens passed to this class should always be fresh
+          console.error('Received 401 error - tokens may need refresh at middleware level');
+          // Simply re-throw the error and let the calling code handle it
+          throw error;
         }
         throw error;
       }

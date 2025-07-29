@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { SpotifyControl } from '../spotify/control';
-import { ensureValidToken } from '../spotify/auth';
+import { requireValidTokens } from '../middleware/session-auth';
 import { SpotifyTrack } from '../types';
 import { llmOrchestrator, OPENROUTER_MODELS } from '../llm/orchestrator';
 import { 
@@ -28,10 +28,9 @@ export function setRedisClient(client: any) {
   console.log('✅ Shared ConversationManager initialized for llm-interpreter');
 }
 
-// Helper to get user ID from JWT
+// Helper to get user ID from session
 function getUserIdFromRequest(req: any): string | null {
-  if (!conversationManager) return null;
-  return conversationManager.getUserIdFromRequest(req);
+  return req.userId || null; // Provided by requireValidTokens middleware
 }
 
 // Get user's model preference from Redis
@@ -60,7 +59,7 @@ async function interpretCommand(command: string, userId?: string, preferredModel
   }
   
   // Get user's taste profile if available
-  if (userId && req?.spotifyTokens) {
+  if (userId && req?.tokens) {
     let redisClient = null;
     try {
       // Create a Redis client for taste profile
@@ -68,8 +67,8 @@ async function interpretCommand(command: string, userId?: string, preferredModel
       await redisClient.connect();
       
       const spotifyControl = new SpotifyControl(
-        req.spotifyTokens,
-        (tokens) => { req.spotifyTokens = tokens; }
+        req.tokens,
+        (tokens) => { req.tokens = tokens; }
       );
       // Detect request context type for adaptive taste profile  
       const contextType = detectRequestContextType(command);
@@ -281,14 +280,14 @@ function applySearchModifiers(
 }
 
 // Main command endpoint
-llmInterpreterRouter.post('/command', ensureValidToken, async (req, res) => {
+llmInterpreterRouter.post('/command', requireValidTokens, async (req: any, res) => {
   const { command } = req.body;
   
   if (!command) {
     return res.status(400).json({ error: 'No command provided' });
   }
 
-  if (!req.session.spotifyTokens) {
+  if (!req.tokens) {
     return res.status(401).json({ error: 'Not authenticated with Spotify' });
   }
 
@@ -309,15 +308,15 @@ llmInterpreterRouter.post('/command', ensureValidToken, async (req, res) => {
     
     // Create a request-like object with tokens for taste profile
     const reqLike = {
-      spotifyTokens: req.session.spotifyTokens
+      tokens: req.tokens
     };
     
     const interpretation = await interpretCommand(command, userId || undefined, preferredModel, reqLike);
     console.log('LLM interpretation:', interpretation);
 
     const spotifyControl = new SpotifyControl(
-      req.spotifyTokens!,
-      (tokens) => { req.spotifyTokens = tokens; }
+      req.tokens!,
+      (tokens) => { req.tokens = tokens; }
     );
     let result;
 
@@ -578,7 +577,7 @@ llmInterpreterRouter.post('/command', ensureValidToken, async (req, res) => {
 });
 
 // Music knowledge endpoint
-llmInterpreterRouter.post('/ask', ensureValidToken, async (req, res) => {
+llmInterpreterRouter.post('/ask', requireValidTokens, async (req: any, res) => {
   const { question } = req.body;
   
   if (!question) {

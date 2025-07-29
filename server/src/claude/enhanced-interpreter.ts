@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { SpotifyControl } from '../spotify/control';
-import { ensureValidToken } from '../spotify/auth';
+import { tempAuthMiddleware } from '../middleware/temp-auth';
 import { SpotifyTrack } from '../types';
 
 const execAsync = promisify(exec);
@@ -157,7 +157,7 @@ function applySearchModifiers(
 }
 
 // Enhanced command endpoint
-enhancedClaudeRouter.post('/command', ensureValidToken, async (req, res) => {
+enhancedClaudeRouter.post('/command', tempAuthMiddleware, async (req, res) => {
   const { command } = req.body;
   
   if (!command) {
@@ -311,7 +311,7 @@ enhancedClaudeRouter.post('/command', ensureValidToken, async (req, res) => {
 });
 
 // Mood-based search endpoint (Phase 2 preview)
-enhancedClaudeRouter.post('/mood-search', ensureValidToken, async (req, res) => {
+enhancedClaudeRouter.post('/mood-search', tempAuthMiddleware, async (req, res) => {
   const { mood } = req.body;
   
   if (!mood) {

@@ -1,4 +1,6 @@
 import * as Sentry from '@sentry/react';
+// WARNING: Using temporary auth bypass during auth system refactor
+import { tempAuthUtils } from './temp-auth';
 
 interface JWTPayload {
   sub?: string; // Spotify user ID
@@ -29,31 +31,26 @@ export function decodeJWT(token: string): JWTPayload | null {
 
 /**
  * Set Sentry user context from JWT token
+ * WARNING: JWT system disabled during auth system refactor
  */
 export function setSentryUserContext(jwtToken: string | null) {
-  if (!jwtToken) {
-    Sentry.setUser(null);
-    return;
-  }
+  console.warn('WARNING: Sentry user context disabled during auth system refactor');
   
-  const payload = decodeJWT(jwtToken);
-  if (!payload) {
-    return;
-  }
-  
-  const userId = payload.sub || payload.spotify_user_id;
-  if (userId) {
+  // Use temp auth utils instead of JWT during refactor
+  const tempUserId = tempAuthUtils.getUserId();
+  if (tempUserId && tempUserId !== 'temp_user_id') {
     Sentry.setUser({
-      id: userId,
-      email: payload.email,
-      username: payload.display_name,
+      id: tempUserId,
+      email: 'temp@example.com',
+      username: 'temp_user',
     });
     
-    // Add custom context
     Sentry.setContext('spotify', {
-      user_id: userId,
-      token_exp: payload.exp ? new Date(payload.exp * 1000).toISOString() : undefined,
+      user_id: tempUserId,
+      auth_status: 'temp_bypass',
     });
+  } else {
+    Sentry.setUser(null);
   }
 }
 

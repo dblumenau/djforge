@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { SpotifyControl } from '../spotify/control';
-import { ensureValidToken } from '../spotify/auth';
+import { requireValidTokens } from '../middleware/session-auth';
 import { ConversationManager, getConversationManager } from '../services/ConversationManager';
 
 export const directActionRouter = Router();
@@ -14,7 +14,7 @@ export function setRedisClient(client: any) {
 }
 
 // Direct play/queue endpoint for songs with known URIs
-directActionRouter.post('/song', ensureValidToken, async (req, res) => {
+directActionRouter.post('/song', requireValidTokens, async (req: any, res) => {
   const { uri, action, name, artists } = req.body;
   
   // Validate input
@@ -26,13 +26,13 @@ directActionRouter.post('/song', ensureValidToken, async (req, res) => {
   }
 
   try {
-    const userId = conversationManager?.getUserIdFromRequest(req);
+    const userId = req.userId; // Provided by requireValidTokens middleware
     console.log(`Processing direct ${action} for song: ${name} by ${artists}`);
     console.log(`User ID: ${userId}`);
     console.log(`Spotify URI: ${uri}`);
 
-    // Get tokens from request (ensureValidToken middleware adds this)
-    const tokens = req.spotifyTokens;
+    // Get tokens from request (requireValidTokens middleware adds this)
+    const tokens = req.tokens;
     if (!tokens) {
       return res.status(401).json({
         success: false,
@@ -42,7 +42,7 @@ directActionRouter.post('/song', ensureValidToken, async (req, res) => {
 
     const spotifyControl = new SpotifyControl(
       tokens,
-      (newTokens) => { req.spotifyTokens = newTokens; }
+      (newTokens) => { req.tokens = newTokens; }
     );
     
     let response: string;

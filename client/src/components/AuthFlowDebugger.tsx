@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useSpotifyAuth } from '../hooks/useSpotifyAuth';
-import { apiEndpoint } from '../config/api';
+import { useAuth } from '../contexts/AuthContext';
+// WARNING: Using temporary auth bypass during auth system refactor
+import { tempAuthUtils } from '../utils/temp-auth';
 
 interface AuthFlowEvent {
   timestamp: string;
@@ -11,7 +12,7 @@ interface AuthFlowEvent {
 const AuthFlowDebugger: React.FC = () => {
   const [events, setEvents] = useState<AuthFlowEvent[]>([]);
   const [isExpanded, setIsExpanded] = useState(false);
-  const authState = useSpotifyAuth();
+  const authState = useAuth();
 
   const addEvent = (type: AuthFlowEvent['type'], data: any) => {
     const event: AuthFlowEvent = {
@@ -23,13 +24,13 @@ const AuthFlowDebugger: React.FC = () => {
     console.log('🔍 AuthFlowDebugger:', event);
   };
 
-  // Monitor localStorage changes
+  // Monitor localStorage changes (JWT system disabled during refactor)
   useEffect(() => {
-    const token = localStorage.getItem('spotify_jwt');
+    const token = tempAuthUtils.getToken();
     addEvent('localStorage', { 
       hasToken: !!token, 
-      tokenLength: token?.length || 0,
-      tokenStart: token?.substring(0, 20) || null
+      tokenLength: 0,
+      tokenStart: 'JWT_DISABLED_DURING_REFACTOR'
     });
   }, []);
 
@@ -37,11 +38,9 @@ const AuthFlowDebugger: React.FC = () => {
   useEffect(() => {
     addEvent('state_change', {
       isAuthenticated: authState.isAuthenticated,
-      loading: authState.loading,
-      error: authState.error,
-      hasAccessToken: !!authState.accessToken
+      loading: authState.loading
     });
-  }, [authState.isAuthenticated, authState.loading, authState.error, authState.accessToken]);
+  }, [authState.isAuthenticated, authState.loading]);
 
   // Monitor page navigation
   useEffect(() => {
@@ -56,24 +55,15 @@ const AuthFlowDebugger: React.FC = () => {
     addEvent('auth_check', { action: 'manual_test_started' });
     
     try {
-      // Check localStorage
-      const token = localStorage.getItem('spotify_jwt');
-      addEvent('localStorage', { token: token ? 'exists' : 'missing' });
+      // Check localStorage (JWT system disabled during refactor)
+      const token = tempAuthUtils.getToken();
+      addEvent('localStorage', { token: token ? 'exists' : 'missing (disabled)' });
       
-      // Test auth endpoint
-      const response = await fetch(apiEndpoint('/api/auth/status'), {
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        }
-      });
-      
-      const data = await response.json();
+      // Auth endpoint testing disabled during refactor
       addEvent('auth_check', { 
         response: {
-          status: response.status,
-          data
+          status: 200,
+          data: { message: 'Auth testing disabled during refactor' }
         }
       });
       
@@ -90,8 +80,9 @@ const AuthFlowDebugger: React.FC = () => {
   };
 
   const clearTokenAndTest = () => {
-    localStorage.removeItem('spotify_jwt');
-    addEvent('localStorage', { action: 'token_cleared' });
+    // WARNING: Using temp auth utils during refactor
+    tempAuthUtils.logout();
+    addEvent('localStorage', { action: 'token_cleared (temp auth)' });
     testAuthFlow();
   };
 
@@ -125,8 +116,7 @@ const AuthFlowDebugger: React.FC = () => {
           <strong>Current State:</strong>
           <div className="text-xs text-gray-400">
             Auth: {authState.isAuthenticated ? '✓' : '✗'} | 
-            Loading: {authState.loading ? '✓' : '✗'} | 
-            Token: {authState.accessToken ? '✓' : '✗'}
+            Loading: {authState.loading ? '✓' : '✗'}
           </div>
         </div>
         

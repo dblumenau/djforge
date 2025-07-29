@@ -1,6 +1,6 @@
-  import { Router } from 'express';
+import { Router } from 'express';
 import { SpotifyControl } from '../spotify/control';
-import { ensureValidToken } from '../spotify/auth';
+import { requireValidTokens } from '../middleware/session-auth';
 import { SpotifyTrack, SpotifyAuthTokens } from '../types';
 import { llmOrchestrator, OPENROUTER_MODELS } from '../llm/orchestrator';
 import { llmMonitor } from '../llm/monitoring';
@@ -37,10 +37,9 @@ export function setRedisClient(client: any) {
   console.log('✅ LLM logging service initialized in orchestrator');
 }
 
-// Helper to get user ID from JWT
+// Helper to get user ID from session
 function getUserIdFromRequest(req: any): string | null {
-  if (!conversationManager) return null;
-  return conversationManager.getUserIdFromRequest(req);
+  return req.userId || null; // Provided by requireValidTokens middleware
 }
 
 // Helper to hash user ID for privacy
@@ -174,20 +173,21 @@ async function interpretCommand(command: string, userId?: string, retryCount = 0
   if (userId && conversationManager) {
     // Get both conversation history and dialog state
     const [history, state] = await Promise.all([
-      conversationManager.getConversationHistory(userId, 50), // Fetch more entries to filter
+      conversationManager.getConversationHistory(userId, 50), // Fetch more entries
       conversationManager.getDialogState(userId)
     ]);
     
-    // Filter to only successful music play/queue commands
+    // Keep ALL conversation history (including chat/questions) for better context
+    // But limit to last 30 entries to avoid token limits
+    conversationHistory = history.slice(-30);
+    dialogState = state;
+    
+    // Also keep a filtered list of just music commands for music-specific context
     const musicIntents = ['play_specific_song', 'queue_specific_song', 'play_playlist', 'queue_playlist'];
     const musicHistory = history.filter(entry => 
       musicIntents.includes(entry.interpretation?.intent) && 
       entry.response?.success === true
-    );
-    
-    // Take last 20 successful music plays for context
-    conversationHistory = musicHistory.slice(-20);
-    dialogState = state;
+    ).slice(-20);
     
     // Check if this is a contextual reference
     if (conversationManager.isContextualReference(command)) {
@@ -253,8 +253,23 @@ Your single most important goal is to find excellent matches for the user's requ
 
 ${FULL_CURATOR_GUIDELINES}
 
-${musicContext ? `### User Taste Profile (Secondary Reference) ###
-${musicContext}` : ''}
+${musicContext ? (() => {
+  const lines = musicContext.split('\n').filter(line => line.trim());
+  const currentlyPlayingLine = lines.find(line => line.includes('Currently playing:'));
+  const tasteProfileLines = lines.filter(line => !line.includes('Currently playing:'));
+  
+  let result = '';
+  
+  if (currentlyPlayingLine) {
+    result += `### Currently Playing Track ###\n${currentlyPlayingLine}\n\n`;
+  }
+  
+  if (tasteProfileLines.length > 0) {
+    result += `### User Taste Profile (Secondary Reference) ###\n${tasteProfileLines.join('\n')}\n\n`;
+  }
+  
+  return result;
+})() : '### Currently Playing Track ###\nNo track currently playing\n\n'}
 
 ${contextBlock ? `### Conversation History ###
 ${contextBlock}` : ''}
@@ -269,7 +284,7 @@ AVAILABLE INTENTS - Choose the most appropriate one:
 === CONVERSATIONAL INTENTS (return text, NO Spotify action) ===
 • chat - General music discussion ("what do you think of this artist", "how's the song")
 • ask_question - Questions about collaborations, facts ("did he collaborate with X", "has she ever worked with Y")
-• get_playback_info - Get information about what's currently playing ("what's playing", "current song", "what song is this")
+• get_playback_info - Get information about what's currently playing ("what's playing", "current song", "what song is this") - IMPORTANT: Use the "Currently Playing Track" section from the context to answer
 • clarification_mode - When user expresses rejection/dissatisfaction with current selection or gives vague directional requests
 • explain_reasoning - When user asks about model decisions or reasoning ("why did you choose", "how did you decide", "explain your reasoning")
 
@@ -409,6 +424,14 @@ For conversational requests:
   "responseMessage": "The actual answer to the user's question about the artist/music. For 'this artist' questions, use the currently playing context to provide information about the specific artist. Include interesting facts, notable achievements, genre influences, and career highlights. Keep it 2-4 sentences."
 }
 
+For playback info requests:
+{
+  "intent": "get_playback_info",
+  "confidence": 0.9-1.0,
+  "reasoning": "User is asking about the currently playing track",
+  "responseMessage": "Currently playing: [track name] by [artist] from the album [album]. (Use the info from 'Currently Playing Track' section)"
+}
+
 For reasoning explanation requests:
 {
   "intent": "explain_reasoning",
@@ -491,7 +514,8 @@ CRITICAL: You must use the discriminated union pattern - when intent is "play_sp
       model: requestModel,
       temperature: 0.7,
       response_format: { type: 'json_object' },
-      conversationContext: contextBlock.length > 0 ? contextBlock : undefined
+      // Pass the combined music context (taste profile + currently playing) and conversation history
+      conversationContext: musicContext ? `${musicContext}${contextBlock ? '\n\n' + contextBlock : ''}` : contextBlock || undefined
     });
     
     const response = await Promise.race([responsePromise, timeoutPromise]) as any;
@@ -787,7 +811,7 @@ simpleLLMInterpreterRouter.get('/health', (req, res) => {
 });
 
 // Get conversation history endpoint
-simpleLLMInterpreterRouter.get('/history', ensureValidToken, async (req, res) => {
+simpleLLMInterpreterRouter.get('/history', requireValidTokens, async (req: any, res) => {
   try {
     const userId = getUserIdFromRequest(req);
     
@@ -853,11 +877,11 @@ simpleLLMInterpreterRouter.get('/history', ensureValidToken, async (req, res) =>
           const intent = entry.interpretation?.intent;
           if (intent === 'play_specific_song' || intent === 'queue_specific_song') {
             // Create a temporary SpotifyControl instance to search for tracks
-            const tokens = req.spotifyTokens;
+            const tokens = req.tokens;
             if (tokens) {
               const spotifyControl = new SpotifyControl(
                 tokens,
-                (newTokens) => { req.spotifyTokens = newTokens; }
+                (newTokens) => { req.tokens = newTokens; }
               );
               
               // Convert string alternatives to objects with URIs
@@ -972,7 +996,7 @@ simpleLLMInterpreterRouter.get('/history', ensureValidToken, async (req, res) =>
 });
 
 // Clear conversation history endpoint
-simpleLLMInterpreterRouter.post('/clear-history', ensureValidToken, async (req, res) => {
+simpleLLMInterpreterRouter.post('/clear-history', requireValidTokens, async (req: any, res) => {
   try {
     const userId = getUserIdFromRequest(req);
     
@@ -1012,7 +1036,7 @@ simpleLLMInterpreterRouter.post('/clear-history', ensureValidToken, async (req, 
 });
 
 // Main command endpoint
-simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) => {
+simpleLLMInterpreterRouter.post('/command', requireValidTokens, async (req: any, res) => {
   const { command } = req.body;
   
   if (!command) {
@@ -1046,9 +1070,9 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
     // Build music context before interpretation
     let musicContext = '';
     let spotifyControl = new SpotifyControl(
-      req.spotifyTokens!,
+      req.tokens!,
       (tokens) => { 
-        req.spotifyTokens = tokens; 
+        req.tokens = tokens; 
       }
     );
     
@@ -1087,28 +1111,33 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
       console.log('[DEBUG] Taste profile not fetched - missing requirements');
     }
     
-    // Combine music context with taste profile
+    // Keep taste profile and currently playing track separate
     if (tasteProfile) {
-      musicContext = `${tasteProfile}\n${musicContext}`;
-      console.log('[DEBUG] Combined music context being sent to LLM:');
-      console.log('---START OF MUSIC CONTEXT---');
+      console.log('[DEBUG] Taste profile and currently playing track being sent to LLM:');
+      console.log('---START OF TASTE PROFILE---');
+      console.log(tasteProfile);
+      console.log('---END OF TASTE PROFILE---');
+      console.log('---START OF CURRENTLY PLAYING---');
       console.log(musicContext);
-      console.log('---END OF MUSIC CONTEXT---');
+      console.log('---END OF CURRENTLY PLAYING---');
     }
     
+    // Pass both taste profile and currently playing track
+    const combinedContext = tasteProfile ? `${tasteProfile}\n${musicContext}` : musicContext;
+    
     // Use userId for conversation history instead of sessionId
-    const interpretation = await interpretCommand(command, userId || undefined, 0, preferredModel, musicContext, userId || 'anonymous');
+    const interpretation = await interpretCommand(command, userId || undefined, 0, preferredModel, combinedContext, userId || 'anonymous');
     console.log('LLM interpretation:', interpretation);
 
     let refreshedTokens: SpotifyAuthTokens | null = null;
     
     // Re-initialize to capture token refresh
     spotifyControl = new SpotifyControl(
-      req.spotifyTokens!,
+      req.tokens!,
       (tokens) => { 
         // Store refreshed tokens to include in response
         refreshedTokens = tokens;
-        req.spotifyTokens = tokens; 
+        req.tokens = tokens; 
       }
     );
 
@@ -1146,7 +1175,7 @@ simpleLLMInterpreterRouter.post('/command', ensureValidToken, async (req, res) =
     const intent = interpretation.intent || interpretation.action;
     
     // Handle conversational intents (return text, no Spotify action)
-    if (intent === 'chat' || intent === 'ask_question' || intent === 'clarification_mode' || intent === 'explain_reasoning') {
+    if (intent === 'chat' || intent === 'ask_question' || intent === 'clarification_mode' || intent === 'explain_reasoning' || intent === 'get_playback_info') {
       // Handle explain_reasoning specially - always use our custom logic
       if (intent === 'explain_reasoning') {
         // Handle reasoning explanation by looking at conversation history
@@ -1940,11 +1969,11 @@ simpleLLMInterpreterRouter.post('/test-interpret', async (req, res) => {
     
     // Build music context with taste profile for test endpoint
     let musicContext = '';
-    if (userId && req.spotifyTokens && loggingService?.redisClient) {
+    if (userId && (req as any).tokens && loggingService?.redisClient) {
       try {
         const spotifyControl = new SpotifyControl(
-          req.spotifyTokens,
-          (tokens) => { req.spotifyTokens = tokens; }
+          (req as any).tokens,
+          (tokens) => { (req as any).tokens = tokens; }
         );
         
         // Get contextual taste profile
@@ -2011,7 +2040,7 @@ simpleLLMInterpreterRouter.post('/test-interpret', async (req, res) => {
 });
 
 // Direct Spotify action endpoint (bypasses LLM)
-simpleLLMInterpreterRouter.post('/direct-action', ensureValidToken, async (req, res) => {
+simpleLLMInterpreterRouter.post('/direct-action', requireValidTokens, async (req: any, res) => {
   const { action, uri, name } = req.body;
   
   if (!action || !uri) {
@@ -2028,10 +2057,10 @@ simpleLLMInterpreterRouter.post('/direct-action', ensureValidToken, async (req, 
     let refreshedTokens: SpotifyAuthTokens | null = null;
     
     const spotifyControl = new SpotifyControl(
-      req.spotifyTokens!,
+      req.tokens!,
       (tokens) => { 
         refreshedTokens = tokens;
-        req.spotifyTokens = tokens; 
+        req.tokens = tokens; 
       }
     );
     
@@ -2091,7 +2120,7 @@ simpleLLMInterpreterRouter.post('/direct-action', ensureValidToken, async (req, 
 });
 
 // Monitoring stats endpoint
-simpleLLMInterpreterRouter.get('/stats', ensureValidToken, (req, res) => {
+simpleLLMInterpreterRouter.get('/stats', requireValidTokens, (req: any, res) => {
   const stats = llmMonitor.getStats();
   res.json({
     interpreter: 'flexible',

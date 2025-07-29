@@ -2,17 +2,16 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import MusicLoader from './MusicLoader';
 import PlaybackControls from './PlaybackControls';
-import SpotifyPlayer from './SpotifyPlayer';
 import CommandHistorySkeleton from './skeletons/CommandHistorySkeleton';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
 import QueueDisplay from './QueueDisplay';
 import { AuthTestPanel } from './AuthTestPanel';
-import { useSpotifyAuth } from '../hooks/useSpotifyAuth';
+import { useAuth } from '../contexts/AuthContext';
 import { useTrackLibrary } from '../hooks/useTrackLibrary';
 import { useIOSKeyboardFix } from '../hooks/useIOSKeyboardFix';
 import { apiEndpoint } from '../config/api';
-import { authenticatedFetch, api } from '../utils/api';
+import { authenticatedFetch, api } from '../utils/temp-auth';
 import { useModel } from '../contexts/ModelContext';
 
 // Helper component for clickable example lists
@@ -92,16 +91,12 @@ const MainApp: React.FC = () => {
   }>>([]);
   const [commandHistoryLoading, setCommandHistoryLoading] = useState(false);
   const [devicePreference, setDevicePreference] = useState<string>('auto');
-  const [webPlayerDeviceId, setWebPlayerDeviceId] = useState<string | null>(null);
-  // @ts-ignore - Will be used for future features
-  webPlayerDeviceId;
-  const { accessToken } = useSpotifyAuth();
+  // Note: Access token is now handled internally by the auth service
   
   // Track device preference from localStorage
   useEffect(() => {
     const checkDevicePreference = () => {
       const savedPreference = localStorage.getItem('spotifyDevicePreference') || 'auto';
-      console.log('[MainApp] Device preference from localStorage:', savedPreference);
       setDevicePreference(savedPreference);
     };
     
@@ -111,18 +106,15 @@ const MainApp: React.FC = () => {
     // Listen for storage changes (from DeviceSelector in header)
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'spotifyDevicePreference') {
+        console.log('[MainApp] Device preference changed via storage event');
         checkDevicePreference();
       }
     };
     
     window.addEventListener('storage', handleStorageChange);
     
-    // Also check periodically in case storage event is missed
-    const interval = setInterval(checkDevicePreference, 1000);
-    
     return () => {
       window.removeEventListener('storage', handleStorageChange);
-      clearInterval(interval);
     };
   }, []);
   
@@ -153,7 +145,7 @@ const MainApp: React.FC = () => {
   });
   
   // Authentication
-  const { isAuthenticated, loading: authLoading, checkAuthStatus, error: authError, login } = useSpotifyAuth();
+  const { isAuthenticated, loading: authLoading } = useAuth();
 
   // Cleanup animation on unmount
   useEffect(() => {
@@ -189,12 +181,7 @@ const MainApp: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Check authentication when component mounts
-  useEffect(() => {
-    if (isConnected && !checking) {
-      checkAuthStatus();
-    }
-  }, [isConnected, checking, checkAuthStatus]);
+  // Authentication is now handled by useAuth hook automatically
 
   // Function to scroll to bottom
   const scrollToBottom = () => {
@@ -286,12 +273,12 @@ const MainApp: React.FC = () => {
 
   // Redirect to landing page if not authenticated (but not if they have expired tokens)
   useEffect(() => {
-    console.log('🔄 MainApp: Auth redirect check -', { checking, authLoading, isAuthenticated, authError });
-    if (!checking && !authLoading && !isAuthenticated && !authError) {
+    console.log('🔄 MainApp: Auth redirect check -', { checking, authLoading, isAuthenticated });
+    if (!checking && !authLoading && !isAuthenticated) {
       console.log('⚠️ MainApp: Redirecting to landing page');
       navigate('/landing');
     }
-  }, [checking, authLoading, isAuthenticated, authError, navigate]);
+  }, [checking, authLoading, isAuthenticated, navigate]);
 
   const showToast = (message: string) => {
     setToast(message);
@@ -662,7 +649,7 @@ const MainApp: React.FC = () => {
     );
   }
 
-  if (!isAuthenticated && !authError) {
+  if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 flex items-center justify-center">
         <div className="text-center">
@@ -677,38 +664,16 @@ const MainApp: React.FC = () => {
     <div className="chat-container">
       {/* Chat Messages Container */}
       <div className="chat-messages">
-        {/* Auth Error Message */}
-        {authError && (
-          <div className="mx-4 mt-4 bg-yellow-900/50 border border-yellow-600 rounded-lg p-4" style={{ maxWidth: '1440px', marginLeft: 'auto', marginRight: 'auto' }}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <span className="text-yellow-400 mr-2">⚠️</span>
-                <span className="text-yellow-200">{authError}</span>
-              </div>
-              <button 
-                onClick={login}
-                className="px-4 py-2 bg-yellow-600 text-black font-semibold rounded-full hover:bg-yellow-500 transition-colors text-sm"
-              >
-                Re-authenticate
-              </button>
-            </div>
-          </div>
-        )}
+        {/* Auth errors are now handled by redirect to /landing */}
 
         {/* Playback Controls or Web Player - Floating on desktop, in menu on mobile */}
-        {devicePreference === 'web-player' && accessToken ? (
+        {devicePreference === 'web-player' && isAuthenticated ? (
           <div className="hidden md:block fixed top-20 left-1/2 -translate-x-1/2 z-10" style={{ maxWidth: '600px', width: '90%' }}>
             <div className="bg-zinc-900/95 backdrop-blur-sm border border-zinc-700 rounded-lg shadow-lg">
-              <SpotifyPlayer 
-                token={accessToken}
-                onDeviceReady={(deviceId) => {
-                  console.log('Web Player device ready:', deviceId);
-                  setWebPlayerDeviceId(deviceId);
-                  // Transfer playback to web player
-                  api.post('/api/control/transfer', { deviceId, play: false })
-                    .catch(err => console.error('Failed to transfer to web player:', err));
-                }}
-              />
+              {/* TODO: Update SpotifyPlayer to use new auth system */}
+              <div className="p-4 text-center text-zinc-400">
+                Web Player temporarily disabled during auth migration
+              </div>
             </div>
           </div>
         ) : (

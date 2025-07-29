@@ -1,53 +1,16 @@
 import React from 'react';
-import { apiEndpoint } from '../config/api';
 
 const DebugButtons: React.FC = () => {
   const handleSimulateExpired = async () => {
-    const jwtToken = localStorage.getItem('spotify_jwt');
-    if (jwtToken) {
-      try {
-        const response = await fetch(apiEndpoint('/api/auth/debug/simulate-expired'), {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${jwtToken}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        const data = await response.json();
-        if (data.success) {
-          localStorage.setItem('spotify_jwt', data.simulatedToken);
-          console.log('⏰ Simulated expired tokens - refresh page to test auto-refresh');
-          alert('Tokens expired! Refresh the page to test automatic token refresh.');
-        } else {
-          alert(data.error);
-        }
-      } catch (error) {
-        console.error('Simulate expired failed:', error);
-      }
-    }
+    // WARNING: JWT debug functions disabled during auth system refactor
+    console.warn('Token expiration simulation disabled during auth refactor');
+    alert('Token debug functions disabled during auth system refactor');
   };
 
   const handleSimulateRevoked = async () => {
-    const jwtToken = localStorage.getItem('spotify_jwt');
-    if (jwtToken) {
-      try {
-        const response = await fetch(apiEndpoint('/api/auth/debug/simulate-revoked'), {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${jwtToken}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        const data = await response.json();
-        if (data.success) {
-          localStorage.setItem('spotify_jwt', data.revokedToken);
-          console.log('🚫 Simulated revoked refresh token');
-          alert('Refresh token revoked! Refresh the page to test error handling.');
-        }
-      } catch (error) {
-        console.error('Simulate revoked failed:', error);
-      }
-    }
+    // WARNING: JWT debug functions disabled during auth system refactor
+    console.warn('Token revocation simulation disabled during auth refactor');
+    alert('Token debug functions disabled during auth system refactor');
   };
 
   if (!import.meta.env.DEV) {

@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useSpotifyAuth } from '../hooks/useSpotifyAuth';
+import { useAuth } from '../contexts/AuthContext';
+// WARNING: Using temporary auth bypass during auth system refactor
+import { tempAuthUtils } from '../utils/temp-auth';
 
 const SimpleAuthDebug: React.FC = () => {
   const [renderCount, setRenderCount] = useState(0);
   const [authCheckCount, setAuthCheckCount] = useState(0);
-  const authState = useSpotifyAuth();
+  const authState = useAuth();
 
   // Track render count
   useEffect(() => {
@@ -17,7 +19,8 @@ const SimpleAuthDebug: React.FC = () => {
   }, [authState.isAuthenticated, authState.loading]);
 
   const currentPath = window.location.pathname;
-  const hasToken = !!localStorage.getItem('spotify_jwt');
+  // WARNING: JWT system disabled during auth system refactor - using temp auth bypass
+  const hasToken = !!tempAuthUtils.getToken();
 
   return (
     <div className="fixed top-4 left-4 bg-red-800 text-white p-4 rounded-lg text-xs max-w-sm z-50">
@@ -26,7 +29,7 @@ const SimpleAuthDebug: React.FC = () => {
       <div>Has Token: {hasToken ? 'YES' : 'NO'}</div>
       <div>Is Authenticated: {authState.isAuthenticated ? 'YES' : 'NO'}</div>
       <div>Loading: {authState.loading ? 'YES' : 'NO'}</div>
-      <div>Error: {authState.error || 'None'}</div>
+      <div>Error: None</div>
       <div>Render Count: {renderCount}</div>
       <div>Auth Change Count: {authCheckCount}</div>
       <div className="mt-2">
@@ -38,7 +41,8 @@ const SimpleAuthDebug: React.FC = () => {
         </button>
         <button 
           onClick={() => {
-            localStorage.removeItem('spotify_jwt');
+            // WARNING: Using temp auth utils during refactor
+            tempAuthUtils.logout();
             window.location.reload();
           }}
           className="bg-red-600 text-white px-2 py-1 rounded text-xs"

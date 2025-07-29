@@ -2,14 +2,14 @@ import { Router } from 'express';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { SpotifyControl } from '../spotify/control';
-import { ensureValidToken } from '../spotify/auth';
+import { tempAuthMiddleware } from '../middleware/temp-auth';
 
 const execAsync = promisify(exec);
 
 export const claudeRouter = Router();
 
 // Command interpreter endpoint using Claude CLI
-claudeRouter.post('/command', ensureValidToken, async (req, res) => {
+claudeRouter.post('/command', tempAuthMiddleware, async (req, res) => {
   const { command } = req.body;
   
   if (!command) {

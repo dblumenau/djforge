@@ -1,7 +1,6 @@
 import { Router } from 'express';
-import { ensureValidToken } from '../spotify/auth';
+import { requireValidTokens } from '../middleware/session-auth';
 import { llmOrchestrator, OPENROUTER_MODELS } from '../llm/orchestrator';
-import { verifyJWT, extractTokenFromHeader } from '../utils/jwt';
 
 export const modelPreferencesRouter = Router();
 
@@ -12,18 +11,9 @@ export function setRedisClient(client: any) {
   redisClient = client;
 }
 
-// Helper to get user ID from JWT
+// Helper to get user ID from session
 function getUserIdFromRequest(req: any): string | null {
-  const authHeader = req.headers.authorization;
-  const jwtToken = extractTokenFromHeader(authHeader);
-  
-  if (!jwtToken) return null;
-  
-  const payload = verifyJWT(jwtToken);
-  if (!payload) return null;
-  
-  // Return the stable Spotify user ID from JWT
-  return payload.sub || payload.spotify_user_id || null;
+  return req.userId || null; // Provided by requireValidTokens middleware
 }
 
 // Get model preference from Redis
@@ -263,7 +253,7 @@ function getGroupedModels() {
 }
 
 // Get available models and current preference
-modelPreferencesRouter.get('/models', ensureValidToken, async (req, res) => {
+modelPreferencesRouter.get('/models', requireValidTokens, async (req: any, res) => {
   try {
     const availableModels = getGroupedModels();
     
@@ -293,7 +283,7 @@ modelPreferencesRouter.get('/models', ensureValidToken, async (req, res) => {
 });
 
 // Update user's preferred model
-modelPreferencesRouter.post('/models', ensureValidToken, async (req, res) => {
+modelPreferencesRouter.post('/models', requireValidTokens, async (req: any, res) => {
   try {
     const { modelId } = req.body;
     
@@ -326,7 +316,7 @@ modelPreferencesRouter.post('/models', ensureValidToken, async (req, res) => {
 });
 
 // Get model capabilities (for display purposes)
-modelPreferencesRouter.get('/models/:modelId/capabilities', ensureValidToken, async (req, res) => {
+modelPreferencesRouter.get('/models/:modelId/capabilities', requireValidTokens, async (req: any, res) => {
   try {
     const { modelId } = req.params;
     

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { apiEndpoint } from '../config/api';
+// WARNING: Using temporary auth bypass during auth system refactor
+import { tempAuthUtils } from '../utils/temp-auth';
 
 export function AuthTestPanel() {
   const [testStatus, setTestStatus] = useState<string>('');
@@ -7,95 +8,25 @@ export function AuthTestPanel() {
 
   const simulateExpiredToken = async () => {
     setIsLoading(true);
-    setTestStatus('Simulating expired token...');
-    
-    try {
-      const jwtToken = localStorage.getItem('spotify_jwt');
-      if (!jwtToken) {
-        setTestStatus('No JWT token found. Please log in first.');
-        return;
-      }
-
-      const response = await fetch(apiEndpoint('/api/auth/debug/simulate-expired'), {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${jwtToken}`
-        }
-      });
-
-      const data = await response.json();
-      
-      if (data.success && data.simulatedToken) {
-        // Replace the current token with the simulated expired one
-        localStorage.setItem('spotify_jwt', data.simulatedToken);
-        setTestStatus('✅ Token expiry simulated! Refresh the page to test auto-refresh.');
-      } else {
-        setTestStatus('❌ Failed to simulate token expiry');
-      }
-    } catch (error) {
-      setTestStatus(`❌ Error: ${error}`);
-    } finally {
-      setIsLoading(false);
-    }
+    setTestStatus('JWT debug functions disabled during auth system refactor');
+    setIsLoading(false);
   };
 
   const simulateRevokedToken = async () => {
     setIsLoading(true);
-    setTestStatus('Simulating revoked refresh token...');
-    
-    try {
-      const jwtToken = localStorage.getItem('spotify_jwt');
-      if (!jwtToken) {
-        setTestStatus('No JWT token found. Please log in first.');
-        return;
-      }
-
-      const response = await fetch(apiEndpoint('/api/auth/debug/simulate-revoked'), {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${jwtToken}`
-        }
-      });
-
-      const data = await response.json();
-      
-      if (data.success && data.revokedToken) {
-        // Replace the current token with the simulated revoked one
-        localStorage.setItem('spotify_jwt', data.revokedToken);
-        setTestStatus('✅ Revoked token simulated! Refresh the page to test error handling.');
-      } else {
-        setTestStatus('❌ Failed to simulate revoked token');
-      }
-    } catch (error) {
-      setTestStatus(`❌ Error: ${error}`);
-    } finally {
-      setIsLoading(false);
-    }
+    setTestStatus('JWT debug functions disabled during auth system refactor');
+    setIsLoading(false);
   };
 
   const clearAuthAndRefresh = () => {
-    localStorage.removeItem('spotify_jwt');
+    // WARNING: Using temp auth utils during refactor
+    tempAuthUtils.logout();
     window.location.reload();
   };
 
   const getCurrentTokenInfo = () => {
-    const jwtToken = localStorage.getItem('spotify_jwt');
-    if (!jwtToken) {
-      setTestStatus('No JWT token found');
-      return;
-    }
-
-    try {
-      // Decode JWT payload (base64)
-      const payload = JSON.parse(atob(jwtToken.split('.')[1]));
-      const tokenAge = Date.now() - payload.tokenTimestamp;
-      const tokenAgeMinutes = Math.floor(tokenAge / 1000 / 60);
-      const expiresAt = new Date(payload.exp * 1000).toLocaleString();
-      
-      setTestStatus(`Token age: ${tokenAgeMinutes} minutes\nJWT expires: ${expiresAt}\nUser ID: ${payload.spotify_user_id}`);
-    } catch (error) {
-      setTestStatus('Failed to decode JWT token');
-    }
+    // WARNING: JWT system disabled during auth system refactor
+    setTestStatus('JWT token info disabled during auth system refactor\nUsing temporary auth bypass');
   };
 
   return (

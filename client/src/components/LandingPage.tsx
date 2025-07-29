@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { apiEndpoint } from '../config/api';
+import { useAuth } from '../contexts/AuthContext';
 
 const LandingPage: React.FC = () => {
+  const navigate = useNavigate();
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -19,6 +23,16 @@ const LandingPage: React.FC = () => {
     }
   }, []);
 
+  // Redirect to main app if already authenticated
+  useEffect(() => {
+    console.log('🔍 LandingPage - Auth state:', { authLoading, isAuthenticated });
+    if (!authLoading && isAuthenticated) {
+      console.log('🔄 LandingPage - User is authenticated, redirecting to main app');
+      navigate('/', { replace: true });
+    }
+  }, [authLoading, isAuthenticated, navigate]);
+
+
   const handleLogin = () => {
     window.location.href = apiEndpoint('/api/auth/login');
   };
@@ -29,7 +43,7 @@ const LandingPage: React.FC = () => {
     setMessage('');
     
     try {
-      const response = await fetch('/api/waitlist', {
+      const response = await fetch(apiEndpoint('/api/waitlist'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -54,6 +68,15 @@ const LandingPage: React.FC = () => {
       setLoading(false);
     }
   };
+
+  // Show loading state while checking authentication
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-zinc-950">
+        <div className="animate-pulse text-green-400">Checking authentication...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 text-white">

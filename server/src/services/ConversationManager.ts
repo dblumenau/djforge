@@ -1,5 +1,4 @@
 import { RedisConversation, ConversationEntry, DialogState, createConversationManager } from '../utils/redisConversation';
-import { verifyJWT, extractTokenFromHeader } from '../utils/jwt';
 
 /**
  * Shared conversation management service for all LLM paths
@@ -31,19 +30,10 @@ export class ConversationManager {
   }
 
   /**
-   * Extract user ID from JWT token in request headers
+   * Extract user ID from session (provided by session-auth middleware)
    */
   getUserIdFromRequest(req: any): string | null {
-    const authHeader = req.headers.authorization;
-    const jwtToken = extractTokenFromHeader(authHeader);
-    
-    if (!jwtToken) return null;
-    
-    const payload = verifyJWT(jwtToken);
-    if (!payload) return null;
-    
-    // Return the stable Spotify user ID from JWT
-    return payload.sub || payload.spotify_user_id || null;
+    return req.userId || null;
   }
 
   /**

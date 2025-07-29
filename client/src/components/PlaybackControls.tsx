@@ -87,8 +87,6 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue, isMobi
     
     try {
       trackApiCall();
-      console.log('[PlaybackControls] Fetching playback state...');
-      
       const response = await api.get('/api/control/current-track');
       if (response.ok) {
         const data = await response.json();
@@ -99,7 +97,7 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue, isMobi
                            previousTrackNameRef.current !== currentTrackName;
           
           if (isNewTrack) {
-            console.log('[PlaybackControls] Track changed from', previousTrackNameRef.current, 'to', currentTrackName);
+            console.log('[PlaybackControls] Track changed:', currentTrackName);
             setIsTrackChanging(true);
             // Reset the flag after a short delay to re-enable transitions
             setTimeout(() => setIsTrackChanging(false), 50);
@@ -117,9 +115,6 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue, isMobi
           setVolume(data.volume);
           setLocalPosition(data.track.position);
           setLastFetchTime(Date.now());
-          
-          console.log('[PlaybackControls] Track:', data.track.name, 
-            `(${formatTime(data.track.position)} / ${formatTime(data.track.duration)})`);
         } else {
           setPlaybackState(prev => ({
             ...prev,

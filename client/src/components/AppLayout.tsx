@@ -2,9 +2,8 @@ import React, { useState } from 'react';
 import { Outlet, Navigate } from 'react-router-dom';
 import HeaderNav from './HeaderNav';
 import MobileMenu from './MobileMenu';
-import { useSpotifyAuth } from '../hooks/useSpotifyAuth';
-import { api } from '../utils/api';
-import { apiEndpoint } from '../config/api';
+import { useAuth } from '../contexts/AuthContext';
+import { api } from '../utils/temp-auth';
 import { ModelProvider, useModel } from '../contexts/ModelContext';
 
 interface AppLayoutProps {
@@ -12,7 +11,7 @@ interface AppLayoutProps {
 }
 
 const AppLayoutInner: React.FC<AppLayoutProps> = ({ children }) => {
-  const { isAuthenticated, loading, logout } = useSpotifyAuth();
+  const { isAuthenticated, loading, logout } = useAuth();
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const { setCurrentModel } = useModel();
@@ -36,8 +35,14 @@ const AppLayoutInner: React.FC<AppLayoutProps> = ({ children }) => {
     }
   }, [isAuthenticated]);
 
+  // Debug logging
+  React.useEffect(() => {
+    console.log('🔍 AppLayout render - loading:', loading, 'isAuthenticated:', isAuthenticated, 'current path:', window.location.pathname);
+  }, [loading, isAuthenticated]);
+
   // Show loading state while checking authentication
   if (loading) {
+    console.log('🔄 AppLayout - Showing loading state');
     return (
       <div className="flex items-center justify-center min-h-screen bg-zinc-950">
         <div className="animate-pulse text-green-400">Loading...</div>
@@ -47,25 +52,18 @@ const AppLayoutInner: React.FC<AppLayoutProps> = ({ children }) => {
 
   // Redirect to landing page if not authenticated
   if (!isAuthenticated) {
+    console.log('❌ AppLayout - Not authenticated, redirecting to landing');
     return <Navigate to="/landing" replace />;
   }
 
   const updateModelPreference = async (_type: string, model: string) => {
     try {
-      const jwtToken = localStorage.getItem('spotify_jwt');
-      if (!jwtToken) return;
-
-      const response = await fetch(apiEndpoint('/api/preferences/models'), {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${jwtToken}`
-        },
-        body: JSON.stringify({ modelId: model })
-      });
+      const response = await api.post('/api/preferences/models', { modelId: model });
 
       if (response.ok) {
         console.log('Model preference updated:', model);
+      } else {
+        console.error('Failed to update model preference:', response.status);
       }
     } catch (error) {
       console.error('Failed to update model preference:', error);
@@ -86,51 +84,15 @@ const AppLayoutInner: React.FC<AppLayoutProps> = ({ children }) => {
   };
 
   const handleExpireTokens = async () => {
-    const jwtToken = localStorage.getItem('spotify_jwt');
-    if (jwtToken) {
-      try {
-        const response = await fetch(apiEndpoint('/api/auth/debug/simulate-expired'), {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${jwtToken}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        const data = await response.json();
-        if (data.success) {
-          localStorage.setItem('spotify_jwt', data.simulatedToken);
-          console.log('⏰ Simulated expired tokens - refresh page to test auto-refresh');
-          alert('Tokens expired! Refresh the page to test automatic token refresh.');
-        } else {
-          alert(data.error);
-        }
-      } catch (error) {
-        console.error('Simulate expired failed:', error);
-      }
-    }
+    // WARNING: JWT debug functions disabled during auth system refactor
+    console.warn('Token expiration simulation disabled during auth refactor');
+    alert('Token debug functions disabled during auth system refactor');
   };
 
   const handleRevokeTokens = async () => {
-    const jwtToken = localStorage.getItem('spotify_jwt');
-    if (jwtToken) {
-      try {
-        const response = await fetch(apiEndpoint('/api/auth/debug/simulate-revoked'), {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${jwtToken}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        const data = await response.json();
-        if (data.success) {
-          localStorage.setItem('spotify_jwt', data.revokedToken);
-          console.log('🚫 Simulated revoked refresh token');
-          alert('Refresh token revoked! Refresh the page to test error handling.');
-        }
-      } catch (error) {
-        console.error('Simulate revoked failed:', error);
-      }
-    }
+    // WARNING: JWT debug functions disabled during auth system refactor
+    console.warn('Token revocation simulation disabled during auth refactor');
+    alert('Token debug functions disabled during auth system refactor');
   };
 
   return (

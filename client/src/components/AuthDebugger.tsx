@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiEndpoint } from '../config/api';
+// WARNING: Using temporary auth bypass during auth system refactor
+import { tempAuthUtils } from '../utils/temp-auth';
 
 interface AuthDebugInfo {
   localStorageToken: string | null;
@@ -24,8 +26,8 @@ const AuthDebugger: React.FC = () => {
     const timestamp = new Date().toISOString();
     
     try {
-      // Step 1: Check localStorage
-      const localStorageToken = localStorage.getItem('spotify_jwt');
+      // Step 1: Check localStorage (JWT system disabled during refactor)
+      const localStorageToken = tempAuthUtils.getToken();
       console.log('🔍 AuthDebugger: localStorage token:', localStorageToken ? 'EXISTS' : 'MISSING');
       
       // Step 2: Check auth status endpoint
@@ -65,7 +67,7 @@ const AuthDebugger: React.FC = () => {
     } catch (error) {
       console.error('🔍 AuthDebugger: Error during debug check:', error);
       setDebugInfo({
-        localStorageToken: localStorage.getItem('spotify_jwt'),
+        localStorageToken: tempAuthUtils.getToken(),
         authStatus: null,
         apiResponse: null,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -82,39 +84,15 @@ const AuthDebugger: React.FC = () => {
   }, []);
 
   const clearLocalStorage = () => {
-    localStorage.removeItem('spotify_jwt');
+    // WARNING: Using temp auth utils during refactor
+    tempAuthUtils.logout();
     console.log('🔍 AuthDebugger: Cleared localStorage token');
     runAuthDebugCheck();
   };
 
   const testJWTDecoding = () => {
-    const token = localStorage.getItem('spotify_jwt');
-    if (!token) {
-      console.log('🔍 AuthDebugger: No token to decode');
-      return;
-    }
-    
-    try {
-      // Simple JWT parsing (just for debugging, not secure)
-      const parts = token.split('.');
-      if (parts.length !== 3) {
-        console.log('🔍 AuthDebugger: Invalid JWT format');
-        return;
-      }
-      
-      const payload = JSON.parse(atob(parts[1]));
-      console.log('🔍 AuthDebugger: JWT payload:', payload);
-      
-      // Check expiration
-      const now = Date.now() / 1000;
-      if (payload.exp && payload.exp < now) {
-        console.log('🔍 AuthDebugger: JWT token is EXPIRED');
-      } else {
-        console.log('🔍 AuthDebugger: JWT token is VALID');
-      }
-    } catch (error) {
-      console.error('🔍 AuthDebugger: Error decoding JWT:', error);
-    }
+    // WARNING: JWT decoding disabled during auth system refactor
+    console.log('🔍 AuthDebugger: JWT decoding disabled during auth refactor');
   };
 
   return (

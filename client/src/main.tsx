@@ -2,6 +2,7 @@ import * as Sentry from "@sentry/react";
 import ReactDOM from 'react-dom/client'
 import { RouterProvider } from 'react-router-dom'
 import { router } from './App'
+import { AuthProvider } from './contexts/AuthContext'
 import './index.css'
 
 // Initialize Sentry
@@ -120,6 +121,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     )}
     showDialog
   >
-    <RouterProvider router={router} />
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
   </Sentry.ErrorBoundary>
 )

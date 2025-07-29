@@ -4,10 +4,10 @@ import './instrument';
 import * as Sentry from '@sentry/node';
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import session from 'express-session';
 import axios from 'axios';
-import { authRouter } from './spotify/auth';
 import { controlRouter } from './spotify/control';
 import { claudeRouter } from './claude/interpreter';
 import { enhancedClaudeRouter } from './claude/enhanced-interpreter';
@@ -22,6 +22,8 @@ import { feedbackRouter, setRedisClient as setFeedbackRedisClient } from './rout
 import songVerificationRouter from './routes/song-verification';
 import debugTokenRouter from './routes/debug-token';
 import adminSSERouter from './routes/admin-sse';
+import authRouter, { setRedisClient as setAuthRedisClient } from './routes/auth';
+import { setRedisClient as setSessionAuthRedisClient } from './middleware/session-auth';
 import { createRedisClient, checkRedisHealth } from './config/redis';
 import { RedisUtils } from './utils/redis-utils';
 import weatherRouter from './routes/weather';
@@ -38,7 +40,6 @@ overrideConsole();
 const FileStore = require('session-file-store')(session);
 
 dotenv.config({ path: '../.env' });
-console.log('🔐 JWT_SECRET loaded:', process.env.JWT_SECRET ? 'Yes' : 'No');
 console.log('🔐 SESSION_SECRET loaded:', process.env.SESSION_SECRET ? 'Yes' : 'No');
 logger.info('🚀 Starting Spotify Claude Controller server...');
 
@@ -89,6 +90,10 @@ async function initializeSessionStore() {
       
       // Initialize Redis client for feedback
       setFeedbackRedisClient(redisClient);
+      
+      // Initialize Redis client for new auth system
+      setAuthRedisClient(redisClient);
+      setSessionAuthRedisClient(redisClient);
     } else {
       throw new Error('Redis health check failed');
     }
@@ -131,11 +136,12 @@ app.use(cors({
   origin: allowedOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'sentry-trace', 'baggage'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Session-ID', 'sentry-trace', 'baggage'],
   exposedHeaders: ['set-cookie']
 }));
 
 app.use(express.json());
+app.use(cookieParser());
 
 // Track server readiness
 let isServerReady = false;
@@ -166,7 +172,7 @@ async function initializeAndStart() {
     // Add Sentry user context middleware (after session, before routes)
     app.use(setSentryUserContext);
 
-    // NOW add routes (after session middleware)
+    // New auth system (Phase 2 implementation)
     app.use('/api/auth', authRouter);
     app.use('/api/control', controlRouter);
     
@@ -222,109 +228,84 @@ async function initializeAndStart() {
       });
     });
 
-    // SSE endpoint for real-time updates
+    // SSE endpoint - REBUILT with full functionality (now that we know it works!)
     app.get('/api/events', async (req, res) => {
-      // Handle auth via query parameter since EventSource doesn't support headers
-      const token = req.query.token as string;
-      if (!token) {
-        console.error('[SSE] Connection attempt without token');
-        // Send SSE-formatted error to prevent reconnection storm
+      // Session validation
+      const sessionId = req.query.sessionId as string;
+      if (!sessionId) {
+        console.error('[SSE] Connection attempt without session ID');
         res.writeHead(401, {
           'Content-Type': 'text/event-stream',
           'Cache-Control': 'no-cache',
           'Connection': 'close'
         });
-        res.write(`event: error\ndata: ${JSON.stringify({ error: 'Token required', code: 'NO_TOKEN' })}\n\n`);
+        res.write(`event: error\ndata: ${JSON.stringify({ error: 'Session ID required', code: 'NO_SESSION' })}\n\n`);
         res.end();
         return;
       }
       
-      // Verify JWT token manually
+      // Validate session with new auth system
+      const { SessionManager } = require('./auth/session-manager');
+      const sessionManager = new SessionManager(redisClient);
+      
+      let userId: string;
+      let connectionId: string;
+      
       try {
-        const { verifyJWT } = require('./utils/jwt');
-        const decoded = verifyJWT(token);
-        
-        if (!decoded) {
-          console.error('[SSE] Token verification failed');
+        const session = await sessionManager.getSession(sessionId);
+        if (!session || session.expiresAt < Date.now()) {
+          console.error('[SSE] Invalid or expired session:', sessionId);
           res.writeHead(401, {
             'Content-Type': 'text/event-stream',
             'Cache-Control': 'no-cache',
             'Connection': 'close'
           });
-          res.write(`event: error\ndata: ${JSON.stringify({ error: 'Invalid token', code: 'INVALID_TOKEN' })}\n\n`);
+          res.write(`event: error\ndata: ${JSON.stringify({ error: 'Invalid session', code: 'INVALID_SESSION' })}\n\n`);
           res.end();
           return;
         }
         
-        // Extract spotifyId from the JWT payload (use sub or spotify_user_id)
-        const spotifyId = decoded.sub || decoded.spotify_user_id;
-        if (!spotifyId) {
-          console.error('[SSE] Token missing user ID');
-          res.writeHead(401, {
-            'Content-Type': 'text/event-stream',
-            'Cache-Control': 'no-cache',
-            'Connection': 'close'
-          });
-          res.write(`event: error\ndata: ${JSON.stringify({ error: 'Invalid token - missing user data', code: 'NO_USER_ID' })}\n\n`);
-          res.end();
-          return;
-        }
+        userId = session.userId;
+        connectionId = `${userId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         
-        // Set user object with spotifyId for consistency
-        (req as any).user = { spotifyId };
+        console.log('[SSE] New connection from user:', userId);
+        
+        // Add connection to manager
+        sseConnectionManager.addConnection(connectionId, userId, res);
       } catch (error) {
-        console.error('[SSE] Token verification failed:', error);
-        res.writeHead(401, {
+        console.error('[SSE] Session validation error:', error);
+        res.writeHead(500, {
           'Content-Type': 'text/event-stream',
           'Cache-Control': 'no-cache',
           'Connection': 'close'
         });
-        res.write(`event: error\ndata: ${JSON.stringify({ error: 'Token verification failed', code: 'TOKEN_ERROR' })}\n\n`);
+        res.write(`event: error\ndata: ${JSON.stringify({ error: 'Session validation failed', code: 'SESSION_ERROR' })}\n\n`);
         res.end();
         return;
       }
-      
-      const userId = (req as any).user?.spotifyId;
-      const connectionId = `${userId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      
-      console.log('[SSE] New connection from user:', userId);
-      
-      // Add connection to manager
-      sseConnectionManager.addConnection(connectionId, userId, res);
       
       // Set SSE headers
       res.writeHead(200, {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache, no-transform',
         'Connection': 'keep-alive',
-        'X-Accel-Buffering': 'no', // Disable proxy buffering
+        'X-Accel-Buffering': 'no',
         'Access-Control-Allow-Origin': req.headers.origin || '*',
         'Access-Control-Allow-Credentials': 'true'
       });
 
-      // Flush headers to ensure they're sent
-      res.flushHeaders();
-
-      // Send initial connection message after a small delay to ensure headers are processed
-      setTimeout(() => {
-        res.write(`data: ${JSON.stringify({ type: 'connected', timestamp: Date.now() })}\n\n`);
-      }, 10);
-
-      // Add error handling for write operations
-      res.on('error', (error) => {
-        console.error('[SSE] Response error for user:', (req as any).user?.spotifyId, error);
-      });
+      // Send initial connected message
+      res.write(`data: ${JSON.stringify({ type: 'connected', timestamp: Date.now() })}\n\n`);
+      console.log('[SSE] Initial connection message sent');
 
       // Track connection state
       let isConnectionActive = true;
 
       // Listen for playback events
       const handlePlaybackEvent = (event: any) => {
-        // Only send events for this user
-        if (event.userId === userId && isConnectionActive) {
+        if (event.userId === userId && isConnectionActive && !res.destroyed) {
           try {
             res.write(`data: ${JSON.stringify(event)}\n\n`);
-            // Update activity on successful write
             sseConnectionManager.updateActivity(connectionId);
           } catch (error) {
             console.error('[SSE] Failed to write event:', error);
@@ -336,12 +317,11 @@ async function initializeAndStart() {
 
       playbackEventService.on('playback-event', handlePlaybackEvent);
 
-      // Send heartbeat every 30 seconds to keep connection alive
+      // Heartbeat every 30 seconds
       const heartbeat = setInterval(() => {
-        if (isConnectionActive) {
+        if (isConnectionActive && !res.destroyed) {
           try {
             res.write(': heartbeat\n\n');
-            // Update activity on successful heartbeat
             sseConnectionManager.updateActivity(connectionId);
           } catch (error) {
             console.error('[SSE] Failed to send heartbeat:', error);
@@ -361,104 +341,28 @@ async function initializeAndStart() {
         sseConnectionManager.removeConnection(connectionId);
       });
       
-      // Log if connection closes unexpectedly
       req.on('error', (error) => {
         console.error('[SSE] Request error for user:', userId, error);
         isConnectionActive = false;
         sseConnectionManager.removeConnection(connectionId);
       });
       
-      // Ensure connection stays alive
+      // Set socket options for better streaming
       req.socket.setKeepAlive(true);
       req.socket.setNoDelay(true);
       
-      console.log(`[SSE] Connection ${connectionId} fully established for user: ${userId} (Total: ${sseConnectionManager.getConnectionCount()}, User: ${sseConnectionManager.getUserConnectionCount(userId)})`);
+      console.log(`[SSE] Connection ${connectionId} fully established for user: ${userId}`);
     });
 
     // Determine client URL based on environment
     const clientUrl = process.env.CLIENT_URL || 'http://127.0.0.1:5173';
 
-    // Handle callback at root level (Spotify redirects here)
-    app.get('/callback', async (req, res) => {
-  // Import the callback handler logic
-  const { code, error, state } = req.query;
-  
-  if (error) {
-    return res.redirect(`${clientUrl}/?error=${error}`);
-  }
-  
-  if (!code || typeof code !== 'string') {
-    return res.redirect(`${clientUrl}/?error=no_code`);
-  }
-  
-  // Try to get codeVerifier from state parameter first (production)
-  let codeVerifier = req.session.codeVerifier;
-  
-  if (state && typeof state === 'string') {
-    try {
-      const stateData = JSON.parse(Buffer.from(state, 'base64url').toString());
-      if (stateData.codeVerifier) {
-        codeVerifier = stateData.codeVerifier;
-        console.log('Code verifier extracted from state parameter');
-      }
-    } catch (e) {
-      console.error('Failed to parse state parameter:', e);
-    }
-  }
-  
-  if (!codeVerifier) {
-    return res.redirect(`${clientUrl}/?error=no_verifier`);
-  }
-  
-  try {
-    const response = await axios.post(
-      'https://accounts.spotify.com/api/token',
-      new URLSearchParams({
-        grant_type: 'authorization_code',
-        code: code,
-        redirect_uri: process.env.SPOTIFY_REDIRECT_URI!,
-        client_id: process.env.SPOTIFY_CLIENT_ID!,
-        code_verifier: codeVerifier
-      }),
-      {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
-        }
-      }
-    );
-    
-    // Get user info from Spotify
-    const { SpotifyWebAPI } = require('./spotify/api');
-    const spotifyApi = new SpotifyWebAPI(
-      response.data,
-      () => {} // No token refresh callback needed for this one-time call
-    );
-    
-    let spotifyUserId: string;
-    try {
-      const userInfo = await spotifyApi.getCurrentUser();
-      spotifyUserId = userInfo.id;
-      console.log('Spotify user ID retrieved:', spotifyUserId);
-    } catch (error) {
-      console.error('Failed to get user info from Spotify:', error);
-      return res.redirect(`${clientUrl}/?error=user_info_failed`);
-    }
-    
-    // Generate JWT token with Spotify tokens and user ID
-    const { generateJWT } = require('./utils/jwt');
-    const jwtToken = generateJWT(response.data, spotifyUserId);
-    
-    delete req.session.codeVerifier;
-    
-    console.log('Auth successful, JWT generated with user ID');
-    
-    // Redirect with JWT token for all environments
-    res.redirect(`${clientUrl}/callback?success=true&token=${encodeURIComponent(jwtToken)}`);
-  } catch (error) {
-    console.error('Token exchange error:', error);
-    res.redirect(`${clientUrl}/?error=token_exchange_failed`);
-  }
-});
+    // Redirect old callback to new auth callback endpoint
+    app.get('/callback', (req, res) => {
+      // Forward all query params to the new auth callback
+      const queryString = new URLSearchParams(req.query as Record<string, string>).toString();
+      res.redirect(`/api/auth/callback?${queryString}`);
+    });
 
     // Temporary endpoint to clear Redis (REMOVE AFTER USE)
     app.post('/api/admin/clear-redis', async (req, res) => {

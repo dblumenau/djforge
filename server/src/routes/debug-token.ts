@@ -1,13 +1,13 @@
 import { Router } from 'express';
-import { ensureValidToken } from '../spotify/auth';
+import { requireValidTokens } from '../middleware/session-auth';
 import { SpotifyWebAPI } from '../spotify/api';
 
 export const debugTokenRouter = Router();
 
 // Debug endpoint to verify songs using current user's token
-debugTokenRouter.get('/verify-songs', ensureValidToken, async (req, res) => {
+debugTokenRouter.get('/verify-songs', requireValidTokens, async (req: any, res) => {
   try {
-    const tokens = req.spotifyTokens;
+    const tokens = req.tokens;
     if (!tokens) {
       return res.status(401).json({ error: 'No tokens available' });
     }

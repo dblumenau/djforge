@@ -6,8 +6,8 @@ import WeatherDisplay from './WeatherDisplay';
 import PlaybackControls from './PlaybackControls';
 import SpotifyPlayer from './SpotifyPlayer';
 import QueueDisplay from './QueueDisplay';
-import { useSpotifyAuth } from '../hooks/useSpotifyAuth';
-import { api } from '../utils/api';
+import { useAuth } from '../contexts/AuthContext';
+import { api } from '../utils/temp-auth';
 
 interface MobileMenuProps {
   isOpen: boolean;
@@ -29,7 +29,7 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
   const navigate = useNavigate();
   const [showQueue, setShowQueue] = useState(false);
   const [devicePreference, setDevicePreference] = useState<string>('auto');
-  const { accessToken } = useSpotifyAuth();
+  const { isAuthenticated } = useAuth();
 
   // Close menu on escape key
   useEffect(() => {
@@ -75,15 +75,8 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
     
     window.addEventListener('storage', handleStorageChange);
     
-    // Also check periodically when menu is open
-    let interval: ReturnType<typeof setInterval> | null = null;
-    if (isOpen) {
-      interval = setInterval(checkDevicePreference, 1000);
-    }
-    
     return () => {
       window.removeEventListener('storage', handleStorageChange);
-      if (interval) clearInterval(interval);
     };
   }, [isOpen]);
 
@@ -142,16 +135,10 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
             {/* Playback Controls or Web Player */}
             <div>
               <h3 className="text-sm font-medium text-gray-400 mb-2">Playback</h3>
-              {devicePreference === 'web-player' && accessToken ? (
-                <SpotifyPlayer 
-                  token={accessToken}
-                  onDeviceReady={(deviceId) => {
-                    console.log('[MobileMenu] Web Player device ready:', deviceId);
-                    // Transfer playback to web player
-                    api.post('/api/control/transfer', { deviceId, play: false })
-                      .catch(err => console.error('Failed to transfer to web player:', err));
-                  }}
-                />
+              {devicePreference === 'web-player' && isAuthenticated ? (
+                <div className="p-4 text-center text-zinc-400">
+                  Web Player temporarily disabled during auth migration
+                </div>
               ) : (
                 <PlaybackControls onShowQueue={() => setShowQueue(true)} isMobile />
               )}

@@ -10,33 +10,21 @@ import LogsPage from './pages/LogsPage';
 import SSEStatus from './pages/SSEStatus';
 import AppLayout from './components/AppLayout';
 import ErrorFallback from './components/ErrorFallback';
+import AuthSuccess from './components/AuthSuccess';
 
-// Auth callback loader - handles OAuth callback without a component
+// Auth callback loader - handles legacy OAuth callback (should not be used anymore)
 const authCallbackLoader = ({ request }: { request: Request }) => {
   const url = new URL(request.url);
-  const token = url.searchParams.get('token');
-  const success = url.searchParams.get('success');
   const error = url.searchParams.get('error');
 
-  console.log('AuthCallback loader - URL params:', { 
-    token: token ? 'present' : 'missing', 
-    success, 
-    error 
-  });
+  console.log('Legacy auth callback accessed - redirecting to landing');
 
   if (error) {
     console.error('Authentication error:', error);
     return redirect('/landing?error=' + encodeURIComponent(error));
   }
 
-  if (token && success === 'true') {
-    console.log('Authentication successful, storing JWT token');
-    localStorage.setItem('spotify_jwt', token);
-    return redirect('/');
-  } else {
-    console.log('Invalid authentication callback, redirecting to landing page');
-    return redirect('/landing');
-  }
+  return redirect('/landing?message=auth_system_updated');
 };
 
 // Create router with loaders
@@ -83,6 +71,10 @@ export const router = createBrowserRouter([
     path: "/callback",
     loader: authCallbackLoader,
     element: <div>Processing authentication...</div> // This won't render due to redirect
+  },
+  {
+    path: "/auth-success",
+    element: <AuthSuccess />
   },
   {
     path: "*",

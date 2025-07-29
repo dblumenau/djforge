@@ -1,52 +1,31 @@
 import { Router, Request, Response } from 'express';
-import { ensureValidToken } from '../spotify/auth';
+import { requireValidTokens } from '../middleware/session-auth';
 import { SpotifyWebAPI } from '../spotify/api';
 import { UserDataService } from '../services/UserDataService';
 import { TimeRange } from '../types/spotify-data';
 import { createRedisClient } from '../config/redis';
-import { verifyJWT, extractTokenFromHeader } from '../utils/jwt';
+// JWT imports removed during auth refactor - no longer needed
 
 const router = Router();
 
 // Apply auth middleware to all routes
-router.use(ensureValidToken);
+router.use(requireValidTokens);
 
-// Helper to get UserDataService instance
-async function getUserDataService(req: Request): Promise<UserDataService> {
-  // Get JWT from header
-  const authHeader = req.headers.authorization;
-  const jwtToken = extractTokenFromHeader(authHeader);
-  
-  if (!jwtToken) {
-    throw new Error('No JWT token provided');
-  }
-  
-  const payload = verifyJWT(jwtToken);
-  if (!payload) {
-    throw new Error('Invalid JWT token');
-  }
-  
-  // Get tokens from JWT payload or session
-  const tokens = payload.spotifyTokens || req.session.spotifyTokens;
+// Helper to get UserDataService instance with new session-auth middleware
+async function getUserDataService(req: any): Promise<UserDataService> {
+  // Get tokens from requireValidTokens middleware
+  const tokens = req.tokens;
   if (!tokens) {
     throw new Error('No Spotify tokens available');
   }
   
   const spotifyApi = new SpotifyWebAPI(tokens, (newTokens) => {
-    // Update session if available
-    if (req.session) {
-      req.session.spotifyTokens = newTokens;
-    }
+    // Update tokens in request
+    req.tokens = newTokens;
   });
   
-  // Use user ID from JWT or fetch from API
-  const userId = payload.sub || payload.spotify_user_id;
-  let finalUserId = userId;
-  
-  if (!finalUserId) {
-    const user = await spotifyApi.getCurrentUser();
-    finalUserId = user.id;
-  }
+  // Get user ID from session middleware
+  const finalUserId = req.userId;
   
   // Get Redis client
   const redis = await createRedisClient();
@@ -56,7 +35,7 @@ async function getUserDataService(req: Request): Promise<UserDataService> {
 }
 
 // Get all dashboard data
-router.get('/dashboard', async (req: Request, res: Response) => {
+router.get('/dashboard', async (req: any, res: Response) => {
   try {
     const forceRefresh = req.query.refresh === 'true';
     console.log(`📊 Dashboard endpoint called - forceRefresh: ${forceRefresh}`);
@@ -315,7 +294,7 @@ router.get('/taste-profile', async (req: Request, res: Response) => {
 });
 
 // Save tracks to library
-router.put('/saved-tracks', async (req: Request, res: Response) => {
+router.put('/saved-tracks', async (req: any, res: Response) => {
   try {
     const { trackIds } = req.body;
     
@@ -326,29 +305,15 @@ router.put('/saved-tracks', async (req: Request, res: Response) => {
       });
     }
     
-    // Get tokens and create API instance directly
-    const authHeader = req.headers.authorization;
-    const jwtToken = extractTokenFromHeader(authHeader);
-    
-    if (!jwtToken) {
-      throw new Error('No JWT token provided');
-    }
-    
-    const payload = verifyJWT(jwtToken);
-    if (!payload) {
-      throw new Error('Invalid JWT token');
-    }
-    
-    const tokens = payload.spotifyTokens || req.session.spotifyTokens;
+    // Get tokens from requireValidTokens middleware
+    const tokens = req.tokens;
     if (!tokens) {
       throw new Error('No Spotify tokens found');
     }
     
     const api = new SpotifyWebAPI(tokens, (newTokens) => {
-      // Update tokens in session if refreshed
-      if (req.session) {
-        req.session.spotifyTokens = newTokens;
-      }
+      // Update tokens in request
+      req.tokens = newTokens;
     });
     
     await api.saveTracksToLibrary(trackIds);
@@ -367,7 +332,7 @@ router.put('/saved-tracks', async (req: Request, res: Response) => {
 });
 
 // Remove tracks from library
-router.delete('/saved-tracks', async (req: Request, res: Response) => {
+router.delete('/saved-tracks', async (req: any, res: Response) => {
   try {
     const { trackIds } = req.body;
     
@@ -378,29 +343,15 @@ router.delete('/saved-tracks', async (req: Request, res: Response) => {
       });
     }
     
-    // Get tokens and create API instance directly
-    const authHeader = req.headers.authorization;
-    const jwtToken = extractTokenFromHeader(authHeader);
-    
-    if (!jwtToken) {
-      throw new Error('No JWT token provided');
-    }
-    
-    const payload = verifyJWT(jwtToken);
-    if (!payload) {
-      throw new Error('Invalid JWT token');
-    }
-    
-    const tokens = payload.spotifyTokens || req.session.spotifyTokens;
+    // Get tokens from requireValidTokens middleware
+    const tokens = req.tokens;
     if (!tokens) {
       throw new Error('No Spotify tokens found');
     }
     
     const api = new SpotifyWebAPI(tokens, (newTokens) => {
-      // Update tokens in session if refreshed
-      if (req.session) {
-        req.session.spotifyTokens = newTokens;
-      }
+      // Update tokens in request
+      req.tokens = newTokens;
     });
     
     await api.removeTracksFromLibrary(trackIds);
@@ -419,7 +370,7 @@ router.delete('/saved-tracks', async (req: Request, res: Response) => {
 });
 
 // Check if tracks are saved
-router.get('/saved-tracks/contains', async (req: Request, res: Response) => {
+router.get('/saved-tracks/contains', async (req: any, res: Response) => {
   try {
     const { ids } = req.query;
     
@@ -439,29 +390,15 @@ router.get('/saved-tracks/contains', async (req: Request, res: Response) => {
       });
     }
     
-    // Get tokens and create API instance directly
-    const authHeader = req.headers.authorization;
-    const jwtToken = extractTokenFromHeader(authHeader);
-    
-    if (!jwtToken) {
-      throw new Error('No JWT token provided');
-    }
-    
-    const payload = verifyJWT(jwtToken);
-    if (!payload) {
-      throw new Error('Invalid JWT token');
-    }
-    
-    const tokens = payload.spotifyTokens || req.session.spotifyTokens;
+    // Get tokens from requireValidTokens middleware
+    const tokens = req.tokens;
     if (!tokens) {
       throw new Error('No Spotify tokens found');
     }
     
     const api = new SpotifyWebAPI(tokens, (newTokens) => {
-      // Update tokens in session if refreshed
-      if (req.session) {
-        req.session.spotifyTokens = newTokens;
-      }
+      // Update tokens in request
+      req.tokens = newTokens;
     });
     
     const savedStatus = await api.checkIfTracksSaved(trackIds);

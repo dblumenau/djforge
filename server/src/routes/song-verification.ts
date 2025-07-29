@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { ensureValidToken } from '../spotify/auth';
+import { requireValidTokens } from '../middleware/session-auth';
 import { SpotifyWebAPI } from '../spotify/api';
 
 export const songVerificationRouter = Router();
@@ -67,9 +67,9 @@ function findBestMatch(tracks: any[], artist: string, trackName: string) {
 }
 
 // Verify song availability endpoint
-songVerificationRouter.get('/verify', ensureValidToken, async (req, res) => {
+songVerificationRouter.get('/verify', requireValidTokens, async (req: any, res) => {
   try {
-    const tokens = req.spotifyTokens;
+    const tokens = req.tokens;
     if (!tokens) {
       return res.status(401).json({ error: 'No tokens available' });
     }

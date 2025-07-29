@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { ensureValidToken } from '../spotify/auth';
+import { requireValidTokens } from '../middleware/session-auth';
 import { SpotifyControl } from '../spotify/control';
 import { LLMLoggingService } from '../services/llm-logging.service';
 
@@ -15,14 +15,14 @@ const isAdmin = (spotifyUserId: string): boolean => {
 const requireAdmin = async (req: any, res: any, next: any) => {
   try {
     // Ensure we have valid Spotify tokens
-    if (!req.spotifyTokens) {
+    if (!req.tokens) {
       return res.status(401).json({ error: 'Authentication required' });
     }
 
     // Create SpotifyControl instance
     const spotifyControl = new SpotifyControl(
-      req.spotifyTokens,
-      (tokens) => { req.spotifyTokens = tokens; }
+      req.tokens,
+      (tokens) => { req.tokens = tokens; }
     );
     
     // Get user profile
@@ -51,7 +51,7 @@ export function setRedisClientForLogs(client: any) {
 }
 
 // Get recent logs
-llmLogsRouter.get('/api/llm-logs/recent', ensureValidToken, requireAdmin, async (req, res) => {
+llmLogsRouter.get('/api/llm-logs/recent', requireValidTokens, requireAdmin, async (req: any, res) => {
   try {
     if (!loggingService) {
       return res.status(500).json({ error: 'Logging service not initialized' });
@@ -73,7 +73,7 @@ llmLogsRouter.get('/api/llm-logs/recent', ensureValidToken, requireAdmin, async 
 });
 
 // Search logs
-llmLogsRouter.get('/api/llm-logs/search', ensureValidToken, requireAdmin, async (req, res) => {
+llmLogsRouter.get('/api/llm-logs/search', requireValidTokens, requireAdmin, async (req: any, res) => {
   try {
     if (!loggingService) {
       return res.status(500).json({ error: 'Logging service not initialized' });
@@ -101,7 +101,7 @@ llmLogsRouter.get('/api/llm-logs/search', ensureValidToken, requireAdmin, async 
 });
 
 // Get logs by date
-llmLogsRouter.get('/api/llm-logs/by-date', ensureValidToken, requireAdmin, async (req, res) => {
+llmLogsRouter.get('/api/llm-logs/by-date', requireValidTokens, requireAdmin, async (req: any, res) => {
   try {
     if (!loggingService) {
       return res.status(500).json({ error: 'Logging service not initialized' });
@@ -130,7 +130,7 @@ llmLogsRouter.get('/api/llm-logs/by-date', ensureValidToken, requireAdmin, async
 });
 
 // Get logs by flow type
-llmLogsRouter.get('/api/llm-logs/by-flow/:flow', ensureValidToken, requireAdmin, async (req, res) => {
+llmLogsRouter.get('/api/llm-logs/by-flow/:flow', requireValidTokens, requireAdmin, async (req: any, res) => {
   try {
     if (!loggingService) {
       return res.status(500).json({ error: 'Logging service not initialized' });
@@ -158,7 +158,7 @@ llmLogsRouter.get('/api/llm-logs/by-flow/:flow', ensureValidToken, requireAdmin,
 });
 
 // Get logs by provider
-llmLogsRouter.get('/api/llm-logs/by-provider/:provider', ensureValidToken, requireAdmin, async (req, res) => {
+llmLogsRouter.get('/api/llm-logs/by-provider/:provider', requireValidTokens, requireAdmin, async (req: any, res) => {
   try {
     if (!loggingService) {
       return res.status(500).json({ error: 'Logging service not initialized' });
@@ -182,7 +182,7 @@ llmLogsRouter.get('/api/llm-logs/by-provider/:provider', ensureValidToken, requi
 });
 
 // Get usage statistics
-llmLogsRouter.get('/api/llm-logs/stats', ensureValidToken, requireAdmin, async (req, res) => {
+llmLogsRouter.get('/api/llm-logs/stats', requireValidTokens, requireAdmin, async (req: any, res) => {
   try {
     if (!loggingService) {
       return res.status(500).json({ error: 'Logging service not initialized' });
@@ -234,7 +234,7 @@ llmLogsRouter.get('/api/llm-logs/stats', ensureValidToken, requireAdmin, async (
 });
 
 // Get logs for current user (non-admin)
-llmLogsRouter.get('/api/llm-logs/my-logs', ensureValidToken, async (req, res) => {
+llmLogsRouter.get('/api/llm-logs/my-logs', requireValidTokens, async (req: any, res) => {
   try {
     if (!loggingService) {
       return res.status(500).json({ error: 'Logging service not initialized' });
@@ -242,8 +242,8 @@ llmLogsRouter.get('/api/llm-logs/my-logs', ensureValidToken, async (req, res) =>
 
     // Get user profile
     const spotifyControl = new SpotifyControl(
-      req.spotifyTokens!,
-      (tokens) => { req.spotifyTokens = tokens; }
+      req.tokens!,
+      (tokens) => { req.tokens = tokens; }
     );
     const profile = await spotifyControl.getUserProfile();
     
