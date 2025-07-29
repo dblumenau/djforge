@@ -210,10 +210,8 @@ async function interpretCommand(command: string, userId?: string, retryCount = 0
     
   }
   
-  // Get relevant context using smart filtering
-  const relevantContext = conversationManager && dialogState ? 
-    conversationManager.getRelevantContext(command, conversationHistory, dialogState) : 
-    conversationHistory.slice(0, 2);
+  // Always include last 10 messages for context
+  const relevantContext = conversationHistory.slice(-10);
   
   console.log(`[DEBUG] Command: "${command}"`);
   console.log(`[DEBUG] Music history length (filtered): ${conversationHistory.length}`);
@@ -684,10 +682,16 @@ async function handleConversationalQuery(
       musicContext = `\nRecent music context: ${lastAction.type === 'play' ? 'Currently playing' : 'Recently queued'} "${lastAction.track || lastAction.query}" by ${lastAction.artist || 'Unknown Artist'}`;
     }
 
-    // Include recent conversation for context
-    const recentContext = conversationHistory.slice(-3).map(entry => 
-      `User: "${entry.command}" → ${entry.interpretation.artist ? `${entry.interpretation.artist} - ${entry.interpretation.track || ''}` : entry.interpretation.query || ''}`
-    ).join('\n');
+    // Include last 10 messages for better conversational context
+    const recentContext = conversationHistory.slice(-10).map(entry => {
+      const intent = entry.interpretation?.intent || 'unknown';
+      
+      if (intent === 'chat' || intent === 'ask_question' || intent === 'get_playback_info') {
+        return `User: "${entry.command}"\nAssistant: ${entry.response?.message || entry.response || 'No response'}`;
+      } else {
+        return `User: "${entry.command}" → ${entry.interpretation.artist ? `${entry.interpretation.artist} - ${entry.interpretation.track || ''}` : entry.interpretation.query || ''}`;
+      }
+    }).join('\n\n');
 
     const conversationalPrompt = `You are a knowledgeable music assistant integrated with Spotify. Answer the user's question conversationally and informatively.
 

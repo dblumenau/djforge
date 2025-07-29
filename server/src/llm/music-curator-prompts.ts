@@ -97,15 +97,27 @@ ${CLARIFICATION_MODE_GUIDANCE}`;
 export function formatMusicHistory(conversationHistory: any[]): string {
   if (conversationHistory.length === 0) return '';
   
-  return `USER'S RECENT MUSIC HISTORY (successful plays only):
-${conversationHistory.map((entry, idx) => `
-[${idx + 1}] Played: ${entry.interpretation.artist || 'Unknown'} - ${entry.interpretation.track || entry.interpretation.query || 'Unknown'}
-    Original command: "${entry.command}"
-    ${entry.interpretation.alternatives && entry.interpretation.alternatives.length > 0 ? 
-      `Other options shown: ${entry.interpretation.alternatives.join(', ')}` : ''}
-`).join('\n')}
+  return `RECENT CONVERSATION HISTORY (for context only):
+${conversationHistory.map((entry, idx) => {
+  const intent = entry.interpretation?.intent || 'unknown';
+  
+  // Format based on intent type
+  if (intent === 'chat' || intent === 'ask_question' || intent === 'get_playback_info') {
+    return `[${idx + 1}] User: "${entry.command}"
+    Assistant: ${entry.response?.message || entry.response || 'No response recorded'}`;
+  } else if (intent === 'play_specific_song' || intent === 'queue_specific_song') {
+    return `[${idx + 1}] User: "${entry.command}"
+    Action: ${intent === 'play_specific_song' ? 'Played' : 'Queued'} ${entry.interpretation.artist || 'Unknown'} - ${entry.interpretation.track || entry.interpretation.query || 'Unknown'}`;
+  } else {
+    return `[${idx + 1}] User: "${entry.command}"
+    Action: ${intent}`;
+  }
+}).join('\n\n')}
 
-${HISTORY_CONTEXT_USAGE}
-
-IMPORTANT: If the user is referencing something from the conversation above (like "no the taylor swift one", "the second one", "actually play X instead"), look for it in the alternatives or context and respond with the specific song they're referring to.`;
+IMPORTANT CONTEXT INSTRUCTIONS:
+- This conversation history is provided ONLY for understanding context and references
+- For questions about previous messages, use this history to provide accurate answers
+- For music recommendations, this history should NOT overly influence your choices
+- If the user references "that", "the previous one", "what we were talking about", etc., use this context
+- But for new music requests, make fresh recommendations based on the current request, not past conversations`;
 }

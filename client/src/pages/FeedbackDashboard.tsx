@@ -73,7 +73,27 @@ const FeedbackDashboard: React.FC = () => {
     try {
       setLoading(true);
       const response = await api.getAIFeedbackDashboard();
-      setData(response.data);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      // Ensure data has the expected structure
+      const normalizedData = {
+        discoveries: data.discoveries || [],
+        loved: data.loved || [],
+        disliked: data.disliked || [],
+        stats: data.stats || {
+          totalDiscoveries: 0,
+          lovedCount: 0,
+          dislikedCount: 0,
+          pendingCount: 0
+        }
+      };
+      
+      setData(normalizedData);
       setError(null);
     } catch (err) {
       console.error('Failed to load dashboard:', err);
@@ -87,7 +107,7 @@ const FeedbackDashboard: React.FC = () => {
     if (!data) return;
     
     // Find the track in current data
-    const targetTrack = data.discoveries.find(track => track.trackUri === trackUri);
+    const targetTrack = data.discoveries?.find(track => track.trackUri === trackUri);
     if (!targetTrack) return;
     
     // Prevent double submission if currently submitting
@@ -135,13 +155,13 @@ const FeedbackDashboard: React.FC = () => {
       }
       
       // Update discoveries list
-      const updatedDiscoveries = data.discoveries.map(track => 
+      const updatedDiscoveries = (data.discoveries || []).map(track => 
         track.trackUri === trackUri ? updatedTrack : track
       );
       
       // Update feedback lists - handle changing/removing existing feedback
-      let updatedLoved = data.loved.filter(track => track.trackUri !== trackUri);
-      let updatedDisliked = data.disliked.filter(track => track.trackUri !== trackUri);
+      let updatedLoved = (data.loved || []).filter(track => track.trackUri !== trackUri);
+      let updatedDisliked = (data.disliked || []).filter(track => track.trackUri !== trackUri);
       
       if (!isUndoing) {
         if (feedback === 'loved') {
@@ -154,7 +174,7 @@ const FeedbackDashboard: React.FC = () => {
       
       // Update stats
       const updatedStats = {
-        ...data.stats,
+        ...(data.stats || {}),
         lovedCount: updatedLoved.length,
         dislikedCount: updatedDisliked.length,
         pendingCount: updatedDiscoveries.filter(d => !d.feedback).length
@@ -192,14 +212,14 @@ const FeedbackDashboard: React.FC = () => {
     
     switch (filter) {
       case 'loved':
-        return data.loved;
+        return data.loved || [];
       case 'disliked':
-        return data.disliked;
+        return data.disliked || [];
       case 'pending':
-        return data.discoveries.filter(d => !d.feedback);
+        return (data.discoveries || []).filter(d => !d.feedback);
       case 'all':
       default:
-        return data.discoveries;
+        return data.discoveries || [];
     }
   };
 
@@ -252,22 +272,22 @@ const FeedbackDashboard: React.FC = () => {
         <div className="max-w-6xl mx-auto px-4 py-8">
 
           {/* Stats Cards */}
-          {data && (
+          {data && data.stats && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
               <div className="bg-zinc-800 rounded-lg p-4 border border-zinc-700">
-                <div className="text-2xl font-bold text-green-400">{data.stats.totalDiscoveries}</div>
+                <div className="text-2xl font-bold text-green-400">{data.stats.totalDiscoveries || 0}</div>
                 <div className="text-sm text-gray-400">Total Discoveries</div>
               </div>
               <div className="bg-zinc-800 rounded-lg p-4 border border-zinc-700">
-                <div className="text-2xl font-bold text-green-400">{data.stats.lovedCount}</div>
+                <div className="text-2xl font-bold text-green-400">{data.stats.lovedCount || 0}</div>
                 <div className="text-sm text-gray-400">Loved</div>
               </div>
               <div className="bg-zinc-800 rounded-lg p-4 border border-zinc-700">
-                <div className="text-2xl font-bold text-red-400">{data.stats.dislikedCount}</div>
+                <div className="text-2xl font-bold text-red-400">{data.stats.dislikedCount || 0}</div>
                 <div className="text-sm text-gray-400">Disliked</div>
               </div>
               <div className="bg-zinc-800 rounded-lg p-4 border border-zinc-700">
-                <div className="text-2xl font-bold text-yellow-400">{data.stats.pendingCount}</div>
+                <div className="text-2xl font-bold text-yellow-400">{data.stats.pendingCount || 0}</div>
                 <div className="text-sm text-gray-400">Pending</div>
               </div>
             </div>

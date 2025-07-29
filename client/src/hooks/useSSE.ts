@@ -67,7 +67,7 @@ export function useSSE(options: UseSSEOptions = {}) {
   const [connectionError, setConnectionError] = useState<string | null>(null);
   
   const eventSourceRef = useRef<EventSource | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reconnectAttemptsRef = useRef(0);
   
   // Store callbacks in refs to avoid recreating functions

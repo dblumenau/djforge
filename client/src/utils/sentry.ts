@@ -33,7 +33,7 @@ export function decodeJWT(token: string): JWTPayload | null {
  * Set Sentry user context from JWT token
  * WARNING: JWT system disabled during auth system refactor
  */
-export function setSentryUserContext(jwtToken: string | null) {
+export function setSentryUserContext(_jwtToken: string | null) {
   console.warn('WARNING: Sentry user context disabled during auth system refactor');
   
   // Use temp auth utils instead of JWT during refactor

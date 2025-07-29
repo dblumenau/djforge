@@ -84,7 +84,7 @@ const SSEStatus: React.FC = () => {
     }
 
     try {
-      const response = await api.delete('/api/admin/sse/connections', {});
+      const response = await api.delete('/api/admin/sse/connections');
       if (response.ok) {
         const data = await response.json();
         alert(`Successfully cleared ${data.previousCount} connections`);

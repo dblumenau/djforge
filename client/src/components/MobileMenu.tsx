@@ -4,10 +4,8 @@ import ModelSelector from './ModelSelector';
 import DeviceSelector from './DeviceSelector';
 import WeatherDisplay from './WeatherDisplay';
 import PlaybackControls from './PlaybackControls';
-import SpotifyPlayer from './SpotifyPlayer';
 import QueueDisplay from './QueueDisplay';
 import { useAuth } from '../contexts/AuthContext';
-import { api } from '../utils/temp-auth';
 
 interface MobileMenuProps {
   isOpen: boolean;

@@ -64,7 +64,7 @@ export const useTrackLibrary = ({ trackIds, onSaveToggle }: UseTrackLibraryProps
         : '/api/user-data/saved-tracks';
       
       const response = isSaved 
-        ? await api.delete(endpoint, { trackIds: [trackId] })
+        ? await api.delete(`${endpoint}?ids=${trackId}`)
         : await api.put(endpoint, { trackIds: [trackId] });
 
       if (response.ok) {
