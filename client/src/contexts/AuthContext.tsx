@@ -128,6 +128,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     
     authService.logout();
     setIsAuthenticated(false);
+    // Clear cached profile data
+    localStorage.removeItem('spotify_user_profile');
     window.location.href = '/landing';
   };
 

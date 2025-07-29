@@ -25,6 +25,7 @@ export const authenticatedFetch = async (url: string, options: RequestInit = {})
   
   return fetch(url, {
     ...options,
+    credentials: 'include',
     headers: {
       'X-Session-ID': sessionId,
       'Content-Type': 'application/json',

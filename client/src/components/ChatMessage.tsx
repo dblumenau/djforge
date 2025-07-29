@@ -49,6 +49,7 @@ interface MessageProps {
     rejectionType: string;
   };
   uiType?: string;
+  userAvatar?: string;
   onFeedback: (trackUri: string, feedback: 'loved' | 'disliked') => void;
   onAlternativeClick: (alternative: Alternative, action: 'play' | 'queue') => void;
   onClarificationOption: (direction: string, followUpQuery?: string) => void;
@@ -76,6 +77,7 @@ const ChatMessage: React.FC<MessageProps> = ({
   clarificationOptions,
   currentContext,
   uiType,
+  userAvatar,
   onFeedback,
   onAlternativeClick,
   onClarificationOption,
@@ -87,11 +89,8 @@ const ChatMessage: React.FC<MessageProps> = ({
   return (
     <div className="mb-6">
       {/* User Command */}
-      <div className="flex items-start gap-2 mb-4">
-        <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
-          <span className="text-xs font-semibold text-white">U</span>
-        </div>
-        <div className="flex-1">
+      <div className="flex items-start gap-2 mb-4 justify-end">
+        <div className="flex-1 flex flex-col items-end">
           <div className="bg-blue-500/80 rounded-2xl px-4 py-3 inline-block max-w-[85%]">
             <span className="text-white">{command}</span>
           </div>
@@ -119,6 +118,17 @@ const ChatMessage: React.FC<MessageProps> = ({
               </span>
             )}
           </div>
+        </div>
+        <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0 overflow-hidden">
+          {userAvatar ? (
+            <img 
+              src={userAvatar} 
+              alt="User" 
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <span className="text-xs font-semibold text-white">U</span>
+          )}
         </div>
       </div>
 
@@ -179,7 +189,7 @@ const ChatMessage: React.FC<MessageProps> = ({
 
           {/* Reasoning */}
           {reasoning && (
-            <div className="bg-zinc-900/50 border-l-2 border-purple-500/30 px-3 py-2 rounded">
+            <div className="mt-3 bg-zinc-900/50 border-l-2 border-purple-500/30 px-3 py-2 rounded max-w-[85%]">
               <p className="text-xs text-purple-300 italic">
                 💭 {reasoning}
               </p>

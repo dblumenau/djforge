@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../utils/api';
+import { webPlayerService } from '../services/webPlayer.service';
 
 interface SpotifyDevice {
   id: string;
@@ -21,6 +22,7 @@ const DeviceSelector: React.FC<DeviceSelectorProps> = ({ onDeviceChange, compact
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [currentDevice, setCurrentDevice] = useState<SpotifyDevice | null>(null);
+  const [isChangingDevice, setIsChangingDevice] = useState(false);
 
   // Load saved preference from localStorage
   useEffect(() => {
@@ -59,12 +61,35 @@ const DeviceSelector: React.FC<DeviceSelectorProps> = ({ onDeviceChange, compact
   useEffect(() => {
     fetchDevices();
     const interval = setInterval(fetchDevices, 30000); // Refresh every 30 seconds
-    return () => clearInterval(interval);
+    
+    // Add Page Visibility API listener
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('[DeviceSelector] Page became visible, refreshing devices...');
+        fetchDevices();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Listen for web player ready events
+    const unsubscribeWebPlayer = webPlayerService.onDeviceReady(() => {
+      console.log('[DeviceSelector] Web player device is ready, refreshing devices...');
+      // Delay slightly to ensure the device appears in Spotify's device list
+      setTimeout(fetchDevices, 500);
+    });
+    
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      unsubscribeWebPlayer();
+    };
   }, []);
 
   // Handle device selection
   const handleDeviceSelect = async (deviceId: string | 'auto' | 'web-player') => {
     console.log('[DeviceSelector] Device selected:', deviceId);
+    setIsChangingDevice(true);
     setSelectedDevice(deviceId);
     setIsOpen(false);
     
@@ -72,20 +97,63 @@ const DeviceSelector: React.FC<DeviceSelectorProps> = ({ onDeviceChange, compact
     localStorage.setItem('spotifyDevicePreference', deviceId);
     console.log('[DeviceSelector] Saved to localStorage:', deviceId);
     
-    // Notify parent component
-    if (onDeviceChange) {
-      onDeviceChange(deviceId);
-    }
-    
-    // If not auto or web-player, transfer playback to the selected device
-    if (deviceId !== 'auto' && deviceId !== 'web-player') {
-      try {
-        await api.post('/api/control/transfer', { deviceId, play: false });
-      } catch (error) {
-        console.error('Failed to transfer playback:', error);
+    try {
+      // Notify parent component
+      if (onDeviceChange) {
+        onDeviceChange(deviceId);
       }
+      
+      // Handle device transfer based on selection
+      if (deviceId === 'web-player') {
+        // Initialize and transfer to web player
+        await webPlayerService.initialize();
+        // Wait a bit for the player to be ready
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        if (webPlayerService.isReady()) {
+          await webPlayerService.transferPlayback();
+          // Show success feedback
+          const event = new CustomEvent('device-changed', { 
+            detail: { success: true, device: 'Built In Player' } 
+          });
+          window.dispatchEvent(event);
+        } else {
+          console.log('Web player not ready yet, transfer will happen when ready');
+          const event = new CustomEvent('device-changed', { 
+            detail: { success: true, device: 'Built In Player (initializing...)' } 
+          });
+          window.dispatchEvent(event);
+        }
+      } else if (deviceId !== 'auto') {
+        // Transfer to regular Spotify device
+        await api.post('/api/control/transfer', { deviceId, play: false });
+        const device = devices.find(d => d.id === deviceId);
+        const event = new CustomEvent('device-changed', { 
+          detail: { success: true, device: device?.name || 'Unknown Device' } 
+        });
+        window.dispatchEvent(event);
+      } else {
+        // Auto mode selected
+        const event = new CustomEvent('device-changed', { 
+          detail: { success: true, device: 'Auto - Remote Control' } 
+        });
+        window.dispatchEvent(event);
+      }
+    } catch (error) {
+      console.error('Failed to change device:', error);
+      // Revert selection on error
+      const previousDevice = localStorage.getItem('spotifyDevicePreference') || 'auto';
+      setSelectedDevice(previousDevice);
+      localStorage.setItem('spotifyDevicePreference', previousDevice);
+      
+      // Show error feedback
+      const event = new CustomEvent('device-changed', { 
+        detail: { success: false, error: 'Failed to change device' } 
+      });
+      window.dispatchEvent(event);
+    } finally {
+      setIsChangingDevice(false);
     }
-    // Note: web-player transfer will be handled by the SpotifyPlayer component itself
   };
 
   // Get device icon based on type
@@ -105,7 +173,7 @@ const DeviceSelector: React.FC<DeviceSelectorProps> = ({ onDeviceChange, compact
   // Get display name for selected device
   const getSelectedDisplayName = () => {
     if (selectedDevice === 'auto') {
-      return compact ? 'Auto' : 'Auto - Use last active';
+      return compact ? 'Remote' : 'Auto - Remote Control';
     }
     if (selectedDevice === 'web-player') {
       return compact ? '🎵' : '🎵 Built In Player';
@@ -121,11 +189,20 @@ const DeviceSelector: React.FC<DeviceSelectorProps> = ({ onDeviceChange, compact
     <div className={`relative ${fullWidth ? 'w-full' : ''}`}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`flex items-center gap-2 ${compact ? 'px-3 py-1.5' : 'px-3 py-2'} bg-gray-800 border border-gray-700 rounded-lg hover:bg-gray-700 transition-colors text-sm ${fullWidth ? 'w-full justify-between' : ''}`}
+        disabled={isChangingDevice}
+        className={`flex items-center gap-2 ${compact ? 'px-3 py-1.5' : 'px-3 py-2'} bg-gray-800 border border-gray-700 rounded-lg hover:bg-gray-700 transition-colors text-sm ${fullWidth ? 'w-full justify-between' : ''} ${isChangingDevice ? 'opacity-50 cursor-not-allowed' : ''}`}
         title="Select Spotify playback device"
       >
         <span className={`text-gray-400 ${compact ? 'hidden' : ''}`}>Device:</span>
-        <span className="text-white truncate max-w-[120px]">{getSelectedDisplayName()}</span>
+        <span className="text-white truncate max-w-[120px] flex items-center gap-2">
+          {getSelectedDisplayName()}
+          {isChangingDevice && (
+            <svg className="animate-spin h-3 w-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+          )}
+        </span>
         <svg
           className={`w-4 h-4 transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`}
           fill="none"
@@ -152,18 +229,16 @@ const DeviceSelector: React.FC<DeviceSelectorProps> = ({ onDeviceChange, compact
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-white">Auto - Use last active</span>
+                  <span className="text-white">Auto - Remote Control</span>
                   {selectedDevice === 'auto' && (
                     <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
                   )}
                 </div>
-                {currentDevice && (
-                  <span className="text-xs text-gray-400 mt-1 block">
-                    Currently: {currentDevice.name}
-                  </span>
-                )}
+                <span className="text-xs text-gray-400 mt-1 block">
+                  {currentDevice ? `Currently: ${currentDevice.name}` : 'No active device - start playing first'}
+                </span>
               </button>
 
               {/* Built In Player option */}
@@ -185,7 +260,7 @@ const DeviceSelector: React.FC<DeviceSelectorProps> = ({ onDeviceChange, compact
                   )}
                 </div>
                 <span className="text-xs text-gray-400 mt-1 block">
-                  Play music directly in your browser
+                  Play music directly in this browser tab
                 </span>
               </button>
 

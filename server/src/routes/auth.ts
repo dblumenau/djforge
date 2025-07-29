@@ -166,6 +166,44 @@ router.post('/logout', async (req, res) => {
   res.json({ success: true });
 });
 
+// Admin check endpoint
+router.get('/admin-check', async (req, res) => {
+  try {
+    const sessionId = req.headers['x-session-id'] as string;
+    
+    if (!sessionId) {
+      return res.status(401).json({ error: 'No session ID provided' });
+    }
+    
+    // Get session to find user ID
+    const { SessionManager } = require('../auth/session-manager');
+    const sm = new SessionManager(redisClient);
+    const session = await sm.getSession(sessionId);
+    
+    if (!session) {
+      return res.status(401).json({ error: 'Session not found' });
+    }
+    
+    // Check if user is admin
+    const adminId = process.env.ADMIN_USER_ID || process.env.ADMIN_SPOTIFY_ID || '';
+    const isAdmin = session.userId === adminId;
+    
+    console.log('[Admin Check] User ID:', session.userId, 'Admin ID:', adminId, 'Is Admin:', isAdmin);
+    
+    res.json({
+      success: true,
+      isAdmin,
+      userId: session.userId
+    });
+  } catch (error: any) {
+    console.error('Admin check failed:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Admin check failed'
+    });
+  }
+});
+
 // Session status
 router.get('/status', async (req, res) => {
   const sessionId = req.headers['x-session-id'] as string;

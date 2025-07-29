@@ -4,6 +4,7 @@ import { SpotifyAuthTokens, SpotifyTrack } from '../types';
 import { requireValidTokens } from '../middleware/session-auth';
 import { logDebugError } from '../utils/error-logger';
 import { playbackEventService } from '../services/event-emitter.service';
+import { logger } from '../config/logger';
 
 export const controlRouter = Router();
 
@@ -947,8 +948,13 @@ controlRouter.post('/device-preference', requireValidTokens, async (req, res) =>
   try {
     const webAPI = getWebAPI(req);
     webAPI.setDevicePreference(preference);
+    
+    // Log the device preference change
+    logger.info(`[DEVICE PREFERENCE] User ${(req as any).userId || 'unknown'} changed device preference to: ${preference}`);
+    
     res.json({ success: true, preference });
   } catch (error: any) {
+    logger.error(`[DEVICE PREFERENCE] Failed to set device preference for user ${(req as any).userId || 'unknown'}:`, error);
     res.status(500).json({ error: error.message });
   }
 });

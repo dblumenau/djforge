@@ -26,24 +26,52 @@ const HeaderNav: React.FC<HeaderNavProps> = ({
 
   return (
     <header className="app-header">
-      <div className="h-16 flex items-center justify-between px-4" style={{ maxWidth: '1440px', margin: '0 auto' }}>
-          {/* Left: Logo and Title */}
-          <div className="flex items-center gap-3">
-            <img 
-              src="/square_icon.png" 
-              alt="DJ Forge" 
-              className="h-8 w-8"
-            />
-            <h1 className="text-xl font-bold hidden sm:block">DJ Forge</h1>
+      <div className="h-16 flex items-center justify-between px-2 md:px-4" style={{ maxWidth: '1440px', margin: '0 auto' }}>
+          {/* Mobile Layout */}
+          <div className="md:hidden flex items-center justify-between w-full h-full py-1">
+            {/* Left: Mobile Menu Button */}
+            <button
+              onClick={onMenuToggle}
+              className="p-2 hover:bg-zinc-800 rounded-lg transition-colors"
+              aria-label="Toggle menu"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+
+            {/* Center: Logo */}
+            <div className="absolute left-1/2 transform -translate-x-1/2">
+              <img 
+                src="/landscape_icon.png" 
+                alt="DJ Forge" 
+                className="h-12"
+              />
+            </div>
+
+            {/* Right: Empty space for balance */}
+            <div className="w-10"></div>
           </div>
 
-          {/* Center: Weather (always visible on desktop) */}
-          <div className="hidden md:block">
-            <WeatherDisplay compact />
-          </div>
+          {/* Desktop Layout */}
+          <div className="hidden md:flex items-center justify-between w-full">
+            {/* Left: Logo and Title */}
+            <div className="flex items-center gap-3">
+              <img 
+                src="/square_icon.png" 
+                alt="DJ Forge" 
+                className="h-8 w-8"
+              />
+              <h1 className="text-xl font-bold">DJ Forge</h1>
+            </div>
 
-          {/* Right: Controls and Navigation */}
-          <div className="flex items-center gap-2 lg:gap-3">
+            {/* Center: Weather */}
+            <div>
+              <WeatherDisplay compact />
+            </div>
+
+            {/* Right: Controls and Navigation */}
+            <div className="flex items-center gap-2 lg:gap-3">
             {/* Model and Device Selectors (desktop only) */}
             <div className="hidden md:flex items-center gap-2 lg:gap-3">
               <ModelSelector onModelChange={onModelChange} compact />
@@ -122,17 +150,7 @@ const HeaderNav: React.FC<HeaderNavProps> = ({
                 </>
               )} */}
             </div>
-
-            {/* Mobile Menu Button */}
-            <button
-              onClick={onMenuToggle}
-              className="md:hidden p-2 hover:bg-zinc-800 rounded-lg transition-colors"
-              aria-label="Toggle menu"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
+          </div>
           </div>
       </div>
     </header>

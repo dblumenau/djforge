@@ -15,12 +15,14 @@ declare namespace Spotify {
     setName(name: string): Promise<void>;
     setVolume(volume: number): Promise<void>;
     togglePlay(): Promise<void>;
+    activateElement(): Promise<void>;
   }
 
   interface PlayerOptions {
     name: string;
     getOAuthToken: (callback: (token: string) => void) => void;
     volume?: number;
+    enableMediaSession?: boolean;
   }
 
   interface PlaybackState {
@@ -52,8 +54,8 @@ declare namespace Spotify {
   interface Track {
     uri: string;
     id: string;
-    type: string;
-    media_type: string;
+    type: 'track' | 'episode' | 'ad';
+    media_type: 'audio' | 'video';
     name: string;
     is_playable: boolean;
     album: {

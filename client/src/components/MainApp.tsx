@@ -2,10 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import MusicLoader from './MusicLoader';
 import PlaybackControls from './PlaybackControls';
+import SpotifyPlayer from './SpotifyPlayer';
 import CommandHistorySkeleton from './skeletons/CommandHistorySkeleton';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
 import QueueDisplay from './QueueDisplay';
+import WebPlayerAutoInit from './WebPlayerAutoInit';
 import { AuthTestPanel } from './AuthTestPanel';
 import { useAuth } from '../contexts/AuthContext';
 import { useTrackLibrary } from '../hooks/useTrackLibrary';
@@ -13,6 +15,7 @@ import { useIOSKeyboardFix } from '../hooks/useIOSKeyboardFix';
 import { apiEndpoint } from '../config/api';
 import { authenticatedFetch, api } from '../utils/temp-auth';
 import { useModel } from '../contexts/ModelContext';
+import { useToast, ToastContainer } from './Toast';
 
 // Helper component for clickable example lists
 const ExampleList: React.FC<{ examples: string[]; onSelectExample: (example: string) => void }> = ({ examples, onSelectExample }) => {
@@ -48,7 +51,7 @@ const MainApp: React.FC = () => {
   const [checking, setChecking] = useState(true);
   const [command, setCommand] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const { toasts, showToast, removeToast } = useToast();
   const [commandHistory, setCommandHistory] = useState<Array<{
     command: string;
     response: string;
@@ -91,7 +94,11 @@ const MainApp: React.FC = () => {
   }>>([]);
   const [commandHistoryLoading, setCommandHistoryLoading] = useState(false);
   const [devicePreference, setDevicePreference] = useState<string>('auto');
+  const [userProfile, setUserProfile] = useState<{ images?: Array<{ url: string }> } | null>(null);
   // Note: Access token is now handled internally by the auth service
+  
+  // Authentication
+  const { isAuthenticated, loading: authLoading } = useAuth();
   
   // Track device preference from localStorage
   useEffect(() => {
@@ -118,6 +125,33 @@ const MainApp: React.FC = () => {
     };
   }, []);
   
+  // Initialize web player on mount and handle device preference changes
+  useEffect(() => {
+    // Initialize web player on mount (but don't transfer playback)
+    if (isAuthenticated) {
+      console.log('[MainApp] Initializing web player service...');
+      // Import dynamically to avoid circular dependency
+      import('../services/webPlayer.service').then(({ webPlayerService }) => {
+        webPlayerService.initialize().catch(err => {
+          console.error('[MainApp] Failed to initialize web player on mount:', err);
+        });
+      });
+    }
+  }, [isAuthenticated]);
+
+  // Clean up web player when device preference changes away from web-player
+  useEffect(() => {
+    if (devicePreference !== 'web-player') {
+      // Import dynamically to avoid circular dependency
+      import('../services/webPlayer.service').then(({ webPlayerService }) => {
+        if (webPlayerService.isReady()) {
+          console.log('[MainApp] Device preference changed away from web-player, disconnecting...');
+          webPlayerService.disconnect();
+        }
+      });
+    }
+  }, [devicePreference]);
+  
   // Extract all track IDs from alternatives and main tracks in command history
   const allTrackIds = commandHistory.reduce((ids: string[], item) => {
     const trackIds: string[] = [];
@@ -143,9 +177,6 @@ const MainApp: React.FC = () => {
   const { savedStatus, loading: libraryLoading, toggleSave } = useTrackLibrary({
     trackIds: allTrackIds
   });
-  
-  // Authentication
-  const { isAuthenticated, loading: authLoading } = useAuth();
 
   // Cleanup animation on unmount
   useEffect(() => {
@@ -271,6 +302,42 @@ const MainApp: React.FC = () => {
     loadCommandHistory();
   }, [isAuthenticated]);
 
+  // Load user profile when authenticated
+  useEffect(() => {
+    const loadUserProfile = async () => {
+      if (!isAuthenticated) return;
+      
+      // Check if profile is already cached in localStorage
+      const cachedProfile = localStorage.getItem('spotify_user_profile');
+      if (cachedProfile) {
+        try {
+          const profile = JSON.parse(cachedProfile);
+          setUserProfile(profile);
+          console.log('👤 Loaded user profile from cache');
+          return;
+        } catch (e) {
+          // Invalid cache, continue to fetch
+        }
+      }
+      
+      try {
+        const response = await authenticatedFetch(apiEndpoint('/api/user-data/dashboard'));
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.data?.profile) {
+            setUserProfile(data.data.profile);
+            // Cache the profile data for future page loads
+            localStorage.setItem('spotify_user_profile', JSON.stringify(data.data.profile));
+            console.log('👤 Loaded user profile with avatar and cached it');
+          }
+        }
+      } catch (error) {
+        console.error('❌ Error loading user profile:', error);
+      }
+    };
+    loadUserProfile();
+  }, [isAuthenticated]);
+
   // Redirect to landing page if not authenticated (but not if they have expired tokens)
   useEffect(() => {
     console.log('🔄 MainApp: Auth redirect check -', { checking, authLoading, isAuthenticated });
@@ -280,10 +347,22 @@ const MainApp: React.FC = () => {
     }
   }, [checking, authLoading, isAuthenticated, navigate]);
 
-  const showToast = (message: string) => {
-    setToast(message);
-    setTimeout(() => setToast(null), 3000);
-  };
+  // Listen for device change events
+  useEffect(() => {
+    const handleDeviceChanged = (event: CustomEvent) => {
+      const { success, device, error } = event.detail;
+      if (success) {
+        showToast(`Device changed to ${device}`, 'success');
+      } else {
+        showToast(error || 'Failed to change device', 'error');
+      }
+    };
+
+    window.addEventListener('device-changed', handleDeviceChanged as EventListener);
+    return () => {
+      window.removeEventListener('device-changed', handleDeviceChanged as EventListener);
+    };
+  }, [showToast]);
 
   // Typing animation function
   const animateTyping = (text: string, onComplete?: () => void) => {
@@ -341,7 +420,8 @@ const MainApp: React.FC = () => {
         showToast(
           newFeedback === 'remove' 
             ? 'Feedback removed' 
-            : `Thanks for the feedback!`
+            : `Thanks for the feedback!`,
+          'success'
         );
       } catch (error) {
         console.error('Failed to record feedback:', error);
@@ -395,7 +475,8 @@ const MainApp: React.FC = () => {
         showToast(
           newFeedback === 'remove' 
             ? 'Feedback removed' 
-            : `Thanks for the feedback!`
+            : `Thanks for the feedback!`,
+          'success'
         );
       } catch (error) {
         console.error('Failed to record feedback:', error);
@@ -662,6 +743,12 @@ const MainApp: React.FC = () => {
 
   return (
     <div className="chat-container">
+      {/* Auto-initialize Web Player SDK (invisible) */}
+      {isAuthenticated && <WebPlayerAutoInit />}
+      
+      {/* Toast Notifications */}
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
+      
       {/* Chat Messages Container */}
       <div className="chat-messages">
         {/* Auth errors are now handled by redirect to /landing */}
@@ -670,10 +757,15 @@ const MainApp: React.FC = () => {
         {devicePreference === 'web-player' && isAuthenticated ? (
           <div className="hidden md:block fixed top-20 left-1/2 -translate-x-1/2 z-10" style={{ maxWidth: '600px', width: '90%' }}>
             <div className="bg-zinc-900/95 backdrop-blur-sm border border-zinc-700 rounded-lg shadow-lg">
-              {/* TODO: Update SpotifyPlayer to use new auth system */}
-              <div className="p-4 text-center text-zinc-400">
-                Web Player temporarily disabled during auth migration
-              </div>
+              <SpotifyPlayer
+                onDeviceReady={(deviceId) => {
+                  console.log('[MainApp] Web Player device ready:', deviceId);
+                  showToast('Web Player ready!', 'success');
+                }}
+                onPlayerStateChanged={(state) => {
+                  console.log('[MainApp] Web Player state changed:', state);
+                }}
+              />
             </div>
           </div>
         ) : (
@@ -728,6 +820,7 @@ const MainApp: React.FC = () => {
                 <ChatMessage
                   key={index}
                   {...item}
+                  userAvatar={userProfile?.images?.[0]?.url}
                   onFeedback={handleFeedback}
                   onAlternativeClick={handleAlternativeClick}
                   onClarificationOption={handleClarificationOption}
@@ -1039,12 +1132,6 @@ const MainApp: React.FC = () => {
         </div>
       )}
 
-      {/* Toast Notification */}
-      {toast && (
-        <div className="fixed bottom-4 right-4 bg-zinc-800 text-white px-4 py-2 rounded-lg shadow-lg animate-[slideIn_0.3s_ease-out]">
-          {toast}
-        </div>
-      )}
 
       {/* Queue Display Modal - Rendered at root level to avoid z-index issues */}
       {showQueue && <QueueDisplay onClose={() => setShowQueue(false)} />}

@@ -28,6 +28,7 @@ import { createRedisClient, checkRedisHealth } from './config/redis';
 import { RedisUtils } from './utils/redis-utils';
 import weatherRouter from './routes/weather';
 import userDataRouter from './routes/user-data';
+import { webPlayerRouter } from './routes/web-player';
 import { overrideConsole, logger } from './utils/logger';
 import { playbackEventService } from './services/event-emitter.service';
 import { sseConnectionManager } from './services/sse-connection-manager';
@@ -175,6 +176,7 @@ async function initializeAndStart() {
     // New auth system (Phase 2 implementation)
     app.use('/api/auth', authRouter);
     app.use('/api/control', controlRouter);
+    app.use('/api/web-player', webPlayerRouter);
     
     // Use flexible LLM interpreter by default (production-ready) 
     app.use('/api/llm/simple', simpleLLMInterpreterRouter);

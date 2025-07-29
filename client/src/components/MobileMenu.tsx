@@ -4,8 +4,10 @@ import ModelSelector from './ModelSelector';
 import DeviceSelector from './DeviceSelector';
 import WeatherDisplay from './WeatherDisplay';
 import PlaybackControls from './PlaybackControls';
+import SpotifyPlayer from './SpotifyPlayer';
 import QueueDisplay from './QueueDisplay';
 import { useAuth } from '../contexts/AuthContext';
+import { webPlayerService } from '../services/webPlayer.service';
 
 interface MobileMenuProps {
   isOpen: boolean;
@@ -78,6 +80,14 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
     };
   }, [isOpen]);
 
+  // Clean up web player when device preference changes away from web-player
+  useEffect(() => {
+    if (devicePreference !== 'web-player') {
+      // Disconnect the web player when not in use
+      webPlayerService.disconnect();
+    }
+  }, [devicePreference]);
+
   return (
     <>
       {/* Backdrop */}
@@ -90,8 +100,8 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
 
       {/* Slide-out menu */}
       <div
-        className={`fixed top-0 right-0 h-full w-80 bg-zinc-900 border-l border-zinc-800 z-50 transform transition-transform duration-300 md:hidden ${
-          isOpen ? 'translate-x-0' : 'translate-x-full'
+        className={`fixed top-0 left-0 h-full w-full bg-zinc-900 z-50 transform transition-transform duration-300 md:hidden ${
+          isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
         style={{ paddingTop: 'env(safe-area-inset-top)' }}
       >
@@ -134,9 +144,14 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
             <div>
               <h3 className="text-sm font-medium text-gray-400 mb-2">Playback</h3>
               {devicePreference === 'web-player' && isAuthenticated ? (
-                <div className="p-4 text-center text-zinc-400">
-                  Web Player temporarily disabled during auth migration
-                </div>
+                <SpotifyPlayer
+                  onDeviceReady={(deviceId) => {
+                    console.log('[MobileMenu] Web Player device ready:', deviceId);
+                  }}
+                  onPlayerStateChanged={(state) => {
+                    console.log('[MobileMenu] Web Player state changed:', state);
+                  }}
+                />
               ) : (
                 <PlaybackControls onShowQueue={() => setShowQueue(true)} isMobile />
               )}

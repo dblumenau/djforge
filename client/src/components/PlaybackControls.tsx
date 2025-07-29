@@ -209,9 +209,20 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue, isMobi
   useEffect(() => {
     fetchPlaybackState();
     
+    // Add Page Visibility API listener
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('[PlaybackControls] Page became visible, refreshing playback state...');
+        fetchPlaybackState(true); // Immediate fetch when page becomes visible
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
     return () => {
       if (pollTimeoutId) clearTimeout(pollTimeoutId);
       if (animationFrameId) cancelAnimationFrame(animationFrameId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
 

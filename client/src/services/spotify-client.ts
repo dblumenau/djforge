@@ -47,6 +47,7 @@ export class SpotifyClient {
     
     return fetch(apiEndpoint(`/api${endpoint}`), {
       ...options,
+      credentials: 'include',
       headers: {
         'X-Session-ID': sessionId,
         'Content-Type': 'application/json',

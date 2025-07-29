@@ -1,250 +1,26 @@
-import React, { useEffect, useState, useRef } from 'react';
-
-declare global {
-  interface Window {
-    onSpotifyWebPlaybackSDKReady: () => void;
-    Spotify: any;
-  }
-}
+import React from 'react';
+import { useWebPlayer } from '../hooks/useWebPlayer';
 
 interface SpotifyPlayerProps {
-  token: string;
   onDeviceReady?: (deviceId: string) => void;
   onPlayerStateChanged?: (state: Spotify.PlaybackState | null) => void;
 }
 
-interface PlayerState {
-  isPaused: boolean;
-  isActive: boolean;
-  currentTrack: {
-    name: string;
-    artists: string;
-    album: string;
-    albumArt: string;
-    duration: number;
-    position: number;
-  } | null;
-  deviceId: string | null;
-}
-
-interface PositionTracker {
-  lastKnownPosition: number;
-  lastKnownTimestamp: number;
-  isPlaying: boolean;
-  timerId: number | null;
-}
-
-const SpotifyPlayer: React.FC<SpotifyPlayerProps> = ({ token, onDeviceReady, onPlayerStateChanged }) => {
-  console.log('[SpotifyPlayer] Component rendering with token:', token ? 'present' : 'missing');
+const SpotifyPlayer: React.FC<SpotifyPlayerProps> = ({ onDeviceReady }) => {
+  console.log('[SpotifyPlayer] Component rendering');
   
-  const [playerState, setPlayerState] = useState<PlayerState>({
-    isPaused: true,
-    isActive: false,
-    currentTrack: null,
-    deviceId: null
-  });
-  const [sdkReady, setSdkReady] = useState(false);
-  const playerRef = useRef<Spotify.Player | null>(null);
-  const positionTrackerRef = useRef<PositionTracker>({
-    lastKnownPosition: 0,
-    lastKnownTimestamp: 0,
-    isPlaying: false,
-    timerId: null
-  });
-
-  // Position tracking functions - Rate-limit safe!
-  const startPositionTimer = () => {
-    const tracker = positionTrackerRef.current;
-    if (tracker.timerId) return;
-
-    tracker.timerId = window.setInterval(() => {
-      if (!tracker.isPlaying) return;
-
-      // Calculate current position using drift correction
-      const elapsed = Date.now() - tracker.lastKnownTimestamp;
-      const currentPosition = tracker.lastKnownPosition + elapsed;
-
-      // Update UI position without API calls
-      setPlayerState(prev => ({
-        ...prev,
-        currentTrack: prev.currentTrack ? {
-          ...prev.currentTrack,
-          position: Math.min(currentPosition, prev.currentTrack.duration)
-        } : null
-      }));
-    }, 250); // 4 FPS - smooth but efficient
-  };
-
-  const stopPositionTimer = () => {
-    const tracker = positionTrackerRef.current;
-    if (tracker.timerId) {
-      clearInterval(tracker.timerId);
-      tracker.timerId = null;
-    }
-  };
-
-  const syncPosition = (position: number, timestamp: number, paused: boolean) => {
-    const tracker = positionTrackerRef.current;
-    
-    // Drift correction: account for event delivery latency
-    const localTime = Date.now();
-    const correctedPosition = paused ? position : position + (localTime - timestamp);
-
-    tracker.lastKnownPosition = correctedPosition;
-    tracker.lastKnownTimestamp = localTime;
-    tracker.isPlaying = !paused;
-
-    // Always restart timer on sync
-    stopPositionTimer();
-    if (tracker.isPlaying) {
-      startPositionTimer();
-    }
-  };
-
-  // Handle tab visibility changes to prevent drift
-  useEffect(() => {
-    const handleVisibilityChange = async () => {
-      if (document.visibilityState === 'visible' && positionTrackerRef.current.isPlaying && playerRef.current) {
-        try {
-          const state = await playerRef.current.getCurrentState();
-          if (state && !state.paused) {
-            syncPosition(state.position, state.timestamp || Date.now(), state.paused);
-          }
-        } catch (error) {
-          console.log('Tab visibility re-sync failed (non-critical):', error);
-        }
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, []);
-
-  // Cleanup timer on unmount
-  useEffect(() => {
-    return () => stopPositionTimer();
-  }, []);
-
-  // Load Spotify Web Playback SDK
-  useEffect(() => {
-    const script = document.createElement('script');
-    script.src = 'https://sdk.scdn.co/spotify-player.js';
-    script.async = true;
-
-    document.body.appendChild(script);
-
-    window.onSpotifyWebPlaybackSDKReady = () => {
-      setSdkReady(true);
-    };
-
-    return () => {
-      document.body.removeChild(script);
-    };
-  }, []);
-
-  // Initialize player when SDK is ready
-  useEffect(() => {
-    if (!sdkReady || !token) return;
-
-    const spotifyPlayer = new window.Spotify.Player({
-      name: 'DJForge Web Player',
-      getOAuthToken: (cb: (token: string) => void) => {
-        cb(token);
-      },
-      volume: 0.5
-    });
-
-    // Error handling
-    spotifyPlayer.addListener('initialization_error', ({ message }: Spotify.Error) => {
-      console.error('Failed to initialize:', message);
-    });
-
-    spotifyPlayer.addListener('authentication_error', ({ message }: Spotify.Error) => {
-      console.error('Authentication error:', message);
-    });
-
-    spotifyPlayer.addListener('account_error', ({ message }: Spotify.Error) => {
-      console.error('Account error:', message);
-    });
-
-    spotifyPlayer.addListener('playback_error', ({ message }: Spotify.Error) => {
-      console.error('Playback error:', message);
-    });
-
-    // Handle autoplay failure
-    spotifyPlayer.addListener('autoplay_failed', () => {
-      console.log('Autoplay failed - user interaction required');
-    });
-
-    // Ready
-    spotifyPlayer.addListener('ready', ({ device_id }: { device_id: string }) => {
-      console.log('Ready with Device ID', device_id);
-      setPlayerState(prev => ({ ...prev, deviceId: device_id }));
-      if (onDeviceReady) {
-        onDeviceReady(device_id);
-      }
-    });
-
-    // Not Ready
-    spotifyPlayer.addListener('not_ready', ({ device_id }: { device_id: string }) => {
-      console.log('Device ID has gone offline', device_id);
-      setPlayerState(prev => ({ ...prev, deviceId: null, isActive: false }));
-    });
-
-    // Player state changed - our sync point for rate-limit-safe position tracking
-    spotifyPlayer.addListener('player_state_changed', (state: Spotify.PlaybackState | null) => {
-      if (!state) {
-        stopPositionTimer();
-        return;
-      }
-
-      const currentTrack = state.track_window.current_track;
-      
-      // Sync position tracker with SDK event (rate-limit free!)
-      syncPosition(state.position, state.timestamp || Date.now(), state.paused);
-      
-      setPlayerState({
-        isPaused: state.paused,
-        isActive: !state.paused,
-        currentTrack: currentTrack ? {
-          name: currentTrack.name,
-          artists: currentTrack.artists.map((a: Spotify.Artist) => a.name).join(', '),
-          album: currentTrack.album.name,
-          albumArt: currentTrack.album.images[0]?.url || '',
-          duration: currentTrack.duration_ms,
-          position: state.position // Initial position, timer will update this
-        } : null,
-        deviceId: playerState.deviceId
-      });
-
-      if (onPlayerStateChanged) {
-        onPlayerStateChanged(state);
-      }
-    });
-
-    // Connect to the player
-    spotifyPlayer.connect();
-
-    playerRef.current = spotifyPlayer;
-
-    return () => {
-      stopPositionTimer();
-      spotifyPlayer.disconnect();
-    };
-  }, [sdkReady, token]);
+  const {
+    playerState,
+    error,
+    togglePlayPause,
+    nextTrack,
+    previousTrack
+  } = useWebPlayer(onDeviceReady);
 
   // Handle play/pause button click
   const handlePlayPause = async () => {
-    if (!playerRef.current) return;
-
     try {
-      if (playerState.isPaused) {
-        await playerRef.current.resume();
-        // Position tracking will be managed by the player_state_changed event
-      } else {
-        await playerRef.current.pause();
-        // Position tracking will be managed by the player_state_changed event
-      }
+      await togglePlayPause();
     } catch (error) {
       console.error('Play/pause error:', error);
     }
@@ -252,10 +28,8 @@ const SpotifyPlayer: React.FC<SpotifyPlayerProps> = ({ token, onDeviceReady, onP
 
   // Handle skip to next track
   const handleSkipNext = async () => {
-    if (!playerRef.current) return;
-
     try {
-      await playerRef.current.nextTrack();
+      await nextTrack();
     } catch (error) {
       console.error('Skip next error:', error);
     }
@@ -263,10 +37,8 @@ const SpotifyPlayer: React.FC<SpotifyPlayerProps> = ({ token, onDeviceReady, onP
 
   // Handle skip to previous track
   const handleSkipPrevious = async () => {
-    if (!playerRef.current) return;
-
     try {
-      await playerRef.current.previousTrack();
+      await previousTrack();
     } catch (error) {
       console.error('Skip previous error:', error);
     }
@@ -284,6 +56,17 @@ const SpotifyPlayer: React.FC<SpotifyPlayerProps> = ({ token, onDeviceReady, onP
   const progressPercent = playerState.currentTrack 
     ? (playerState.currentTrack.position / playerState.currentTrack.duration) * 100
     : 0;
+
+  if (error) {
+    return (
+      <div className="bg-gray-800 rounded-lg p-6 shadow-lg border border-gray-700">
+        <div className="text-center text-red-400">
+          <p className="text-sm">Web Player Error</p>
+          <p className="text-xs mt-2">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!playerState.currentTrack) {
     return (
