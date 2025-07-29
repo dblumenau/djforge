@@ -29,6 +29,16 @@ const refreshJWT = async (): Promise<boolean> => {
     });
 
     if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      
+      // Check if token was revoked
+      if (errorData.requiresReauth || response.headers.get('X-Auth-Error') === 'token_revoked') {
+        console.error('🚨 Token revoked - clearing auth and redirecting to login');
+        localStorage.removeItem('spotify_jwt');
+        window.location.href = '/landing';
+        return false;
+      }
+      
       throw new Error('Token refresh failed');
     }
 

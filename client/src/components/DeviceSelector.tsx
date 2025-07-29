@@ -63,26 +63,29 @@ const DeviceSelector: React.FC<DeviceSelectorProps> = ({ onDeviceChange, compact
   }, []);
 
   // Handle device selection
-  const handleDeviceSelect = async (deviceId: string | 'auto') => {
+  const handleDeviceSelect = async (deviceId: string | 'auto' | 'web-player') => {
+    console.log('[DeviceSelector] Device selected:', deviceId);
     setSelectedDevice(deviceId);
     setIsOpen(false);
     
     // Save preference
     localStorage.setItem('spotifyDevicePreference', deviceId);
+    console.log('[DeviceSelector] Saved to localStorage:', deviceId);
     
     // Notify parent component
     if (onDeviceChange) {
       onDeviceChange(deviceId);
     }
     
-    // If not auto, transfer playback to the selected device
-    if (deviceId !== 'auto') {
+    // If not auto or web-player, transfer playback to the selected device
+    if (deviceId !== 'auto' && deviceId !== 'web-player') {
       try {
         await api.post('/api/control/transfer', { deviceId, play: false });
       } catch (error) {
         console.error('Failed to transfer playback:', error);
       }
     }
+    // Note: web-player transfer will be handled by the SpotifyPlayer component itself
   };
 
   // Get device icon based on type
@@ -103,6 +106,9 @@ const DeviceSelector: React.FC<DeviceSelectorProps> = ({ onDeviceChange, compact
   const getSelectedDisplayName = () => {
     if (selectedDevice === 'auto') {
       return compact ? 'Auto' : 'Auto - Use last active';
+    }
+    if (selectedDevice === 'web-player') {
+      return compact ? '🎵' : '🎵 Built In Player';
     }
     const device = devices.find(d => d.id === selectedDevice);
     if (compact && device) {
@@ -158,6 +164,29 @@ const DeviceSelector: React.FC<DeviceSelectorProps> = ({ onDeviceChange, compact
                     Currently: {currentDevice.name}
                   </span>
                 )}
+              </button>
+
+              {/* Built In Player option */}
+              <button
+                onClick={() => handleDeviceSelect('web-player')}
+                className={`w-full text-left px-4 py-3 hover:bg-gray-700 transition-colors ${
+                  selectedDevice === 'web-player' ? 'bg-gray-700' : ''
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">🎵</span>
+                    <span className="text-white">Built In Player</span>
+                  </div>
+                  {selectedDevice === 'web-player' && (
+                    <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </div>
+                <span className="text-xs text-gray-400 mt-1 block">
+                  Play music directly in your browser
+                </span>
               </button>
 
               {/* Divider */}

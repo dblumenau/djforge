@@ -12,13 +12,15 @@ interface HeaderNavProps {
   isDevMode?: boolean;
   onExpireTokens?: () => void;
   onRevokeTokens?: () => void;
+  isAdmin?: boolean;
 }
 
 const HeaderNav: React.FC<HeaderNavProps> = ({
   onModelChange,
   onDeviceChange,
   onLogout,
-  onMenuToggle
+  onMenuToggle,
+  isAdmin = false
 }) => {
   const navigate = useNavigate();
 
@@ -78,6 +80,15 @@ const HeaderNav: React.FC<HeaderNavProps> = ({
                 <span className="hidden lg:inline">📋 Logs</span>
                 <span className="lg:hidden">📋</span>
               </button>
+              {isAdmin && (
+                <button 
+                  className="px-2 lg:px-3 py-1.5 bg-purple-900/20 hover:bg-purple-900/30 text-purple-300 hover:text-purple-200 border border-purple-800/50 hover:border-purple-700/50 rounded-md transition-all text-xs font-medium"
+                  onClick={() => navigate('/admin/sse-status')}
+                >
+                  <span className="hidden lg:inline">🔌 SSE Status</span>
+                  <span className="lg:hidden">🔌</span>
+                </button>
+              )}
               <button 
                 className="px-2 lg:px-3 py-1.5 bg-blue-900/20 hover:bg-blue-900/30 text-blue-300 hover:text-blue-200 border border-blue-800/50 hover:border-blue-700/50 rounded-md transition-all text-xs font-medium"
                 onClick={() => window.location.reload()}

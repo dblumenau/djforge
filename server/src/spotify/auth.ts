@@ -213,6 +213,31 @@ export async function ensureValidToken(req: any, res: any, next: any) {
       console.log('Token refreshed successfully');
     } catch (error: any) {
       console.error('Token refresh failed:', error.response?.data || error.message || 'Unknown error');
+      
+      // Check if it's a revoked token error
+      if (error.response?.data?.error === 'invalid_grant') {
+        console.error('🚨 Refresh token revoked - clearing session');
+        
+        // Clear JWT-based auth
+        if (jwtToken) {
+          // Tell client to clear their JWT
+          res.setHeader('X-Auth-Error', 'token_revoked');
+        }
+        
+        // Clear session-based auth
+        if (req.session) {
+          req.session.destroy((err) => {
+            if (err) console.error('Error destroying session:', err);
+          });
+        }
+        
+        return res.status(401).json({ 
+          error: 'Token revoked', 
+          requiresReauth: true,
+          message: 'Your Spotify authorization has been revoked. Please log in again.'
+        });
+      }
+      
       return res.status(401).json({ error: 'Token refresh failed' });
     }
   } else {
@@ -320,6 +345,16 @@ authRouter.post('/refresh', async (req, res) => {
     
   } catch (error: any) {
     console.error('Token refresh error:', error.response?.data || error.message || 'Unknown error');
+    
+    // Check if it's a revoked token error
+    if (error.response?.data?.error === 'invalid_grant') {
+      return res.status(401).json({ 
+        error: 'Token revoked', 
+        requiresReauth: true,
+        message: 'Your Spotify authorization has been revoked. Please log in again.'
+      });
+    }
+    
     res.status(401).json({ error: 'Token refresh failed' });
   }
 });
@@ -409,6 +444,38 @@ authRouter.post('/logout', (req, res) => {
     }
     res.json({ success: true });
   });
+});
+
+// Admin check endpoint
+authRouter.get('/admin-check', ensureValidToken, async (req: any, res) => {
+  try {
+    // Import SpotifyControl dynamically to avoid circular dependencies
+    const { SpotifyControl } = await import('./control');
+    
+    // Get user profile to check admin status
+    const spotifyControl = new SpotifyControl(
+      req.spotifyTokens!,
+      (tokens) => { req.spotifyTokens = tokens; }
+    );
+    
+    const profile = await spotifyControl.getUserProfile();
+    const adminId = process.env.ADMIN_SPOTIFY_ID || '';
+    const isAdmin = profile.id === adminId;
+    
+    console.log('[Admin Check] User ID:', profile.id, 'Admin ID:', adminId, 'Is Admin:', isAdmin);
+    
+    res.json({
+      success: true,
+      isAdmin,
+      userId: profile.id
+    });
+  } catch (error: any) {
+    console.error('Admin check failed:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Admin check failed'
+    });
+  }
 });
 
 // In-memory refresh promise cache to prevent thundering herd

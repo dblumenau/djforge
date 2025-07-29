@@ -4,7 +4,10 @@ import ModelSelector from './ModelSelector';
 import DeviceSelector from './DeviceSelector';
 import WeatherDisplay from './WeatherDisplay';
 import PlaybackControls from './PlaybackControls';
+import SpotifyPlayer from './SpotifyPlayer';
 import QueueDisplay from './QueueDisplay';
+import { useSpotifyAuth } from '../hooks/useSpotifyAuth';
+import { api } from '../utils/api';
 
 interface MobileMenuProps {
   isOpen: boolean;
@@ -12,6 +15,7 @@ interface MobileMenuProps {
   onModelChange: (model: string) => void;
   onDeviceChange: (deviceId: string | 'auto') => void;
   onLogout: () => void;
+  isAdmin?: boolean;
 }
 
 const MobileMenu: React.FC<MobileMenuProps> = ({
@@ -19,10 +23,13 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
   onClose,
   onModelChange,
   onDeviceChange,
-  onLogout
+  onLogout,
+  isAdmin = false
 }) => {
   const navigate = useNavigate();
   const [showQueue, setShowQueue] = useState(false);
+  const [devicePreference, setDevicePreference] = useState<string>('auto');
+  const { accessToken } = useSpotifyAuth();
 
   // Close menu on escape key
   useEffect(() => {
@@ -44,6 +51,39 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
     }
     return () => {
       document.body.style.overflow = '';
+    };
+  }, [isOpen]);
+
+  // Track device preference from localStorage
+  useEffect(() => {
+    const checkDevicePreference = () => {
+      const savedPreference = localStorage.getItem('spotifyDevicePreference') || 'auto';
+      setDevicePreference(savedPreference);
+    };
+    
+    // Check initially and when menu opens
+    if (isOpen) {
+      checkDevicePreference();
+    }
+    
+    // Listen for storage changes
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'spotifyDevicePreference') {
+        checkDevicePreference();
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Also check periodically when menu is open
+    let interval: NodeJS.Timeout | null = null;
+    if (isOpen) {
+      interval = setInterval(checkDevicePreference, 1000);
+    }
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      if (interval) clearInterval(interval);
     };
   }, [isOpen]);
 
@@ -99,10 +139,22 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
               </div>
             </div>
 
-            {/* Playback Controls */}
+            {/* Playback Controls or Web Player */}
             <div>
               <h3 className="text-sm font-medium text-gray-400 mb-2">Playback</h3>
-              <PlaybackControls onShowQueue={() => setShowQueue(true)} isMobile />
+              {devicePreference === 'web-player' && accessToken ? (
+                <SpotifyPlayer 
+                  token={accessToken}
+                  onDeviceReady={(deviceId) => {
+                    console.log('[MobileMenu] Web Player device ready:', deviceId);
+                    // Transfer playback to web player
+                    api.post('/api/control/transfer', { deviceId, play: false })
+                      .catch(err => console.error('Failed to transfer to web player:', err));
+                  }}
+                />
+              ) : (
+                <PlaybackControls onShowQueue={() => setShowQueue(true)} isMobile />
+              )}
             </div>
 
             {/* Navigation */}
@@ -149,6 +201,18 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
                   <span>📋</span>
                   <span>Logs</span>
                 </button>
+                {isAdmin && (
+                  <button
+                    onClick={() => {
+                      navigate('/admin/sse-status');
+                      onClose();
+                    }}
+                    className="w-full px-4 py-2 bg-purple-900/20 hover:bg-purple-900/30 text-purple-300 hover:text-purple-200 text-left rounded-lg transition-colors flex items-center gap-2"
+                  >
+                    <span>🔌</span>
+                    <span>SSE Status</span>
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     window.location.reload();

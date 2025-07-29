@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import MusicLoader from './MusicLoader';
 import PlaybackControls from './PlaybackControls';
+import SpotifyPlayer from './SpotifyPlayer';
 import CommandHistorySkeleton from './skeletons/CommandHistorySkeleton';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
@@ -36,6 +37,7 @@ const ExampleList: React.FC<{ examples: string[]; onSelectExample: (example: str
 };
 
 const MainApp: React.FC = () => {
+  console.log('[MainApp] Component mounted/rendered - Web Player feature enabled');
   const navigate = useNavigate();
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const typeAnimationRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -89,8 +91,40 @@ const MainApp: React.FC = () => {
     uiType?: string;
   }>>([]);
   const [commandHistoryLoading, setCommandHistoryLoading] = useState(false);
-  // @ts-ignore - Will be used for device preference persistence
   const [devicePreference, setDevicePreference] = useState<string>('auto');
+  const [webPlayerDeviceId, setWebPlayerDeviceId] = useState<string | null>(null);
+  // @ts-ignore - Will be used for future features
+  webPlayerDeviceId;
+  const { accessToken } = useSpotifyAuth();
+  
+  // Track device preference from localStorage
+  useEffect(() => {
+    const checkDevicePreference = () => {
+      const savedPreference = localStorage.getItem('spotifyDevicePreference') || 'auto';
+      console.log('[MainApp] Device preference from localStorage:', savedPreference);
+      setDevicePreference(savedPreference);
+    };
+    
+    // Check initially
+    checkDevicePreference();
+    
+    // Listen for storage changes (from DeviceSelector in header)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'spotifyDevicePreference') {
+        checkDevicePreference();
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Also check periodically in case storage event is missed
+    const interval = setInterval(checkDevicePreference, 1000);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
+  }, []);
   
   // Extract all track IDs from alternatives and main tracks in command history
   const allTrackIds = commandHistory.reduce((ids: string[], item) => {
@@ -661,12 +695,30 @@ const MainApp: React.FC = () => {
           </div>
         )}
 
-        {/* Playback Controls - Floating on desktop, in menu on mobile */}
-        <div className="hidden md:block fixed top-20 left-1/2 -translate-x-1/2 z-10" style={{ maxWidth: '600px', width: '90%' }}>
-          <div className="bg-zinc-900/95 backdrop-blur-sm border border-zinc-700 rounded-lg shadow-lg">
-            <PlaybackControls onShowQueue={() => setShowQueue(true)} />
+        {/* Playback Controls or Web Player - Floating on desktop, in menu on mobile */}
+        {console.log('[MainApp] Rendering decision:', { devicePreference, hasAccessToken: !!accessToken })}
+        {devicePreference === 'web-player' && accessToken ? (
+          <div className="hidden md:block fixed top-20 left-1/2 -translate-x-1/2 z-10" style={{ maxWidth: '600px', width: '90%' }}>
+            <div className="bg-zinc-900/95 backdrop-blur-sm border border-zinc-700 rounded-lg shadow-lg">
+              <SpotifyPlayer 
+                token={accessToken}
+                onDeviceReady={(deviceId) => {
+                  console.log('Web Player device ready:', deviceId);
+                  setWebPlayerDeviceId(deviceId);
+                  // Transfer playback to web player
+                  api.post('/api/control/transfer', { deviceId, play: false })
+                    .catch(err => console.error('Failed to transfer to web player:', err));
+                }}
+              />
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="hidden md:block fixed top-20 left-1/2 -translate-x-1/2 z-10" style={{ maxWidth: '600px', width: '90%' }}>
+            <div className="bg-zinc-900/95 backdrop-blur-sm border border-zinc-700 rounded-lg shadow-lg">
+              <PlaybackControls onShowQueue={() => setShowQueue(true)} />
+            </div>
+          </div>
+        )}
 
         {/* Messages Content */}
         <div 

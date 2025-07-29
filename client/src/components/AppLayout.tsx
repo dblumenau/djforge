@@ -14,7 +14,27 @@ interface AppLayoutProps {
 const AppLayoutInner: React.FC<AppLayoutProps> = ({ children }) => {
   const { isAuthenticated, loading, logout } = useSpotifyAuth();
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const { setCurrentModel } = useModel();
+
+  // Check admin status on mount - MUST be before any conditional returns
+  React.useEffect(() => {
+    const checkAdminStatus = async () => {
+      try {
+        const response = await api.get('/api/auth/admin-check');
+        if (response.ok) {
+          const data = await response.json();
+          setIsAdmin(data.isAdmin);
+        }
+      } catch (error) {
+        console.error('Failed to check admin status:', error);
+      }
+    };
+    
+    if (isAuthenticated) {
+      checkAdminStatus();
+    }
+  }, [isAuthenticated]);
 
   // Show loading state while checking authentication
   if (loading) {
@@ -124,6 +144,7 @@ const AppLayoutInner: React.FC<AppLayoutProps> = ({ children }) => {
         isDevMode={import.meta.env.DEV}
         onExpireTokens={handleExpireTokens}
         onRevokeTokens={handleRevokeTokens}
+        isAdmin={isAdmin}
       />
 
       {/* Mobile Menu */}
@@ -133,6 +154,7 @@ const AppLayoutInner: React.FC<AppLayoutProps> = ({ children }) => {
         onModelChange={handleModelSelect}
         onDeviceChange={handleDeviceChange}
         onLogout={logout}
+        isAdmin={isAdmin}
       />
 
       {/* Main Content Area */}

@@ -42,6 +42,7 @@ export function useSSE(options: UseSSEOptions = {}) {
   const [isConnected, setIsConnected] = useState(false);
   const [lastEvent, setLastEvent] = useState<PlaybackEvent | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
+  const reconnectAttemptsRef = useRef(0);
   
   // Store callbacks in refs to keep them stable
   const onEventRef = useRef(options.onEvent);
@@ -79,6 +80,8 @@ export function useSSE(options: UseSSEOptions = {}) {
     eventSource.onopen = () => {
       console.log('[SSE] Connection opened');
       setIsConnected(true);
+      // Reset reconnect attempts on successful connection
+      reconnectAttemptsRef.current = 0;
       // Use ref instead of direct callback
       onConnectRef.current?.();
     };
@@ -102,9 +105,22 @@ export function useSSE(options: UseSSEOptions = {}) {
       onErrorRef.current?.(new Error('SSE connection failed'));
       onDisconnectRef.current?.();
       
-      // Let EventSource handle reconnection automatically
-      // We'll only intervene if we get an auth error
-      console.log('[SSE] EventSource will handle reconnection automatically');
+      // EventSource will try to reconnect automatically
+      // But we track attempts for exponential backoff on connection limits
+      console.log('[SSE] Connection error - EventSource will attempt reconnection');
+      
+      // If we're getting repeated errors, slow down reconnection
+      if (reconnectAttemptsRef.current > 3) {
+        console.warn('[SSE] Multiple reconnection failures, closing connection');
+        eventSource.close();
+        eventSourceRef.current = null;
+        
+        // Try again after a longer delay
+        setTimeout(() => {
+          reconnectAttemptsRef.current = 0;
+          connect();
+        }, 60000); // 1 minute
+      }
     };
     
     // Handle SSE error events from server
@@ -147,11 +163,15 @@ export function useSSE(options: UseSSEOptions = {}) {
           setIsConnected(false);
           onDisconnectRef.current?.();
           
-          // Reconnect after a delay to avoid hammering the server
+          // Reconnect after a longer delay to avoid hammering the server
+          // Use exponential backoff
+          const backoffDelay = Math.min(30000, 5000 * Math.pow(2, reconnectAttemptsRef.current));
+          reconnectAttemptsRef.current++;
+          console.log(`[SSE] Will reconnect after ${backoffDelay}ms (attempt ${reconnectAttemptsRef.current})`);
           setTimeout(() => {
             console.log('[SSE] Attempting reconnection after connection limit');
             connect();
-          }, 5000); // 5 second delay
+          }, backoffDelay);
         } else if (data.code === 'TIMEOUT') {
           console.warn('[SSE] Connection timed out, closing');
           eventSource.close();

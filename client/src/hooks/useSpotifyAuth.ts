@@ -65,6 +65,32 @@ export const useSpotifyAuth = () => {
       });
 
       if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        
+        // Check if this is a revoked token that requires re-auth
+        if (errorData.requiresReauth || response.headers.get('X-Auth-Error') === 'token_revoked') {
+          console.error('🚨 Refresh token was revoked - user must re-authenticate');
+          // Clear the JWT since it contains a revoked refresh token
+          localStorage.removeItem('spotify_jwt');
+          clearSentryUserContext();
+          
+          // Set state to not authenticated
+          setAuthState({
+            isAuthenticated: false,
+            accessToken: null,
+            loading: false,
+            error: 'Your Spotify authorization was revoked. Please log in again.'
+          });
+          
+          // Notify subscribers
+          onRefreshed(null);
+          isRefreshing = false;
+          
+          // Redirect to landing page
+          window.location.href = '/landing';
+          return;
+        }
+        
         throw new Error('Token refresh failed');
       }
 
