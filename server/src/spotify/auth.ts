@@ -172,8 +172,15 @@ export async function ensureValidToken(req: any, res: any, next: any) {
   const tokenAge = Date.now() - tokenTimestamp;
   const expiresIn = tokens.expires_in * 1000; // Convert to milliseconds
   
+  // DEBUG: Log token age for every request
+  if (req.path.includes('user-data')) {
+    console.log(`⏰ Token age check: age=${Math.round(tokenAge/1000)}s, expires_in=${expiresIn/1000}s, needs_refresh=${tokenAge > expiresIn - 600000}, endpoint=${req.path}`);
+  }
+  
   // Refresh if token is older than 50 minutes (leaving 10 min buffer)
   if (tokenAge > expiresIn - 600000) {
+    console.log(`🕐 Token refresh needed: age=${Math.round(tokenAge/1000)}s, expires=${expiresIn/1000}s, endpoint=${req.path}`);
+    console.log(`🔑 Using refresh token: ${tokens.refresh_token.substring(0, 20)}...`);
     try {
       const newTokens = await refreshAccessToken(tokens.refresh_token);
       // CRITICAL: Always use the new refresh_token if Spotify provides one
@@ -184,10 +191,15 @@ export async function ensureValidToken(req: any, res: any, next: any) {
         refresh_token: newTokens.refresh_token || tokens.refresh_token
       };
       
+      if (newTokens.refresh_token && newTokens.refresh_token !== tokens.refresh_token) {
+        console.log(`🔄 NEW refresh token received: ${newTokens.refresh_token.substring(0, 20)}...`);
+      }
+      
       if (jwtToken) {
         // For JWT auth, we can't refresh in place - client needs to get new JWT
         // BUT we must use the refreshed tokens with the NEW refresh_token
         req.spotifyTokens = refreshedTokens; // Use refreshed tokens, not old ones!
+        req.tokenTimestamp = Date.now(); // CRITICAL: Update timestamp!
         
         // CRITICAL: Tell client to refresh their JWT!
         res.setHeader('X-Token-Refreshed', 'true');
@@ -402,23 +414,26 @@ authRouter.post('/logout', (req, res) => {
 // In-memory refresh promise cache to prevent thundering herd
 const refreshPromises = new Map<string, Promise<SpotifyAuthTokens>>();
 
-// Refresh token if needed
+// Mutex-like lock for token refresh operations
+let refreshLockPromise: Promise<void> | null = null;
+
+// Refresh token if needed - with proper deduplication
 export async function refreshAccessToken(refreshToken: string): Promise<SpotifyAuthTokens> {
   // Use first 20 chars as key (tokens are longer but this is enough for uniqueness)
   const tokenKey = refreshToken.substring(0, 20);
   
-  // Check if a refresh is already in progress for this token
+  // Immediately check and create promise in one atomic operation
   const existingPromise = refreshPromises.get(tokenKey);
   if (existingPromise) {
     console.log('🔄 Reusing existing refresh request for token...');
     return existingPromise;
   }
   
-  console.log('🔄 Attempting to refresh access token...');
-  console.log('Refresh token:', tokenKey + '...');
-  
-  // Create the refresh promise and store it
-  const refreshPromise = (async () => {
+  // Create promise AND store it immediately before any async work
+  const refreshPromise = new Promise<SpotifyAuthTokens>(async (resolve, reject) => {
+    console.log('🔄 Starting token refresh...');
+    console.log('Refresh token:', tokenKey + '...');
+    
     try {
       const response = await axios.post(
         SPOTIFY_TOKEN_URL,
@@ -440,10 +455,10 @@ export async function refreshAccessToken(refreshToken: string): Promise<SpotifyA
       if (response.data.refresh_token) {
         console.log('🔄 Spotify rotated refresh token - old token now invalid');
       }
-      return response.data;
+      resolve(response.data);
     } catch (error: any) {
       console.error('❌ Token refresh failed:', error.response?.data || error.message);
-      throw error;
+      reject(error);
     } finally {
       // Clean up the promise from the cache after 1 second
       // This delay prevents issues if there are follow-up requests
@@ -451,8 +466,10 @@ export async function refreshAccessToken(refreshToken: string): Promise<SpotifyA
         refreshPromises.delete(tokenKey);
       }, 1000);
     }
-  })();
+  });
   
+  // Store immediately - this is the critical part
   refreshPromises.set(tokenKey, refreshPromise);
+  
   return refreshPromise;
 }
