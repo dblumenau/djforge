@@ -92,7 +92,7 @@ case $ACTION in
         fi
         
         # Optional secrets
-        read -p "GOOGLE_API_KEY (optional): " GOOGLE_API_KEY
+        read -p "GEMINI_API_KEY (optional): " GEMINI_API_KEY
         read -p "ANTHROPIC_API_KEY (optional): " ANTHROPIC_API_KEY
         read -p "OPENAI_API_KEY (optional): " OPENAI_API_KEY
         read -p "ENABLE_GEMINI_DIRECT (true/false, default: false): " ENABLE_GEMINI_DIRECT
@@ -118,7 +118,7 @@ case $ACTION in
             NODE_ENV="production" \
             PORT="8080" \
             CLIENT_URL="https://djforge-client.fly.dev" \
-            ${GOOGLE_API_KEY:+GOOGLE_API_KEY="$GOOGLE_API_KEY"} \
+            ${GEMINI_API_KEY:+GEMINI_API_KEY="$GEMINI_API_KEY"} \
             ${ANTHROPIC_API_KEY:+ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY"} \
             ${OPENAI_API_KEY:+OPENAI_API_KEY="$OPENAI_API_KEY"} \
             ${ENABLE_GEMINI_DIRECT:+ENABLE_GEMINI_DIRECT="$ENABLE_GEMINI_DIRECT"} \

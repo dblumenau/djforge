@@ -92,7 +92,6 @@ class WebPlayerService {
 
   async initialize(): Promise<void> {
     if (this.player || this.sdkLoading) {
-      console.log('[WebPlayerService] Already initialized or loading');
       return;
     }
 
@@ -112,7 +111,6 @@ class WebPlayerService {
       // Check if script already exists
       const existingScript = document.querySelector('script[src="https://sdk.scdn.co/spotify-player.js"]');
       if (existingScript) {
-        console.log('[WebPlayerService] SDK script already exists');
         if (window.Spotify) {
           this.sdkReady = true;
           resolve();
@@ -125,7 +123,6 @@ class WebPlayerService {
       script.async = true;
 
       window.onSpotifyWebPlaybackSDKReady = () => {
-        console.log('[WebPlayerService] SDK ready');
         this.sdkReady = true;
         resolve();
       };
@@ -145,10 +142,8 @@ class WebPlayerService {
       name: 'DJForge Web Player',
       getOAuthToken: async (cb: (token: string) => void) => {
         try {
-          console.log('[WebPlayerService] Fetching access token...');
           // This will automatically refresh if needed
           const token = await authService.getAccessToken();
-          console.log('[WebPlayerService] Token fetched successfully');
           cb(token);
         } catch (error) {
           console.error('[WebPlayerService] Failed to get access token:', error);
@@ -171,7 +166,6 @@ class WebPlayerService {
     
     // Connect to the player
     const success = await this.player!.connect();
-    console.log('[WebPlayerService] Connect result:', success);
     
     this.sdkLoading = false;
   }
@@ -209,13 +203,11 @@ class WebPlayerService {
     });
 
     this.player.addListener('autoplay_failed', () => {
-      console.log('Autoplay failed - user interaction required');
       this.notifyError('Click play to start playback (browser requires user interaction)');
     });
 
     // Ready
     this.player.addListener('ready', ({ device_id }: { device_id: string }) => {
-      console.log('[WebPlayerService] Ready with Device ID', device_id);
       this.deviceId = device_id;
       this.playerState.deviceId = device_id;
       
@@ -228,7 +220,6 @@ class WebPlayerService {
 
     // Not Ready
     this.player.addListener('not_ready', ({ device_id }: { device_id: string }) => {
-      console.log('[WebPlayerService] Device ID has gone offline', device_id);
       this.deviceId = null;
       this.playerState.deviceId = null;
       this.playerState.isActive = false;
@@ -247,7 +238,6 @@ class WebPlayerService {
       
       // DEBUG: Log track data
       if (currentTrack) {
-        console.log('[WebPlayerService] Current track album images:', currentTrack.album.images);
       }
       
       // Sync position tracker
@@ -437,7 +427,6 @@ class WebPlayerService {
         throw new Error(`Failed to transfer playback: ${response.status}`);
       }
 
-      console.log('[WebPlayerService] Playback transferred to web player');
     } catch (error) {
       console.error('[WebPlayerService] Transfer playback error:', error);
       throw error;
@@ -446,7 +435,6 @@ class WebPlayerService {
 
   // Cleanup
   async disconnect(): Promise<void> {
-    console.log('[WebPlayerService] Disconnecting...');
     
     this.stopPositionTimer();
     
@@ -544,7 +532,6 @@ class WebPlayerService {
       if (!response.ok) {
         console.error('[WebPlayerService] Failed to register with backend:', response.status);
       } else {
-        console.log('[WebPlayerService] Successfully registered with backend');
       }
     } catch (error) {
       console.error('[WebPlayerService] Error registering with backend:', error);

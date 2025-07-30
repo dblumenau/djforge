@@ -35,13 +35,10 @@ const DeviceSelector: React.FC<DeviceSelectorProps> = ({ onDeviceChange, compact
   const fetchDevices = async () => {
     try {
       setLoading(true);
-      console.log('[DeviceSelector] Fetching devices...');
       const response = await api.get('/api/control/devices');
-      console.log('[DeviceSelector] Response status:', response.status);
       
       if (response.ok) {
         const data = await response.json();
-        console.log('[DeviceSelector] Devices data:', data);
         
         // Filter out the web player device since we have "Built In Player" option
         const filteredDevices = (data.devices || []).filter((d: SpotifyDevice) => 
@@ -71,7 +68,6 @@ const DeviceSelector: React.FC<DeviceSelectorProps> = ({ onDeviceChange, compact
     
     // Listen for web player ready events
     const unsubscribeWebPlayer = webPlayerService.onDeviceReady(() => {
-      console.log('[DeviceSelector] Web player device is ready, refreshing devices...');
       // Delay slightly to ensure the device appears in Spotify's device list
       setTimeout(fetchDevices, 500);
     });
@@ -84,14 +80,12 @@ const DeviceSelector: React.FC<DeviceSelectorProps> = ({ onDeviceChange, compact
 
   // Handle device selection
   const handleDeviceSelect = async (deviceId: string | 'auto' | 'web-player') => {
-    console.log('[DeviceSelector] Device selected:', deviceId);
     setIsChangingDevice(true);
     setSelectedDevice(deviceId);
     setIsOpen(false);
     
     // Save preference
     localStorage.setItem('spotifyDevicePreference', deviceId);
-    console.log('[DeviceSelector] Saved to localStorage:', deviceId);
     
     // Dispatch custom event for same-window listeners (like MobileMenu)
     window.dispatchEvent(new Event('devicePreferenceChanged'));
