@@ -43,7 +43,6 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue, isMobi
   const [, setLastServerEvent] = useState<Date | null>(null);
   const [isTrackChanging, setIsTrackChanging] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
-  const [activeDeviceId, setActiveDeviceId] = useState<string | null>(null);
   const previousTrackNameRef = useRef<string | null>(null);
 
   // Track library hook

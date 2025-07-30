@@ -106,7 +106,7 @@ const SpotifyPlayer: React.FC<SpotifyPlayerProps> = ({ onDeviceReady }) => {
             alt={playerState.currentTrack.album}
             className="w-20 h-20 rounded-md shadow-lg"
             onError={(e) => {
-              console.error('[SpotifyPlayer] Album art failed to load:', playerState.currentTrack.albumArt);
+              console.error('[SpotifyPlayer] Album art failed to load:', playerState.currentTrack?.albumArt);
               e.currentTarget.style.display = 'none';
             }}
           />
