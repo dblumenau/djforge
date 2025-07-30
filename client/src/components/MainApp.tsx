@@ -15,7 +15,7 @@ import { useIOSKeyboardFix } from '../hooks/useIOSKeyboardFix';
 import { apiEndpoint } from '../config/api';
 import { authenticatedFetch, api } from '../utils/temp-auth';
 import { useModel } from '../contexts/ModelContext';
-import { toast } from "sonner";
+// import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 
 // Helper component for clickable example lists
@@ -366,22 +366,22 @@ const MainApp: React.FC = () => {
   }, [isAuthenticated]);
 
   // Show "Everything is ready!" toast when app is fully loaded
-  useEffect(() => {
-    if (isAuthenticated && !commandHistoryLoading && !checking && !authLoading) {
-      // Small delay to ensure everything is rendered
-      const timer = setTimeout(() => {
-        toast.success("Everything is ready for you! 🎵");
-        
-        // TEST: Show all toast types
-        setTimeout(() => toast.error("This is an error toast"), 500);
-        setTimeout(() => toast.warning("This is a warning toast"), 1000);
-        setTimeout(() => toast.info("This is an info toast"), 1500);
-        setTimeout(() => toast("This is a default toast"), 2000);
-      }, 1000);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [isAuthenticated, commandHistoryLoading, checking, authLoading]);
+  // useEffect(() => {
+  //   if (isAuthenticated && !commandHistoryLoading && !checking && !authLoading) {
+  //     // Small delay to ensure everything is rendered
+  //     const timer = setTimeout(() => {
+  //       toast.success("Everything is ready for you! 🎵");
+  //       
+  //       // TEST: Show all toast types
+  //       setTimeout(() => toast.error("This is an error toast"), 500);
+  //       setTimeout(() => toast.warning("This is a warning toast"), 1000);
+  //       setTimeout(() => toast.info("This is an info toast"), 1500);
+  //       setTimeout(() => toast("This is a default toast"), 2000);
+  //     }, 1000);
+  //     
+  //     return () => clearTimeout(timer);
+  //   }
+  // }, [isAuthenticated, commandHistoryLoading, checking, authLoading]);
 
   // Redirect to landing page if not authenticated (but not if they have expired tokens)
   useEffect(() => {
