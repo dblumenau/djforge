@@ -20,27 +20,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const checkAuthStatus = async () => {
     try {
       const sessionId = authService.getSessionId();
-      console.log('🔍 AuthContext checkAuthStatus - Session ID from storage:', sessionId);
       
       if (!sessionId) {
-        console.log('❌ AuthContext - No session ID found, setting unauthenticated');
         setIsAuthenticated(false);
         setLoading(false);
         return;
       }
       
-      console.log('📡 AuthContext - Making auth status request to:', apiEndpoint('/api/auth/status'));
       const response = await fetch(apiEndpoint('/api/auth/status'), {
         headers: {
           'X-Session-ID': sessionId
         }
       });
       
-      console.log('📋 AuthContext - Auth status response:', response.status, response.statusText);
       
       // Handle 503 Service Unavailable (server just restarted)
       if (response.status === 503) {
-        console.log('⏳ Server is initializing, retrying in 1 second...');
         // Keep loading state true during retry
         setTimeout(() => {
           checkAuthStatus();
@@ -49,10 +44,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
       
       const data = await response.json();
-      console.log('📋 AuthContext - Auth status data:', data);
       
       setIsAuthenticated(data.authenticated);
-      console.log('✅ AuthContext - Authentication set to:', data.authenticated);
       setLoading(false);
       setLastCheckTime(Date.now());
     } catch (error) {
@@ -68,7 +61,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // Re-check auth status when window gains focus
     const handleFocus = () => {
       if (!loading) {
-        console.log('🔄 Window gained focus, checking auth status...');
         checkAuthStatus();
       }
     };
@@ -83,19 +75,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Periodic check when not authenticated (to catch server restarts)
   useEffect(() => {
     if (!isAuthenticated && !loading) {
-      console.log('🔄 Starting periodic auth check (not authenticated)');
       
       const interval = setInterval(() => {
         const timeSinceLastCheck = Date.now() - lastCheckTime;
         // Only check if it's been more than 2 seconds since last check
         if (timeSinceLastCheck > 2000) {
-          console.log('⏱️ Periodic auth check...');
           checkAuthStatus();
         }
       }, 3000); // Check every 3 seconds
       
       return () => {
-        console.log('🛑 Stopping periodic auth check');
         clearInterval(interval);
       };
     }

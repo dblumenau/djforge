@@ -165,7 +165,7 @@ class WebPlayerService {
     this.setupEventListeners();
     
     // Connect to the player
-    const success = await this.player!.connect();
+    await this.player!.connect();
     
     this.sdkLoading = false;
   }
@@ -219,7 +219,7 @@ class WebPlayerService {
     });
 
     // Not Ready
-    this.player.addListener('not_ready', ({ device_id }: { device_id: string }) => {
+    this.player.addListener('not_ready', () => {
       this.deviceId = null;
       this.playerState.deviceId = null;
       this.playerState.isActive = false;
