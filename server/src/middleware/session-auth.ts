@@ -16,15 +16,12 @@ export async function requireValidTokens(
   next: NextFunction
 ) {
   try {
-    console.log('🔍 requireValidTokens middleware called');
-    
     if (!redisClient) {
       console.error('❌ Redis client not initialized in middleware');
       throw new Error('Redis client not initialized');
     }
     
     const sessionId = req.headers['x-session-id'] as string;
-    console.log('📋 Session ID from headers:', sessionId ? sessionId.substring(0, 8) + '...' : 'null');
     
     if (!sessionId) {
       console.error('❌ No session ID provided');
@@ -32,9 +29,7 @@ export async function requireValidTokens(
     }
     
     const sessionManager = new SessionManager(redisClient);
-    console.log('🔍 Looking up session in Redis...');
     const session = await sessionManager.getSession(sessionId);
-    console.log('📋 Session lookup result:', session ? 'found' : 'not found');
     
     if (!session) {
       console.error('❌ Session not found in Redis');
@@ -44,23 +39,10 @@ export async function requireValidTokens(
       });
     }
     
-    // Sessions are now permanent - no expiry check needed
-    // They only get deleted on logout or invalid_grant from Spotify
-    
-    console.log('✅ Session valid, user:', session.userId);
-    
     // Get current tokens (this handles refresh if needed)
-    console.log('🔄 Getting fresh tokens from auth service...');
     const authService = new SpotifyAuthService(redisClient);
     const { accessToken } = await authService.refreshAccessToken(sessionId);
     const tokens = await sessionManager.getTokens(sessionId);
-    
-    console.log('🔐 Token info:', {
-      hasAccessToken: !!accessToken,
-      hasRefreshToken: !!tokens?.refresh_token,
-      tokenLength: accessToken.length,
-      expiresAt: tokens?.expires_at ? new Date(tokens.expires_at) : 'unknown'
-    });
     
     req.tokens = {
       access_token: accessToken,
@@ -68,7 +50,6 @@ export async function requireValidTokens(
     };
     req.userId = session.userId;
     
-    console.log('✅ Middleware complete, passing real tokens to route');
     next();
   } catch (error: any) {
     if (error.message.includes('expired')) {

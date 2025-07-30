@@ -836,12 +836,6 @@ simpleLLMInterpreterRouter.get('/history', requireValidTokens, async (req: any, 
       if (redisClient) {
         const userDataService = new UserDataService(redisClient, null as any, userId); // spotifyApi not needed for getAIFeedback
         feedbackData = await userDataService.getAIFeedback();
-        console.log(`🔍 Loaded feedback data: ${feedbackData.loved.length} loved, ${feedbackData.disliked.length} disliked`);
-        if (feedbackData.loved.length > 0) {
-          console.log('📝 Sample loved track:', feedbackData.loved[0]?.trackUri || feedbackData.loved[0]?.uri || feedbackData.loved[0]);
-        }
-      } else {
-        console.log('⚠️ Redis client not available for feedback loading');
       }
     } catch (error) {
       console.error('Error getting AI feedback:', error);

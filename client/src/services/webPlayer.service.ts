@@ -315,20 +315,8 @@ class WebPlayerService {
   private startPositionTimer(): void {
     if (this.positionTracker.timerId) return;
 
-    this.positionTracker.timerId = window.setInterval(() => {
-      if (!this.positionTracker.isPlaying) return;
-
-      const elapsed = Date.now() - this.positionTracker.lastKnownTimestamp;
-      const currentPosition = this.positionTracker.lastKnownPosition + elapsed;
-
-      if (this.playerState.currentTrack) {
-        this.playerState.currentTrack.position = Math.min(
-          currentPosition,
-          this.playerState.currentTrack.duration
-        );
-        this.notifyStateChange();
-      }
-    }, 250); // 4 FPS
+    // Don't update position through state changes - let components handle animation
+    // This prevents excessive re-renders
   }
 
   private stopPositionTimer(): void {
@@ -407,6 +395,18 @@ class WebPlayerService {
 
   getDeviceId(): string | null {
     return this.deviceId;
+  }
+
+  // Get current position without triggering state change
+  getCurrentPosition(): number {
+    if (!this.positionTracker.isPlaying || !this.playerState.currentTrack) {
+      return this.playerState.currentTrack?.position || 0;
+    }
+    
+    const elapsed = Date.now() - this.positionTracker.lastKnownTimestamp;
+    const currentPosition = this.positionTracker.lastKnownPosition + elapsed;
+    
+    return Math.min(currentPosition, this.playerState.currentTrack.duration);
   }
 
   isReady(): boolean {

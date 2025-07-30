@@ -1,12 +1,35 @@
 import React, { useEffect, useState } from 'react';
 import { webPlayerService } from '../services/webPlayer.service';
-import { isMobileDevice } from '../utils/deviceDetection';
 
 export const WebPlayerAutoInit: React.FC = () => {
-  const [needsActivation, setNeedsActivation] = useState(false);
+  const [devicePreference, setDevicePreference] = useState<string>('auto');
   // const [initStatus, setInitStatus] = useState<string>('Not started');
   // const [deviceId, setDeviceId] = useState<string | null>(null);
   // const [lastError, setLastError] = useState<string | null>(null);
+
+  // Track device preference changes
+  useEffect(() => {
+    const checkDevicePreference = () => {
+      const savedPreference = localStorage.getItem('spotifyDevicePreference') || 'auto';
+      setDevicePreference(savedPreference);
+    };
+    
+    // Check initially
+    checkDevicePreference();
+    
+    // Listen for storage changes
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'spotifyDevicePreference') {
+        checkDevicePreference();
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
 
   useEffect(() => {
     // Listen for errors
@@ -33,10 +56,7 @@ export const WebPlayerAutoInit: React.FC = () => {
         console.log('[WebPlayerAutoInit] Initialization complete');
         // setInitStatus('Initialization complete, waiting for device ready...');
 
-        // Check if mobile and needs activation
-        if (isMobileDevice()) {
-          setNeedsActivation(true);
-        }
+        // Mobile activation is now handled in MobileMenu component
 
         // Wait for device to be ready before checking preference
         const unsubscribe = webPlayerService.onDeviceReady(async (deviceId) => {
@@ -71,37 +91,16 @@ export const WebPlayerAutoInit: React.FC = () => {
       }
     };
 
-    // Initialize after a short delay to ensure auth is ready
     const timer = setTimeout(initWebPlayer, 1000);
 
     return () => {
       clearTimeout(timer);
       unsubscribeError();
     };
-  }, []);
+  }, [devicePreference]);
 
-  const handleActivate = async () => {
-    try {
-      await webPlayerService.activateElement();
-      setNeedsActivation(false);
-    } catch (err) {
-      console.error('[WebPlayerAutoInit] Failed to activate:', err);
-    }
-  };
-
-  if (needsActivation) {
-    return (
-      <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 bg-gray-800 border border-gray-700 rounded-lg p-4 shadow-lg z-50">
-        <p className="text-white text-sm mb-2">Tap to enable playback controls</p>
-        <button
-          onClick={handleActivate}
-          className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-        >
-          Enable Playback
-        </button>
-      </div>
-    );
-  }
+  // Activation UI is now handled in MobileMenu for better UX integration
+  // No popup needed here anymore
 
   // TEMPORARY: Show debug info
   // const currentPref = localStorage.getItem('spotifyDevicePreference');

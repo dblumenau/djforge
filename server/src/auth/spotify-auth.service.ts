@@ -150,16 +150,7 @@ export class SpotifyAuthService {
       const expiresAt = tokens.expires_at;
       const bufferTime = now + 300000; // 5 minutes from now
       
-      console.log('🕒 Token expiry check:', {
-        now: new Date(now),
-        expiresAt: new Date(expiresAt),
-        bufferTime: new Date(bufferTime),
-        isValid: expiresAt > bufferTime,
-        timeUntilExpiry: Math.floor((expiresAt - now) / 1000 / 60) + ' minutes'
-      });
-      
       if (expiresAt > bufferTime) {
-        console.log('✅ Token still valid, returning existing token');
         return {
           accessToken: tokens.access_token,
           expiresIn: Math.floor((expiresAt - now) / 1000)
@@ -168,17 +159,53 @@ export class SpotifyAuthService {
       
       // Refresh the token
       console.log('🔄 Token needs refresh, calling Spotify...');
+      
+      // Create Basic Auth header with client credentials
+      const clientId = process.env.SPOTIFY_CLIENT_ID!;
+      const clientSecret = process.env.SPOTIFY_CLIENT_SECRET!;
+      const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+      
+      const requestBody = new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: tokens.refresh_token
+      });
+      
+      const requestHeaders = { 
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': `Basic ${basicAuth}`
+      };
+      
+      // Uncomment for debugging token refresh issues
+      // console.log('📤 Sending refresh request to Spotify:', {
+      //   url: 'https://accounts.spotify.com/api/token',
+      //   method: 'POST',
+      //   headers: {
+      //     ...requestHeaders,
+      //     'Authorization': `Basic ${basicAuth.substring(0, 10)}...` // Truncate for security
+      //   },
+      //   body: requestBody.toString(),
+      //   refreshTokenPreview: tokens.refresh_token.substring(0, 20) + '...'
+      // });
+      
       const response = await axios.post(
         'https://accounts.spotify.com/api/token',
-        new URLSearchParams({
-          grant_type: 'refresh_token',
-          refresh_token: tokens.refresh_token,
-          client_id: process.env.SPOTIFY_CLIENT_ID!
-        }),
-        {
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-        }
+        requestBody,
+        { headers: requestHeaders }
       );
+      
+      // Uncomment for debugging token refresh issues
+      // console.log('📥 Spotify refresh response:', {
+      //   status: response.status,
+      //   statusText: response.statusText,
+      //   headers: response.headers,
+      //   data: {
+      //     access_token: response.data.access_token ? response.data.access_token.substring(0, 20) + '...' : 'none',
+      //     token_type: response.data.token_type,
+      //     scope: response.data.scope,
+      //     expires_in: response.data.expires_in,
+      //     refresh_token: response.data.refresh_token ? response.data.refresh_token.substring(0, 20) + '...' : 'none (reusing existing)'
+      //   }
+      // });
       
       const newTokens = response.data;
       
@@ -190,6 +217,22 @@ export class SpotifyAuthService {
         expiresIn: newTokens.expires_in
       };
     } catch (error: any) {
+      console.error('❌ Token refresh failed:', {
+        request: {
+          url: error.config?.url,
+          method: error.config?.method,
+          headers: error.config?.headers,
+          data: error.config?.data
+        },
+        response: {
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          headers: error.response?.headers,
+          data: error.response?.data
+        },
+        message: error.message
+      });
+      
       if (error.response?.data?.error === 'invalid_grant') {
         // Don't immediately destroy session - Spotify can return invalid_grant for temporary issues
         // Log the error and let the caller decide what to do

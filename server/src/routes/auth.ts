@@ -188,7 +188,6 @@ router.get('/admin-check', async (req, res) => {
     const adminId = process.env.ADMIN_USER_ID || process.env.ADMIN_SPOTIFY_ID || '';
     const isAdmin = session.userId === adminId;
     
-    console.log('[Admin Check] User ID:', session.userId, 'Admin ID:', adminId, 'Is Admin:', isAdmin);
     
     res.json({
       success: true,
@@ -207,11 +206,8 @@ router.get('/admin-check', async (req, res) => {
 // Session status
 router.get('/status', async (req, res) => {
   const sessionId = req.headers['x-session-id'] as string;
-  console.log('🔍 Auth status check for session:', sessionId);
-  console.log('🔍 Redis client status:', redisClient ? 'Available' : 'NOT AVAILABLE');
   
   if (!sessionId) {
-    console.log('❌ No session ID provided');
     return res.json({ authenticated: false });
   }
   
@@ -219,7 +215,6 @@ router.get('/status', async (req, res) => {
     // Check if Redis client is available
     if (!redisClient) {
       console.error('❌ Redis client not initialized for auth status check');
-      console.error('❌ This happens when the server just restarted and Redis client hasn\'t been set yet');
       // Return a 503 Service Unavailable to indicate temporary issue
       return res.status(503).json({ 
         authenticated: false, 
@@ -232,13 +227,9 @@ router.get('/status', async (req, res) => {
     const { SessionManager } = require('../auth/session-manager');
     const sm = new SessionManager(redisClient);
     
-    console.log('🔍 Looking up session in Redis...');
     const session = await sm.getSession(sessionId);
     
-    console.log('📋 Session lookup result:', session ? `Found - User: ${session.userId}` : 'Not found');
-    
     if (!session) {
-      console.log('❌ Session not found in Redis');
       return res.json({ authenticated: false });
     }
     
@@ -247,8 +238,6 @@ router.get('/status', async (req, res) => {
     
     const tokens = await sm.getTokens(sessionId);
     const tokenValid = tokens && tokens.expires_at > Date.now();
-    
-    console.log('✅ Session valid, user:', session.userId, 'Token valid:', tokenValid);
     
     res.json({
       authenticated: true,

@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useWebPlayer } from '../hooks/useWebPlayer';
+import { webPlayerService } from '../services/webPlayer.service';
 
 interface SpotifyPlayerProps {
   onDeviceReady?: (deviceId: string) => void;
@@ -7,8 +8,6 @@ interface SpotifyPlayerProps {
 }
 
 const SpotifyPlayer: React.FC<SpotifyPlayerProps> = ({ onDeviceReady }) => {
-  console.log('[SpotifyPlayer] Component rendering');
-  
   const {
     playerState,
     error,
@@ -16,13 +15,33 @@ const SpotifyPlayer: React.FC<SpotifyPlayerProps> = ({ onDeviceReady }) => {
     nextTrack,
     previousTrack
   } = useWebPlayer(onDeviceReady);
-
-  // DEBUG: Log the player state
-  console.log('[SpotifyPlayer] Player state:', playerState);
-  console.log('[SpotifyPlayer] Current track:', playerState.currentTrack);
-  if (playerState.currentTrack) {
-    console.log('[SpotifyPlayer] Album art URL:', playerState.currentTrack.albumArt);
-  }
+  
+  // Local state for smooth position updates
+  const [currentPosition, setCurrentPosition] = useState(0);
+  const animationFrameRef = useRef<number>();
+  
+  // Update position smoothly using requestAnimationFrame
+  useEffect(() => {
+    const updatePosition = () => {
+      if (playerState.currentTrack && !playerState.isPaused) {
+        const position = webPlayerService.getCurrentPosition();
+        setCurrentPosition(position);
+        animationFrameRef.current = requestAnimationFrame(updatePosition);
+      }
+    };
+    
+    if (playerState.currentTrack && !playerState.isPaused) {
+      updatePosition();
+    } else {
+      setCurrentPosition(playerState.currentTrack?.position || 0);
+    }
+    
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, [playerState.isPaused, playerState.currentTrack]);
 
   // Handle play/pause button click
   const handlePlayPause = async () => {
@@ -59,9 +78,9 @@ const SpotifyPlayer: React.FC<SpotifyPlayerProps> = ({ onDeviceReady }) => {
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
-  // Progress percentage
+  // Progress percentage using local position for smooth updates
   const progressPercent = playerState.currentTrack 
-    ? (playerState.currentTrack.position / playerState.currentTrack.duration) * 100
+    ? (currentPosition / playerState.currentTrack.duration) * 100
     : 0;
 
   if (error) {
@@ -106,7 +125,6 @@ const SpotifyPlayer: React.FC<SpotifyPlayerProps> = ({ onDeviceReady }) => {
             alt={playerState.currentTrack.album}
             className="w-20 h-20 rounded-md shadow-lg"
             onError={(e) => {
-              console.error('[SpotifyPlayer] Album art failed to load:', playerState.currentTrack?.albumArt);
               e.currentTarget.style.display = 'none';
             }}
           />
@@ -131,7 +149,7 @@ const SpotifyPlayer: React.FC<SpotifyPlayerProps> = ({ onDeviceReady }) => {
           {/* Progress Bar */}
           <div className="mt-3">
             <div className="flex items-center text-xs text-gray-400 mb-1">
-              <span>{formatTime(playerState.currentTrack.position)}</span>
+              <span>{formatTime(currentPosition)}</span>
               <span className="mx-2">·</span>
               <span>{formatTime(playerState.currentTrack.duration)}</span>
             </div>

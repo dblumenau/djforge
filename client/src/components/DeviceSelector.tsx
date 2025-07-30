@@ -93,6 +93,9 @@ const DeviceSelector: React.FC<DeviceSelectorProps> = ({ onDeviceChange, compact
     localStorage.setItem('spotifyDevicePreference', deviceId);
     console.log('[DeviceSelector] Saved to localStorage:', deviceId);
     
+    // Dispatch custom event for same-window listeners (like MobileMenu)
+    window.dispatchEvent(new Event('devicePreferenceChanged'));
+    
     try {
       // Notify parent component
       if (onDeviceChange) {
@@ -141,6 +144,9 @@ const DeviceSelector: React.FC<DeviceSelectorProps> = ({ onDeviceChange, compact
       const previousDevice = localStorage.getItem('spotifyDevicePreference') || 'auto';
       setSelectedDevice(previousDevice);
       localStorage.setItem('spotifyDevicePreference', previousDevice);
+      
+      // Dispatch event to sync other components
+      window.dispatchEvent(new Event('devicePreferenceChanged'));
       
       // Show error feedback
       const event = new CustomEvent('device-changed', { 

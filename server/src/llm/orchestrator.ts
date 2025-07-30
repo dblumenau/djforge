@@ -187,7 +187,6 @@ export class LLMOrchestrator {
         timeout: 30000,
         maxRetries: 3
       });
-      console.log('✅ Google AI Direct API initialized with grounding enabled');
     }
 
     // OpenRouter (supports all models)

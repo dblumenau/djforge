@@ -31,6 +31,7 @@ export class SpotifyWebAPI {
   private deviceId?: string;
   private devicePreference: 'auto' | string = 'auto';
   private lastActiveDeviceId?: string;
+  private isRetrying = false;
 
   constructor(
     tokens: SpotifyAuthTokens,
@@ -46,17 +47,33 @@ export class SpotifyWebAPI {
       }
     });
 
-    // Add response interceptor for token refresh
+    // Add response interceptor for 401 retry logic
     this.api.interceptors.response.use(
       response => response,
       async error => {
-        if (error.response?.status === 401) {
-          // NOTE: Token refresh is now handled by the session-auth middleware
-          // The tokens passed to this class should always be fresh
-          console.error('Received 401 error - tokens may need refresh at middleware level');
-          // Simply re-throw the error and let the calling code handle it
-          throw error;
+        const originalRequest = error.config;
+        
+        // Check if this is a 401 and we haven't already retried
+        if (error.response?.status === 401 && !originalRequest._retry) {
+          console.log('🔄 Got 401 response, retrying once with current token...');
+          originalRequest._retry = true;
+          
+          // Update the authorization header with current token
+          // (in case the axios instance header is stale)
+          originalRequest.headers['Authorization'] = `Bearer ${this.tokens.access_token}`;
+          
+          try {
+            // Retry the original request once
+            const retryResponse = await this.api(originalRequest);
+            console.log('✅ Retry successful after 401');
+            return retryResponse;
+          } catch (retryError) {
+            console.error('❌ Retry failed, token may be genuinely expired');
+            // Throw the original 401 error
+            throw error;
+          }
         }
+        
         throw error;
       }
     );

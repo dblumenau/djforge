@@ -106,6 +106,7 @@ const MainApp: React.FC = () => {
   useEffect(() => {
     const checkDevicePreference = () => {
       const savedPreference = localStorage.getItem('spotifyDevicePreference') || 'auto';
+      console.log('[MainApp] Checking device preference - saved:', savedPreference);
       setDevicePreference(savedPreference);
     };
     
@@ -128,16 +129,14 @@ const MainApp: React.FC = () => {
     
     window.addEventListener('storage', handleStorageChange);
     window.addEventListener('device-changed', handleDeviceChange as EventListener);
-    
-    // Also poll localStorage periodically as a fallback
-    const interval = setInterval(checkDevicePreference, 1000);
+    window.addEventListener('devicePreferenceChanged', checkDevicePreference);
     
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('device-changed', handleDeviceChange as EventListener);
-      clearInterval(interval);
+      window.removeEventListener('devicePreferenceChanged', checkDevicePreference);
     };
-  }, []);
+  }, []); // Empty dependency array means this effect only runs once
   
   // Initialize web player on mount and handle device preference changes
   useEffect(() => {
@@ -156,6 +155,13 @@ const MainApp: React.FC = () => {
   // Update showWebPlayer based on device preference
   useEffect(() => {
     const shouldShowWebPlayer = devicePreference === 'web-player';
+    console.log('[MainApp] Device preference effect:', {
+      devicePreference,
+      shouldShowWebPlayer,
+      currentShowWebPlayer: showWebPlayer
+    });
+    
+    // Force immediate state update
     setShowWebPlayer(shouldShowWebPlayer);
     
     if (!shouldShowWebPlayer) {
@@ -798,11 +804,13 @@ const MainApp: React.FC = () => {
         <div className="hidden md:block fixed top-20 left-1/2 -translate-x-1/2 z-10" style={{ maxWidth: '600px', width: '90%' }}>
           {showWebPlayer && isAuthenticated ? (
             <SpotifyPlayer
+              key="spotify-player"
               onDeviceReady={handleWebPlayerReady}
               onPlayerStateChanged={handlePlayerStateChanged}
             />
           ) : (
             <PlaybackControls 
+              key="playback-controls"
               onShowQueue={() => setShowQueue(true)} 
               devicePreference={devicePreference}
             />

@@ -99,6 +99,14 @@ const WeatherDisplay: React.FC<WeatherDisplayProps> = ({ compact = false }) => {
       {/* Divider */}
       <div className="w-px h-4 bg-zinc-700"></div>
 
+      {/* City name in the middle */}
+      <span className={`${compact ? 'text-xs' : 'text-sm'} font-medium text-gray-300`}>
+        Copenhagen
+      </span>
+
+      {/* Divider */}
+      <div className="w-px h-4 bg-zinc-700"></div>
+
       {/* Humidity */}
       <div className="flex items-center gap-1.5">
         <span className={compact ? 'text-base' : 'text-lg'}>💧</span>
@@ -107,10 +115,9 @@ const WeatherDisplay: React.FC<WeatherDisplayProps> = ({ compact = false }) => {
         </span>
       </div>
 
-      {/* Location and time - only in non-compact mode */}
-      {!compact && (
+      {/* Time - only in compact desktop mode */}
+      {compact && (
         <div className="hidden lg:flex items-center gap-1.5 text-xs text-gray-500">
-          <span>Copenhagen</span>
           <span>•</span>
           <span>{formatTime(weather.observationTime)}</span>
         </div>

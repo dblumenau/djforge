@@ -8,6 +8,7 @@ import SpotifyPlayer from './SpotifyPlayer';
 import QueueDisplay from './QueueDisplay';
 import { useAuth } from '../contexts/AuthContext';
 import { webPlayerService } from '../services/webPlayer.service';
+import { isMobileDevice } from '../utils/deviceDetection';
 import { MessageSquare, BarChart3, Target, ClipboardList, Plug, LogOut } from 'lucide-react';
 
 interface MobileMenuProps {
@@ -30,6 +31,7 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
   const navigate = useNavigate();
   const [showQueue, setShowQueue] = useState(false);
   const [devicePreference, setDevicePreference] = useState<string>('auto');
+  const [needsWebPlayerActivation, setNeedsWebPlayerActivation] = useState(false);
   const { isAuthenticated } = useAuth();
 
   // Close menu on escape key
@@ -74,20 +76,60 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
       }
     };
     
+    // Also listen for custom event that DeviceSelector dispatches
+    const handleDeviceChange = () => {
+      checkDevicePreference();
+    };
+    
     window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('devicePreferenceChanged', handleDeviceChange);
     
     return () => {
       window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('devicePreferenceChanged', handleDeviceChange);
     };
   }, [isOpen]);
 
   // Clean up web player when device preference changes away from web-player
   useEffect(() => {
+    console.log('[MobileMenu] Device preference changed:', devicePreference);
+    console.log('[MobileMenu] Web player is ready:', webPlayerService.isReady());
+    
     if (devicePreference !== 'web-player') {
       // Disconnect the web player when not in use
       webPlayerService.disconnect();
+      setNeedsWebPlayerActivation(false);
+      console.log('[MobileMenu] Set needsWebPlayerActivation to false');
+    } else if (devicePreference === 'web-player') {
+      // Check if we're on mobile and need activation
+      if (isMobileDevice() && !webPlayerService.isReady()) {
+        setNeedsWebPlayerActivation(true);
+        console.log('[MobileMenu] Mobile device needs web player activation');
+      } else {
+        setNeedsWebPlayerActivation(false);
+        console.log('[MobileMenu] Web player ready or not mobile device');
+      }
     }
   }, [devicePreference]);
+
+  // Listen for web player ready events
+  useEffect(() => {
+    const unsubscribe = webPlayerService.onDeviceReady(() => {
+      setNeedsWebPlayerActivation(false);
+    });
+    
+    return () => unsubscribe();
+  }, []);
+
+  // Handle web player activation
+  const handleActivateWebPlayer = async () => {
+    try {
+      await webPlayerService.activateElement();
+      setNeedsWebPlayerActivation(false);
+    } catch (err) {
+      console.error('[MobileMenu] Failed to activate web player:', err);
+    }
+  };
 
   return (
     <>
@@ -124,26 +166,42 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
           {/* Content */}
           <div className="flex-1 overflow-y-auto p-4 space-y-6">
             {/* Weather */}
-            <div>
-              <h3 className="text-sm font-medium text-gray-400 mb-2">Weather</h3>
+            <div className="bg-zinc-800/50 rounded-lg p-4">
               <WeatherDisplay />
             </div>
 
             {/* Model & Device Selectors */}
             <div className="space-y-4">
-              <div>
-                <h3 className="text-sm font-medium text-gray-400 mb-2">AI Model</h3>
+              <div className="bg-zinc-800/50 rounded-lg p-4">
+                <h3 className="text-sm font-medium text-gray-400 mb-3">AI Model</h3>
                 <ModelSelector onModelChange={onModelChange} fullWidth />
               </div>
-              <div>
-                <h3 className="text-sm font-medium text-gray-400 mb-2">Playback Device</h3>
+              <div className="bg-zinc-800/50 rounded-lg p-4">
+                <h3 className="text-sm font-medium text-gray-400 mb-3">Playback Device</h3>
                 <DeviceSelector onDeviceChange={onDeviceChange} fullWidth />
               </div>
             </div>
 
+            {/* Web Player Activation (Mobile only) */}
+            {needsWebPlayerActivation && devicePreference === 'web-player' && (
+              <div className="bg-zinc-800/50 rounded-lg p-4">
+                <h3 className="text-sm font-medium text-gray-400 mb-3">Player Activation Required</h3>
+                <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
+                  <p className="text-white text-sm mb-2">Tap to activate Built In Player</p>
+                  <p className="text-gray-400 text-xs mb-3">Mobile browsers require user interaction to enable audio playback</p>
+                  <button
+                    onClick={handleActivateWebPlayer}
+                    className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+                  >
+                    Activate Player
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Playback Controls or Web Player */}
-            <div>
-              <h3 className="text-sm font-medium text-gray-400 mb-2">Playback</h3>
+            <div className="bg-zinc-800/50 rounded-lg p-4">
+              <h3 className="text-sm font-medium text-gray-400 mb-3">Playback</h3>
               {devicePreference === 'web-player' && isAuthenticated ? (
                 <SpotifyPlayer
                   onDeviceReady={(deviceId) => {
@@ -163,8 +221,8 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
             </div>
 
             {/* Navigation */}
-            <div>
-              <h3 className="text-sm font-medium text-gray-400 mb-2">Navigation</h3>
+            <div className="bg-zinc-800/50 rounded-lg p-4">
+              <h3 className="text-sm font-medium text-gray-400 mb-3">Navigation</h3>
               <nav className="space-y-2">
                 <button
                   onClick={() => {
