@@ -109,7 +109,7 @@ export class AuthService {
     }
   }
   
-  private async performRefresh(): Promise<string> {
+  private async performRefresh(retryCount: number = 0): Promise<string> {
     if (!this.sessionId) throw new Error('No session ID to perform refresh');
     
     const response = await fetch(apiEndpoint('/api/auth/refresh'), {
@@ -125,8 +125,18 @@ export class AuthService {
       if (error.requiresReauth) {
         this.logout();
         window.location.href = '/landing';
+        return '';
       }
-      throw new Error('Token refresh failed');
+      
+      // Check if this is a temporary failure that we should retry
+      const errorMessage = error.error || 'Token refresh failed';
+      if (errorMessage.includes('temporarily failed') && retryCount < 2) {
+        console.log(`⏱️ Token refresh failed temporarily, retrying in ${(retryCount + 1) * 1000}ms (attempt ${retryCount + 1}/3)`);
+        await new Promise(resolve => setTimeout(resolve, (retryCount + 1) * 1000)); // 1s, 2s delays
+        return this.performRefresh(retryCount + 1);
+      }
+      
+      throw new Error(errorMessage);
     }
     
     const data = await response.json();

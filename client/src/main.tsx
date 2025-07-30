@@ -65,6 +65,9 @@ Sentry.init({
   },
 });
 
+// Apply dark theme by default
+document.documentElement.classList.add('dark');
+
 // Register service worker for PWA support (only in production)
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {

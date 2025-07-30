@@ -21,9 +21,10 @@ interface PlaybackState {
 interface PlaybackControlsProps {
   onShowQueue?: () => void;
   isMobile?: boolean;
+  devicePreference?: string;
 }
 
-const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue, isMobile = false }) => {
+const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue, isMobile = false, devicePreference = 'auto' }) => {
   const [playbackState, setPlaybackState] = useState<PlaybackState>({
     isPlaying: false,
     track: null,
@@ -42,6 +43,7 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue, isMobi
   const [, setLastServerEvent] = useState<Date | null>(null);
   const [isTrackChanging, setIsTrackChanging] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
+  const [activeDeviceId, setActiveDeviceId] = useState<string | null>(null);
   const previousTrackNameRef = useRef<string | null>(null);
 
   // Track library hook
@@ -209,20 +211,9 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue, isMobi
   useEffect(() => {
     fetchPlaybackState();
     
-    // Add Page Visibility API listener
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        console.log('[PlaybackControls] Page became visible, refreshing playback state...');
-        fetchPlaybackState(true); // Immediate fetch when page becomes visible
-      }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
     return () => {
       if (pollTimeoutId) clearTimeout(pollTimeoutId);
       if (animationFrameId) cancelAnimationFrame(animationFrameId);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
 
@@ -390,7 +381,7 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue, isMobi
   };
 
   return (
-    <div className="bg-zinc-800 rounded-lg border border-zinc-700 overflow-hidden">
+    <div className="bg-zinc-800/70 backdrop-blur-md rounded-lg border border-zinc-700/40 overflow-hidden shadow-xl">
         {/* Minimize/Maximize Toggle */}
         <div 
           className="flex items-center justify-between p-2 cursor-pointer hover:bg-zinc-700/50 transition-colors"
@@ -407,19 +398,26 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue, isMobi
                 </div>
               </>
             ) : (
-              <div className="text-sm text-gray-500">No track playing</div>
+              <div className="text-sm text-gray-500">
+                {devicePreference === 'web-player' 
+                  ? 'Web player ready - play something to control it here'
+                  : devicePreference === 'auto'
+                  ? 'No track playing'
+                  : 'No track playing on selected device'
+                }
+              </div>
             )}
           </div>
           <div className="flex items-center gap-2">
-            {/* Connection Status Indicator */}
-            <div className="flex items-center gap-1" title={sseConnected ? 'Live updates active' : 'Live updates disconnected'}>
-              <span className={`w-2 h-2 rounded-full ${
-                sseConnected ? 'bg-green-500' : 'bg-red-500 animate-pulse'
-              }`} />
-              {!sseConnected && (
-                <span className="text-xs text-red-400">Offline</span>
-              )}
-            </div>
+            {/* Connection Status Indicator - Only show when minimized */}
+            {isMinimized && (
+              <span 
+                className={`w-2 h-2 rounded-full ${
+                  sseConnected ? 'bg-green-500' : 'bg-red-500 animate-pulse'
+                }`} 
+                title={sseConnected ? 'Live updates active' : 'Live updates disconnected'}
+              />
+            )}
             <button className="p-1 hover:bg-zinc-600 rounded transition-colors">
               <svg 
                 className={`w-4 h-4 text-gray-400 transition-transform ${
@@ -438,7 +436,14 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue, isMobi
       {/* Expanded Content */}
       {!isMinimized && (
         <div className="p-4 pt-0">
-          {/* Connection Status - Always visible */}
+          {/* Device Mode Indicator */}
+          <div className="mb-2 text-xs text-gray-400">
+            {devicePreference === 'auto' && 'Remote Control Mode - Controls active Spotify device'}
+            {devicePreference === 'web-player' && 'Note: Switch to Built In Player to use web playback'}
+            {devicePreference !== 'auto' && devicePreference !== 'web-player' && 'Controls specific device'}
+          </div>
+          
+          {/* Connection Status */}
           <div className="mb-2 flex items-center gap-2 text-xs">
             <span className={`w-2 h-2 rounded-full ${
               sseConnected ? 'bg-green-500' : 'bg-red-500 animate-pulse'
@@ -637,25 +642,9 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue, isMobi
           ) : (
           /* Horizontal Layout (Desktop) */
           <div className="flex items-center gap-2 md:gap-4">
-            {/* Track info and progress - Left side */}
+            {/* Progress bar - Left side */}
             {playbackState.track && (
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="flex-1 min-w-0">
-                    <div className="text-white font-medium text-sm truncate">{playbackState.track.name}</div>
-                    <div className="text-gray-400 text-xs truncate">{playbackState.track.artist}</div>
-                  </div>
-                  {playbackState.track.id && (
-                    <HeartIcon
-                      filled={savedStatus.get(playbackState.track.id) || false}
-                      loading={libraryLoading.get(playbackState.track.id) || false}
-                      size="sm"
-                      onClick={() => playbackState.track?.id && toggleSave(playbackState.track.id)}
-                    />
-                  )}
-                </div>
-                
-                {/* Progress bar */}
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-gray-400 w-10 text-right">
                     {formatTime(Math.floor(localPosition))}
@@ -763,6 +752,16 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue, isMobi
 
             {/* Additional controls - Right side */}
             <div className="flex items-center gap-1 md:gap-2 border-l border-zinc-700 pl-1 md:pl-2">
+              {/* Heart/Save */}
+              {playbackState.track?.id && (
+                <HeartIcon
+                  filled={savedStatus.get(playbackState.track.id) || false}
+                  loading={libraryLoading.get(playbackState.track.id) || false}
+                  size="sm"
+                  onClick={() => playbackState.track?.id && toggleSave(playbackState.track.id)}
+                />
+              )}
+              
               {/* Volume */}
               <div className="relative">
                 <button

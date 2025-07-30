@@ -162,7 +162,7 @@ async function initializeAndStart() {
       cookie: {
         secure: process.env.NODE_ENV === 'production', // true in production for HTTPS
         httpOnly: true,
-        maxAge: 86400000 * 30, // 30 days
+        maxAge: 7200000, // 2 hours (reduced from 30 days to save Redis memory)
         sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // 'none' for cross-site in production
         path: '/',
         domain: process.env.NODE_ENV === 'production' ? '.fly.dev' : undefined // Share across subdomains

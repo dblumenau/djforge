@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import MusicLoader from './MusicLoader';
 import PlaybackControls from './PlaybackControls';
@@ -15,7 +15,8 @@ import { useIOSKeyboardFix } from '../hooks/useIOSKeyboardFix';
 import { apiEndpoint } from '../config/api';
 import { authenticatedFetch, api } from '../utils/temp-auth';
 import { useModel } from '../contexts/ModelContext';
-import { useToast, ToastContainer } from './Toast';
+import { toast } from "sonner";
+import { Toaster } from "@/components/ui/sonner";
 
 // Helper component for clickable example lists
 const ExampleList: React.FC<{ examples: string[]; onSelectExample: (example: string) => void }> = ({ examples, onSelectExample }) => {
@@ -40,6 +41,7 @@ const ExampleList: React.FC<{ examples: string[]; onSelectExample: (example: str
 
 const MainApp: React.FC = () => {
   console.log('[MainApp] Component mounted/rendered - Web Player feature enabled');
+  
   const navigate = useNavigate();
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const typeAnimationRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -51,7 +53,6 @@ const MainApp: React.FC = () => {
   const [checking, setChecking] = useState(true);
   const [command, setCommand] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const { toasts, showToast, removeToast } = useToast();
   const [commandHistory, setCommandHistory] = useState<Array<{
     command: string;
     response: string;
@@ -95,6 +96,7 @@ const MainApp: React.FC = () => {
   const [commandHistoryLoading, setCommandHistoryLoading] = useState(false);
   const [devicePreference, setDevicePreference] = useState<string>('auto');
   const [userProfile, setUserProfile] = useState<{ images?: Array<{ url: string }> } | null>(null);
+  const [showWebPlayer, setShowWebPlayer] = useState(false);
   // Note: Access token is now handled internally by the auth service
   
   // Authentication
@@ -118,10 +120,22 @@ const MainApp: React.FC = () => {
       }
     };
     
+    // Listen for custom device change events (from DeviceSelector in same tab)
+    const handleDeviceChange = (e: CustomEvent) => {
+      console.log('[MainApp] Device changed via custom event:', e.detail);
+      checkDevicePreference();
+    };
+    
     window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('device-changed', handleDeviceChange as EventListener);
+    
+    // Also poll localStorage periodically as a fallback
+    const interval = setInterval(checkDevicePreference, 1000);
     
     return () => {
       window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('device-changed', handleDeviceChange as EventListener);
+      clearInterval(interval);
     };
   }, []);
   
@@ -139,9 +153,12 @@ const MainApp: React.FC = () => {
     }
   }, [isAuthenticated]);
 
-  // Clean up web player when device preference changes away from web-player
+  // Update showWebPlayer based on device preference
   useEffect(() => {
-    if (devicePreference !== 'web-player') {
+    const shouldShowWebPlayer = devicePreference === 'web-player';
+    setShowWebPlayer(shouldShowWebPlayer);
+    
+    if (!shouldShowWebPlayer) {
       // Import dynamically to avoid circular dependency
       import('../services/webPlayer.service').then(({ webPlayerService }) => {
         if (webPlayerService.isReady()) {
@@ -177,6 +194,16 @@ const MainApp: React.FC = () => {
   const { savedStatus, loading: libraryLoading, toggleSave } = useTrackLibrary({
     trackIds: allTrackIds
   });
+
+  // Memoize callbacks to prevent infinite loops - MUST be defined before any conditional returns
+  const handleWebPlayerReady = useCallback((deviceId: string) => {
+    console.log('[MainApp] Web Player device ready:', deviceId);
+    console.log('[MainApp] Web Player ready!');
+  }, []);
+
+  const handlePlayerStateChanged = useCallback((state: any) => {
+    console.log('[MainApp] Web Player state changed:', state);
+  }, []);
 
   // Cleanup animation on unmount
   useEffect(() => {
@@ -338,6 +365,24 @@ const MainApp: React.FC = () => {
     loadUserProfile();
   }, [isAuthenticated]);
 
+  // Show "Everything is ready!" toast when app is fully loaded
+  useEffect(() => {
+    if (isAuthenticated && !commandHistoryLoading && !checking && !authLoading) {
+      // Small delay to ensure everything is rendered
+      const timer = setTimeout(() => {
+        toast.success("Everything is ready for you! 🎵");
+        
+        // TEST: Show all toast types
+        setTimeout(() => toast.error("This is an error toast"), 500);
+        setTimeout(() => toast.warning("This is a warning toast"), 1000);
+        setTimeout(() => toast.info("This is an info toast"), 1500);
+        setTimeout(() => toast("This is a default toast"), 2000);
+      }, 1000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isAuthenticated, commandHistoryLoading, checking, authLoading]);
+
   // Redirect to landing page if not authenticated (but not if they have expired tokens)
   useEffect(() => {
     console.log('🔄 MainApp: Auth redirect check -', { checking, authLoading, isAuthenticated });
@@ -351,10 +396,11 @@ const MainApp: React.FC = () => {
   useEffect(() => {
     const handleDeviceChanged = (event: CustomEvent) => {
       const { success, device, error } = event.detail;
+      
       if (success) {
-        showToast(`Device changed to ${device}`, 'success');
+        console.log('[MainApp] Device changed to:', device);
       } else {
-        showToast(error || 'Failed to change device', 'error');
+        console.error('[MainApp] Failed to change device:', error);
       }
     };
 
@@ -362,7 +408,7 @@ const MainApp: React.FC = () => {
     return () => {
       window.removeEventListener('device-changed', handleDeviceChanged as EventListener);
     };
-  }, [showToast]);
+  }, []);
 
   // Typing animation function
   const animateTyping = (text: string, onComplete?: () => void) => {
@@ -417,11 +463,10 @@ const MainApp: React.FC = () => {
             : msg
         ));
         
-        showToast(
+        console.log(
           newFeedback === 'remove' 
             ? 'Feedback removed' 
-            : `Thanks for the feedback!`,
-          'success'
+            : 'Thanks for the feedback!'
         );
       } catch (error) {
         console.error('Failed to record feedback:', error);
@@ -472,11 +517,10 @@ const MainApp: React.FC = () => {
           return msg;
         }));
         
-        showToast(
+        console.log(
           newFeedback === 'remove' 
             ? 'Feedback removed' 
-            : `Thanks for the feedback!`,
-          'success'
+            : 'Thanks for the feedback!'
         );
       } catch (error) {
         console.error('Failed to record feedback:', error);
@@ -524,7 +568,6 @@ const MainApp: React.FC = () => {
       
     } catch (error) {
       console.error('Alternative click error:', error);
-      // Could show a toast notification here if needed
     } finally {
       setIsProcessing(false);
     }
@@ -746,35 +789,25 @@ const MainApp: React.FC = () => {
       {/* Auto-initialize Web Player SDK (invisible) */}
       {isAuthenticated && <WebPlayerAutoInit />}
       
-      {/* Toast Notifications */}
-      <ToastContainer toasts={toasts} removeToast={removeToast} />
       
       {/* Chat Messages Container */}
       <div className="chat-messages">
         {/* Auth errors are now handled by redirect to /landing */}
 
         {/* Playback Controls or Web Player - Floating on desktop, in menu on mobile */}
-        {devicePreference === 'web-player' && isAuthenticated ? (
-          <div className="hidden md:block fixed top-20 left-1/2 -translate-x-1/2 z-10" style={{ maxWidth: '600px', width: '90%' }}>
-            <div className="bg-zinc-900/95 backdrop-blur-sm border border-zinc-700 rounded-lg shadow-lg">
-              <SpotifyPlayer
-                onDeviceReady={(deviceId) => {
-                  console.log('[MainApp] Web Player device ready:', deviceId);
-                  showToast('Web Player ready!', 'success');
-                }}
-                onPlayerStateChanged={(state) => {
-                  console.log('[MainApp] Web Player state changed:', state);
-                }}
-              />
-            </div>
-          </div>
-        ) : (
-          <div className="hidden md:block fixed top-20 left-1/2 -translate-x-1/2 z-10" style={{ maxWidth: '600px', width: '90%' }}>
-            <div className="bg-zinc-900/95 backdrop-blur-sm border border-zinc-700 rounded-lg shadow-lg">
-              <PlaybackControls onShowQueue={() => setShowQueue(true)} />
-            </div>
-          </div>
-        )}
+        <div className="hidden md:block fixed top-20 left-1/2 -translate-x-1/2 z-10" style={{ maxWidth: '600px', width: '90%' }}>
+          {showWebPlayer && isAuthenticated ? (
+            <SpotifyPlayer
+              onDeviceReady={handleWebPlayerReady}
+              onPlayerStateChanged={handlePlayerStateChanged}
+            />
+          ) : (
+            <PlaybackControls 
+              onShowQueue={() => setShowQueue(true)} 
+              devicePreference={devicePreference}
+            />
+          )}
+        </div>
 
         {/* Messages Content */}
         <div 
@@ -1135,6 +1168,9 @@ const MainApp: React.FC = () => {
 
       {/* Queue Display Modal - Rendered at root level to avoid z-index issues */}
       {showQueue && <QueueDisplay onClose={() => setShowQueue(false)} />}
+      
+      {/* Toast Notifications */}
+      <Toaster />
     </div>
   );
 };

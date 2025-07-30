@@ -44,13 +44,8 @@ export async function requireValidTokens(
       });
     }
     
-    if (session.expiresAt < Date.now()) {
-      console.error('❌ Session expired:', new Date(session.expiresAt), 'vs now:', new Date());
-      return res.status(401).json({ 
-        error: 'Session expired',
-        requiresReauth: true 
-      });
-    }
+    // Sessions are now permanent - no expiry check needed
+    // They only get deleted on logout or invalid_grant from Spotify
     
     console.log('✅ Session valid, user:', session.userId);
     
@@ -106,12 +101,14 @@ export async function requireSession(
     
     const sessionManager = new SessionManager(redisClient);
     const session = await sessionManager.getSession(sessionId);
-    if (!session || session.expiresAt < Date.now()) {
+    if (!session) {
       return res.status(401).json({ 
-        error: 'Session expired',
+        error: 'Session not found',
         requiresReauth: true 
       });
     }
+    
+    // Sessions are now permanent - no expiry check needed
     
     req.userId = session.userId;
     next();

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import ModelSelector from './ModelSelector';
 import DeviceSelector from './DeviceSelector';
 import WeatherDisplay from './WeatherDisplay';
+import { MessageSquare, BarChart3, Target, ClipboardList, Plug, RefreshCw, LogOut } from 'lucide-react';
 
 interface HeaderNavProps {
   onModelChange: (model: string) => void;
@@ -82,54 +83,54 @@ const HeaderNav: React.FC<HeaderNavProps> = ({
             <div className="hidden md:flex items-center gap-1 lg:gap-2">
               <button
                 onClick={() => navigate('/')}
-                className="px-2 lg:px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-200 hover:text-white border border-zinc-600 hover:border-zinc-500 rounded-md transition-all text-xs font-medium"
+                className="px-2 lg:px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-200 hover:text-white border border-zinc-600 hover:border-zinc-500 rounded-md transition-all text-xs font-medium flex items-center gap-1.5"
               >
-                <span className="hidden lg:inline">💬 Chat</span>
-                <span className="lg:hidden">💬</span>
+                <MessageSquare className="w-3.5 h-3.5 text-green-500" />
+                <span className="hidden lg:inline">Chat</span>
               </button>
               <button
                 onClick={() => navigate('/dashboard')}
-                className="px-2 lg:px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-200 hover:text-white border border-zinc-600 hover:border-zinc-500 rounded-md transition-all text-xs font-medium"
+                className="px-2 lg:px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-200 hover:text-white border border-zinc-600 hover:border-zinc-500 rounded-md transition-all text-xs font-medium flex items-center gap-1.5"
               >
-                <span className="hidden lg:inline">📊 Dashboard</span>
-                <span className="lg:hidden">📊</span>
+                <BarChart3 className="w-3.5 h-3.5 text-green-500" />
+                <span className="hidden lg:inline">Dashboard</span>
               </button>
               <button
                 onClick={() => navigate('/feedback-dashboard')}
-                className="px-2 lg:px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-200 hover:text-white border border-zinc-600 hover:border-zinc-500 rounded-md transition-all text-xs font-medium"
+                className="px-2 lg:px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-200 hover:text-white border border-zinc-600 hover:border-zinc-500 rounded-md transition-all text-xs font-medium flex items-center gap-1.5"
               >
-                <span className="hidden lg:inline">🎯 Feedback</span>
-                <span className="lg:hidden">🎯</span>
+                <Target className="w-3.5 h-3.5 text-green-500" />
+                <span className="hidden lg:inline">Feedback</span>
               </button>
               <button 
-                className="px-2 lg:px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-300 hover:text-zinc-100 border border-zinc-600 hover:border-zinc-500 rounded-md transition-all text-xs"
+                className="px-2 lg:px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-300 hover:text-zinc-100 border border-zinc-600 hover:border-zinc-500 rounded-md transition-all text-xs flex items-center gap-1.5"
                 onClick={() => navigate('/logs')}
               >
-                <span className="hidden lg:inline">📋 Logs</span>
-                <span className="lg:hidden">📋</span>
+                <ClipboardList className="w-3.5 h-3.5 text-green-500" />
+                <span className="hidden lg:inline">Logs</span>
               </button>
               {isAdmin && (
                 <button 
-                  className="px-2 lg:px-3 py-1.5 bg-purple-900/20 hover:bg-purple-900/30 text-purple-300 hover:text-purple-200 border border-purple-800/50 hover:border-purple-700/50 rounded-md transition-all text-xs font-medium"
+                  className="px-2 lg:px-3 py-1.5 bg-purple-900/20 hover:bg-purple-900/30 text-purple-300 hover:text-purple-200 border border-purple-800/50 hover:border-purple-700/50 rounded-md transition-all text-xs font-medium flex items-center gap-1.5"
                   onClick={() => navigate('/admin/sse-status')}
                 >
-                  <span className="hidden lg:inline">🔌 SSE Status</span>
-                  <span className="lg:hidden">🔌</span>
+                  <Plug className="w-3.5 h-3.5 text-green-500" />
+                  <span className="hidden lg:inline">SSE Status</span>
                 </button>
               )}
               <button 
-                className="px-2 lg:px-3 py-1.5 bg-blue-900/20 hover:bg-blue-900/30 text-blue-300 hover:text-blue-200 border border-blue-800/50 hover:border-blue-700/50 rounded-md transition-all text-xs font-medium"
+                className="px-2 lg:px-3 py-1.5 bg-blue-900/20 hover:bg-blue-900/30 text-blue-300 hover:text-blue-200 border border-blue-800/50 hover:border-blue-700/50 rounded-md transition-all text-xs font-medium flex items-center gap-1.5"
                 onClick={() => window.location.reload()}
               >
-                <span className="hidden lg:inline">🔄 Refresh</span>
-                <span className="lg:hidden">🔄</span>
+                <RefreshCw className="w-3.5 h-3.5 text-green-500" />
+                <span className="hidden lg:inline">Refresh</span>
               </button>
               <button 
-                className="px-2 lg:px-3 py-1.5 bg-red-900/20 hover:bg-red-900/30 text-red-300 hover:text-red-200 border border-red-800/50 hover:border-red-700/50 rounded-md transition-all text-xs font-medium"
+                className="px-2 lg:px-3 py-1.5 bg-red-900/20 hover:bg-red-900/30 text-red-300 hover:text-red-200 border border-red-800/50 hover:border-red-700/50 rounded-md transition-all text-xs font-medium flex items-center gap-1.5"
                 onClick={onLogout}
               >
-                <span className="hidden lg:inline">🚪 Logout</span>
-                <span className="lg:hidden">🚪</span>
+                <LogOut className="w-3.5 h-3.5 text-green-500" />
+                <span className="hidden lg:inline">Logout</span>
               </button>
 
               {/* Dev Tools - Hidden in production */}

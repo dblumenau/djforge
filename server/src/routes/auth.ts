@@ -242,10 +242,8 @@ router.get('/status', async (req, res) => {
       return res.json({ authenticated: false });
     }
     
-    if (session.expiresAt < Date.now()) {
-      console.log('❌ Session expired:', new Date(session.expiresAt).toISOString());
-      return res.json({ authenticated: false });
-    }
+    // Sessions are now permanent - no expiry check needed
+    // They only get deleted on logout or invalid_grant from Spotify
     
     const tokens = await sm.getTokens(sessionId);
     const tokenValid = tokens && tokens.expires_at > Date.now();

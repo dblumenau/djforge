@@ -65,14 +65,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     checkAuthStatus();
     
-    // Re-check auth status when tab becomes visible
-    const handleVisibilityChange = () => {
-      if (!document.hidden && !loading) {
-        console.log('🔄 Tab became visible, checking auth status...');
-        checkAuthStatus();
-      }
-    };
-    
     // Re-check auth status when window gains focus
     const handleFocus = () => {
       if (!loading) {
@@ -81,11 +73,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     };
     
-    document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', handleFocus);
     
     return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
     };
   }, [loading]);

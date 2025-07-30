@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
+import { logger } from '../utils/logger';
 
 export interface Session {
   id: string;
@@ -30,17 +31,17 @@ export class SessionManager {
       expiresAt: Date.now() + (this.SESSION_TTL * 1000)
     };
     
-    // Store session metadata
-    await this.redis.setEx(
+    // Store session metadata permanently (no TTL)
+    // Sessions only get deleted on logout or invalid_grant
+    await this.redis.set(
       `session:${sessionId}:meta`,
-      this.SESSION_TTL,
       JSON.stringify(session)
     );
     
-    // Store tokens separately
-    await this.redis.setEx(
+    // Store tokens permanently (no TTL)
+    // Only Spotify's refresh token validity determines session lifetime
+    await this.redis.set(
       `session:${sessionId}:tokens`,
-      this.SESSION_TTL,
       JSON.stringify({
         access_token: tokens.access_token,
         refresh_token: tokens.refresh_token,
@@ -68,11 +69,10 @@ export class SessionManager {
     const session = await this.getSession(sessionId);
     if (!session) throw new Error('Session not found');
     
-    const ttl = Math.floor((session.expiresAt - Date.now()) / 1000);
-    
-    await this.redis.setEx(
+    // Store tokens permanently (no TTL)
+    // Sessions persist until explicitly deleted or refresh token is invalid
+    await this.redis.set(
       `session:${sessionId}:tokens`,
-      ttl,
       JSON.stringify({
         access_token: tokens.access_token,
         refresh_token: tokens.refresh_token || (await this.getTokens(sessionId))?.refresh_token,

@@ -60,7 +60,7 @@ class WebPlayerService {
     isActive: false,
     currentTrack: null,
     deviceId: null,
-    volume: 0.5,
+    volume: 1.0,
     shuffle: false,
     repeatMode: 0,
     queue: {
@@ -81,7 +81,6 @@ class WebPlayerService {
   private errorListeners: Set<ErrorListener> = new Set();
 
   private constructor() {
-    this.handleVisibilityChange = this.handleVisibilityChange.bind(this);
   }
 
   static getInstance(): WebPlayerService {
@@ -132,9 +131,6 @@ class WebPlayerService {
       };
 
       document.body.appendChild(script);
-
-      // Add visibility change listener
-      document.addEventListener('visibilitychange', this.handleVisibilityChange);
     });
   }
 
@@ -167,7 +163,7 @@ class WebPlayerService {
           }
         }
       },
-      volume: 0.5,
+      volume: 1.0,
       enableMediaSession: true // Enable browser media controls
     });
 
@@ -249,6 +245,11 @@ class WebPlayerService {
 
       const currentTrack = state.track_window.current_track;
       
+      // DEBUG: Log track data
+      if (currentTrack) {
+        console.log('[WebPlayerService] Current track album images:', currentTrack.album.images);
+      }
+      
       // Sync position tracker
       this.syncPosition(state.position, state.timestamp || Date.now(), state.paused);
       
@@ -296,18 +297,6 @@ class WebPlayerService {
     });
   }
 
-  private handleVisibilityChange = async () => {
-    if (document.visibilityState === 'visible' && this.positionTracker.isPlaying && this.player) {
-      try {
-        const state = await this.player.getCurrentState();
-        if (state && !state.paused) {
-          this.syncPosition(state.position, state.timestamp || Date.now(), state.paused);
-        }
-      } catch (error) {
-        console.log('Tab visibility re-sync failed (non-critical):', error);
-      }
-    }
-  };
 
   private syncPosition(position: number, timestamp: number, paused: boolean): void {
     const localTime = Date.now();
@@ -472,7 +461,7 @@ class WebPlayerService {
       isActive: false,
       currentTrack: null,
       deviceId: null,
-      volume: 0.5,
+      volume: 1.0,
       shuffle: false,
       repeatMode: 0,
       queue: {
@@ -480,8 +469,6 @@ class WebPlayerService {
         nextTracks: []
       }
     };
-    
-    document.removeEventListener('visibilitychange', this.handleVisibilityChange);
     
     this.notifyStateChange();
   }

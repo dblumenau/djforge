@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../utils/api';
 import { webPlayerService } from '../services/webPlayer.service';
+import { Radio, Laptop, Smartphone, Speaker, Wifi, RefreshCw } from 'lucide-react';
 
 interface SpotifyDevice {
   id: string;
@@ -41,10 +42,16 @@ const DeviceSelector: React.FC<DeviceSelectorProps> = ({ onDeviceChange, compact
       if (response.ok) {
         const data = await response.json();
         console.log('[DeviceSelector] Devices data:', data);
-        setDevices(data.devices || []);
+        
+        // Filter out the web player device since we have "Built In Player" option
+        const filteredDevices = (data.devices || []).filter((d: SpotifyDevice) => 
+          !d.name.includes('DJForge Web Player')
+        );
+        
+        setDevices(filteredDevices);
         
         // Find the active device to show as current
-        const active = data.devices?.find((d: SpotifyDevice) => d.is_active);
+        const active = filteredDevices.find((d: SpotifyDevice) => d.is_active);
         setCurrentDevice(active || data.currentDevice || null);
       } else {
         const errorData = await response.json().catch(() => ({}));
@@ -62,16 +69,6 @@ const DeviceSelector: React.FC<DeviceSelectorProps> = ({ onDeviceChange, compact
     fetchDevices();
     const interval = setInterval(fetchDevices, 30000); // Refresh every 30 seconds
     
-    // Add Page Visibility API listener
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        console.log('[DeviceSelector] Page became visible, refreshing devices...');
-        fetchDevices();
-      }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
     // Listen for web player ready events
     const unsubscribeWebPlayer = webPlayerService.onDeviceReady(() => {
       console.log('[DeviceSelector] Web player device is ready, refreshing devices...');
@@ -81,7 +78,6 @@ const DeviceSelector: React.FC<DeviceSelectorProps> = ({ onDeviceChange, compact
     
     return () => {
       clearInterval(interval);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
       unsubscribeWebPlayer();
     };
   }, []);
@@ -156,17 +152,18 @@ const DeviceSelector: React.FC<DeviceSelectorProps> = ({ onDeviceChange, compact
     }
   };
 
-  // Get device icon based on type
+  // Get device icon component based on type
   const getDeviceIcon = (type: string) => {
+    const iconClass = "w-4 h-4 text-green-500";
     switch (type.toLowerCase()) {
       case 'computer':
-        return '💻';
+        return <Laptop className={iconClass} />;
       case 'smartphone':
-        return '📱';
+        return <Smartphone className={iconClass} />;
       case 'speaker':
-        return '🔊';
+        return <Speaker className={iconClass} />;
       default:
-        return '🌐'; // Web player or unknown
+        return <Wifi className={iconClass} />; // Web player or unknown
     }
   };
 
@@ -176,13 +173,23 @@ const DeviceSelector: React.FC<DeviceSelectorProps> = ({ onDeviceChange, compact
       return compact ? 'Remote' : 'Auto - Remote Control';
     }
     if (selectedDevice === 'web-player') {
-      return compact ? '🎵' : '🎵 Built In Player';
+      return compact ? <Radio className="w-4 h-4 text-green-500" /> : (
+        <span className="flex items-center gap-2">
+          <Radio className="w-4 h-4 text-green-500" />
+          <span>Built In Player</span>
+        </span>
+      );
     }
     const device = devices.find(d => d.id === selectedDevice);
     if (compact && device) {
       return getDeviceIcon(device.type);
     }
-    return device ? `${getDeviceIcon(device.type)} ${device.name}` : 'Select device...';
+    return device ? (
+      <span className="flex items-center gap-2">
+        {getDeviceIcon(device.type)}
+        <span>{device.name}</span>
+      </span>
+    ) : 'Select device...';
   };
 
   return (
@@ -194,7 +201,7 @@ const DeviceSelector: React.FC<DeviceSelectorProps> = ({ onDeviceChange, compact
         title="Select Spotify playback device"
       >
         <span className={`text-gray-400 ${compact ? 'hidden' : ''}`}>Device:</span>
-        <span className="text-white truncate max-w-[120px] flex items-center gap-2">
+        <div className="text-white truncate max-w-[120px] flex items-center gap-2">
           {getSelectedDisplayName()}
           {isChangingDevice && (
             <svg className="animate-spin h-3 w-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -202,7 +209,7 @@ const DeviceSelector: React.FC<DeviceSelectorProps> = ({ onDeviceChange, compact
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
           )}
-        </span>
+        </div>
         <svg
           className={`w-4 h-4 transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`}
           fill="none"
@@ -237,7 +244,11 @@ const DeviceSelector: React.FC<DeviceSelectorProps> = ({ onDeviceChange, compact
                   )}
                 </div>
                 <span className="text-xs text-gray-400 mt-1 block">
-                  {currentDevice ? `Currently: ${currentDevice.name}` : 'No active device - start playing first'}
+                  {currentDevice ? 
+                    (currentDevice.name.includes('DJForge Web Player') 
+                      ? 'Currently: Built In Player' 
+                      : `Currently: ${currentDevice.name}`) 
+                    : 'No active device - start playing first'}
                 </span>
               </button>
 
@@ -250,7 +261,7 @@ const DeviceSelector: React.FC<DeviceSelectorProps> = ({ onDeviceChange, compact
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="text-lg">🎵</span>
+                    <Radio className="w-4 h-4 text-green-500" />
                     <span className="text-white">Built In Player</span>
                   </div>
                   {selectedDevice === 'web-player' && (
@@ -273,9 +284,10 @@ const DeviceSelector: React.FC<DeviceSelectorProps> = ({ onDeviceChange, compact
                   e.stopPropagation();
                   fetchDevices();
                 }}
-                className="w-full text-left px-4 py-2 hover:bg-gray-700 text-sm text-gray-400 hover:text-white transition-colors"
+                className="w-full text-left px-4 py-2 hover:bg-gray-700 text-sm text-gray-400 hover:text-white transition-colors flex items-center gap-2"
               >
-                🔄 Refresh devices
+                <RefreshCw className="w-4 h-4" />
+                <span>Refresh devices</span>
               </button>
               
               {/* Divider */}
@@ -301,7 +313,7 @@ const DeviceSelector: React.FC<DeviceSelectorProps> = ({ onDeviceChange, compact
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="text-lg">{getDeviceIcon(device.type)}</span>
+                        {getDeviceIcon(device.type)}
                         <div>
                           <div className="text-white">{device.name}</div>
                           <div className="text-xs text-gray-400">

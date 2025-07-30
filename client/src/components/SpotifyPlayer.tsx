@@ -17,6 +17,13 @@ const SpotifyPlayer: React.FC<SpotifyPlayerProps> = ({ onDeviceReady }) => {
     previousTrack
   } = useWebPlayer(onDeviceReady);
 
+  // DEBUG: Log the player state
+  console.log('[SpotifyPlayer] Player state:', playerState);
+  console.log('[SpotifyPlayer] Current track:', playerState.currentTrack);
+  if (playerState.currentTrack) {
+    console.log('[SpotifyPlayer] Album art URL:', playerState.currentTrack.albumArt);
+  }
+
   // Handle play/pause button click
   const handlePlayPause = async () => {
     try {
@@ -59,7 +66,7 @@ const SpotifyPlayer: React.FC<SpotifyPlayerProps> = ({ onDeviceReady }) => {
 
   if (error) {
     return (
-      <div className="bg-gray-800 rounded-lg p-6 shadow-lg border border-gray-700">
+      <div className="bg-gray-800/70 backdrop-blur-md rounded-lg p-6 shadow-xl border border-gray-700/40">
         <div className="text-center text-red-400">
           <p className="text-sm">Web Player Error</p>
           <p className="text-xs mt-2">{error}</p>
@@ -70,25 +77,43 @@ const SpotifyPlayer: React.FC<SpotifyPlayerProps> = ({ onDeviceReady }) => {
 
   if (!playerState.currentTrack) {
     return (
-      <div className="bg-gray-800 rounded-lg p-6 shadow-lg border border-gray-700">
+      <div className="bg-gray-800/70 backdrop-blur-md rounded-lg p-6 shadow-xl border border-gray-700/40">
         <div className="text-center text-gray-400">
           <p className="text-sm">Web Player Ready</p>
           <p className="text-xs mt-2">Play something to see it here</p>
+          <div className="mt-4 text-xs text-gray-500">
+            <p>Device ID: {playerState.deviceId || 'Not available'}</p>
+            <p>Is Active: {playerState.isActive ? 'Yes' : 'No'}</p>
+            <p className="mt-2 text-yellow-400">To see album art:</p>
+            <ol className="text-left mt-1 ml-4">
+              <li>1. Start playing music on any device</li>
+              <li>2. Make sure "Built In Player" is selected above</li>
+              <li>3. The playback will transfer here</li>
+            </ol>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-gray-800 rounded-lg p-6 shadow-lg border border-gray-700">
+    <div className="bg-gray-800/70 backdrop-blur-md rounded-lg p-6 shadow-xl border border-gray-700/40">
       <div className="flex items-center space-x-4">
         {/* Album Art */}
-        {playerState.currentTrack.albumArt && (
+        {playerState.currentTrack.albumArt ? (
           <img 
             src={playerState.currentTrack.albumArt} 
             alt={playerState.currentTrack.album}
             className="w-20 h-20 rounded-md shadow-lg"
+            onError={(e) => {
+              console.error('[SpotifyPlayer] Album art failed to load:', playerState.currentTrack.albumArt);
+              e.currentTarget.style.display = 'none';
+            }}
           />
+        ) : (
+          <div className="w-20 h-20 rounded-md bg-gray-700 flex items-center justify-center">
+            <span className="text-gray-500 text-xs">No Art</span>
+          </div>
         )}
         
         {/* Track Info */}

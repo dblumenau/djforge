@@ -8,6 +8,7 @@ import SpotifyPlayer from './SpotifyPlayer';
 import QueueDisplay from './QueueDisplay';
 import { useAuth } from '../contexts/AuthContext';
 import { webPlayerService } from '../services/webPlayer.service';
+import { MessageSquare, BarChart3, Target, ClipboardList, Plug, LogOut } from 'lucide-react';
 
 interface MobileMenuProps {
   isOpen: boolean;
@@ -153,7 +154,11 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
                   }}
                 />
               ) : (
-                <PlaybackControls onShowQueue={() => setShowQueue(true)} isMobile />
+                <PlaybackControls 
+                  onShowQueue={() => setShowQueue(true)} 
+                  isMobile 
+                  devicePreference={devicePreference}
+                />
               )}
             </div>
 
@@ -168,7 +173,7 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
                   }}
                   className="w-full px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-left rounded-lg transition-colors flex items-center gap-2"
                 >
-                  <span>💬</span>
+                  <MessageSquare className="w-4 h-4 text-green-500" />
                   <span>Chat</span>
                 </button>
                 <button
@@ -178,7 +183,7 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
                   }}
                   className="w-full px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-left rounded-lg transition-colors flex items-center gap-2"
                 >
-                  <span>📊</span>
+                  <BarChart3 className="w-4 h-4 text-green-500" />
                   <span>Dashboard</span>
                 </button>
                 <button
@@ -188,7 +193,7 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
                   }}
                   className="w-full px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-left rounded-lg transition-colors flex items-center gap-2"
                 >
-                  <span>🎯</span>
+                  <Target className="w-4 h-4 text-green-500" />
                   <span>Feedback</span>
                 </button>
                 <button
@@ -198,7 +203,7 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
                   }}
                   className="w-full px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-left rounded-lg transition-colors flex items-center gap-2"
                 >
-                  <span>📋</span>
+                  <ClipboardList className="w-4 h-4 text-green-500" />
                   <span>Logs</span>
                 </button>
                 {isAdmin && (
@@ -209,7 +214,7 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
                     }}
                     className="w-full px-4 py-2 bg-purple-900/20 hover:bg-purple-900/30 text-purple-300 hover:text-purple-200 text-left rounded-lg transition-colors flex items-center gap-2"
                   >
-                    <span>🔌</span>
+                    <Plug className="w-4 h-4 text-green-500" />
                     <span>SSE Status</span>
                   </button>
                 )}
@@ -235,7 +240,7 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
               }}
               className="w-full px-4 py-2 bg-red-900/20 hover:bg-red-900/30 text-red-300 hover:text-red-200 border border-red-800/50 hover:border-red-700/50 rounded-lg transition-all flex items-center justify-center gap-2"
             >
-              <span>🚪</span>
+              <LogOut className="w-4 h-4 text-green-500" />
               <span>Logout</span>
             </button>
           </div>

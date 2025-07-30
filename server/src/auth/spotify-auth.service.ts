@@ -191,9 +191,24 @@ export class SpotifyAuthService {
       };
     } catch (error: any) {
       if (error.response?.data?.error === 'invalid_grant') {
-        // Refresh token revoked, destroy session
-        await this.sessionManager.destroySession(sessionId);
-        throw new Error('Authentication expired. Please log in again.');
+        // Don't immediately destroy session - Spotify can return invalid_grant for temporary issues
+        // Log the error and let the caller decide what to do
+        console.error(`⚠️ Token refresh failed with invalid_grant for session ${sessionId}:`, error.response?.data);
+        
+        // Only destroy session after multiple consecutive failures or specific error descriptions
+        const errorDescription = error.response?.data?.error_description;
+        if (errorDescription && (
+          errorDescription.includes('revoked') || 
+          errorDescription.includes('expired') ||
+          errorDescription.includes('invalid')
+        )) {
+          console.log(`🗑️ Destroying session ${sessionId} due to permanent token issue: ${errorDescription}`);
+          await this.sessionManager.destroySession(sessionId);
+          throw new Error('Authentication expired. Please log in again.');
+        }
+        
+        // For temporary invalid_grant errors, don't destroy session - just throw error
+        throw new Error('Token refresh temporarily failed. Please try again.');
       }
       throw error;
     } finally {
