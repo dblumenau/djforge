@@ -2,6 +2,192 @@ import axios, { AxiosInstance } from 'axios';
 import { SpotifyAuthTokens, SpotifyTrack } from '../types';
 // Token refresh is now handled by the session-auth middleware
 
+// Spotify API response interfaces
+export interface SpotifyImage {
+  url: string;
+  width: number | null;
+  height: number | null;
+}
+
+export interface SpotifyArtist {
+  id: string;
+  name: string;
+  type: 'artist';
+  uri: string;
+  href: string;
+  external_urls: {
+    spotify: string;
+  };
+  genres?: string[];
+  popularity?: number;
+  followers?: {
+    total: number;
+  };
+  images?: SpotifyImage[];
+}
+
+export interface SpotifyAlbum {
+  id: string;
+  name: string;
+  type: 'album';
+  uri: string;
+  href: string;
+  album_type: 'album' | 'single' | 'compilation';
+  total_tracks: number;
+  available_markets: string[];
+  external_urls: {
+    spotify: string;
+  };
+  images: SpotifyImage[];
+  release_date: string;
+  release_date_precision: 'year' | 'month' | 'day';
+  artists: SpotifyArtist[];
+}
+
+export interface SpotifyPlaylist {
+  id: string;
+  name: string;
+  type: 'playlist';
+  uri: string;
+  href: string;
+  description: string | null;
+  public: boolean;
+  collaborative: boolean;
+  external_urls: {
+    spotify: string;
+  };
+  images: SpotifyImage[];
+  owner: {
+    id: string;
+    display_name: string;
+    type: 'user';
+  };
+  tracks: {
+    href: string;
+    total: number;
+  };
+}
+
+export interface SpotifySearchResponse {
+  tracks?: {
+    items: SpotifyTrack[];
+    total: number;
+    limit: number;
+    offset: number;
+    next: string | null;
+    previous: string | null;
+  };
+  artists?: {
+    items: SpotifyArtist[];
+    total: number;
+    limit: number;
+    offset: number;
+    next: string | null;
+    previous: string | null;
+  };
+  albums?: {
+    items: SpotifyAlbum[];
+    total: number;
+    limit: number;
+    offset: number;
+    next: string | null;
+    previous: string | null;
+  };
+  playlists?: {
+    items: SpotifyPlaylist[];
+    total: number;
+    limit: number;
+    offset: number;
+    next: string | null;
+    previous: string | null;
+  };
+}
+
+export interface SpotifyPlaybackContext {
+  type: 'artist' | 'playlist' | 'album' | 'show' | 'episode';
+  href: string;
+  external_urls: {
+    spotify: string;
+  };
+  uri: string;
+}
+
+export interface SpotifyUser {
+  id: string;
+  display_name?: string;
+  email?: string;
+  type: 'user';
+  uri: string;
+  href: string;
+  external_urls: {
+    spotify: string;
+  };
+  followers?: {
+    total: number;
+  };
+  images?: SpotifyImage[];
+  country?: string;
+  product?: string;
+}
+
+export interface SpotifyQueueResponse {
+  currently_playing: SpotifyTrack | null;
+  queue: SpotifyTrack[];
+}
+
+export interface SpotifyPlaylistTrackItem {
+  track: SpotifyTrack;
+  added_at: string;
+  added_by: {
+    id: string;
+    type: 'user';
+  };
+  is_local: boolean;
+}
+
+export interface SpotifyRecentlyPlayedItem {
+  track: SpotifyTrack;
+  played_at: string;
+  context: SpotifyPlaybackContext | null;
+}
+
+export interface SpotifyDevicesResponse {
+  devices: SpotifyDevice[];
+}
+
+export interface SpotifyTopItemsResponse<T> {
+  items: T[];
+  total: number;
+  limit: number;
+  offset: number;
+  next: string | null;
+  previous: string | null;
+}
+
+export interface SpotifySavedTracksResponse {
+  items: Array<{
+    added_at: string;
+    track: SpotifyTrack;
+  }>;
+  total: number;
+  limit: number;
+  offset: number;
+  next: string | null;
+  previous: string | null;
+}
+
+export interface SpotifySavedAlbumsResponse {
+  items: Array<{
+    added_at: string;
+    album: SpotifyAlbum;
+  }>;
+  total: number;
+  limit: number;
+  offset: number;
+  next: string | null;
+  previous: string | null;
+}
+
 export interface SpotifyDevice {
   id: string;
   is_active: boolean;
@@ -17,7 +203,7 @@ export interface PlaybackState {
   shuffle_state: boolean;
   repeat_state: 'off' | 'track' | 'context';
   timestamp: number;
-  context: any;
+  context: SpotifyPlaybackContext | null;
   progress_ms: number;
   item: SpotifyTrack | null;
   currently_playing_type: string;
@@ -79,8 +265,8 @@ export class SpotifyWebAPI {
     );
   }
 
-  async search(query: string, types: string[] = ['track']): Promise<any[]> {
-    const response = await this.api.get('/search', {
+  async search(query: string, types: string[] = ['track']): Promise<SpotifyTrack[] | SpotifyArtist[] | SpotifyAlbum[] | SpotifyPlaylist[]> {
+    const response = await this.api.get<SpotifySearchResponse>('/search', {
       params: {
         q: query,
         type: types.join(','),
@@ -116,35 +302,31 @@ export class SpotifyWebAPI {
     return response.data.tracks || [];
   }
 
-  async getCurrentUser(): Promise<{ id: string; display_name?: string; email?: string }> {
+  async getCurrentUser(): Promise<SpotifyUser> {
     try {
-      const response = await this.api.get('/me');
-      return {
-        id: response.data.id,
-        display_name: response.data.display_name,
-        email: response.data.email
-      };
+      const response = await this.api.get<SpotifyUser>('/me');
+      return response.data;
     } catch (error: any) {
       console.error('Failed to get current user:', error.response?.data || error.message);
       throw new Error('Failed to fetch user profile from Spotify');
     }
   }
 
-  async getDevices() {
-    const response = await this.api.get('/me/player/devices');
+  async getDevices(): Promise<SpotifyDevice[]> {
+    const response = await this.api.get<SpotifyDevicesResponse>('/me/player/devices');
     const devices = response.data.devices || [];
     return devices;
   }
 
-  async addToQueue(uri: string) {
+  async addToQueue(uri: string): Promise<void> {
     await this.api.post('/me/player/queue', null, {
       params: { uri }
     });
   }
 
-  async getQueue() {
+  async getQueue(): Promise<SpotifyQueueResponse> {
     try {
-      const response = await this.api.get('/me/player/queue');
+      const response = await this.api.get<SpotifyQueueResponse>('/me/player/queue');
       return response.data;
     } catch (error: any) {
       console.error('Failed to get queue:', error);
@@ -152,22 +334,22 @@ export class SpotifyWebAPI {
     }
   }
 
-  async getPlaylists() {
-    const response = await this.api.get('/me/playlists', {
+  async getPlaylists(): Promise<SpotifyPlaylist[]> {
+    const response = await this.api.get<{ items: SpotifyPlaylist[] }>('/me/playlists', {
       params: { limit: 50 }
     });
     return response.data.items || [];
   }
 
-  async getPlaylistTracks(playlistId: string) {
-    const response = await this.api.get(`/playlists/${playlistId}/tracks`, {
+  async getPlaylistTracks(playlistId: string): Promise<SpotifyPlaylistTrackItem[]> {
+    const response = await this.api.get<{ items: SpotifyPlaylistTrackItem[] }>(`/playlists/${playlistId}/tracks`, {
       params: { limit: 100 }
     });
     return response.data.items || [];
   }
 
-  async getRecentlyPlayed() {
-    const response = await this.api.get('/me/player/recently-played', {
+  async getRecentlyPlayed(): Promise<SpotifyRecentlyPlayedItem[]> {
+    const response = await this.api.get<{ items: SpotifyRecentlyPlayedItem[] }>('/me/player/recently-played', {
       params: { limit: 50 }
     });
     return response.data.items || [];
@@ -474,14 +656,14 @@ export class SpotifyWebAPI {
     }
   }
 
-  async getUserProfile(): Promise<any> {
-    const response = await this.api.get('/me');
+  async getUserProfile(): Promise<SpotifyUser> {
+    const response = await this.api.get<SpotifyUser>('/me');
     return response.data;
   }
 
   // New methods for user data dashboard
-  async getTopArtists(timeRange: 'short_term' | 'medium_term' | 'long_term' = 'medium_term', limit: number = 20): Promise<any[]> {
-    const response = await this.api.get('/me/top/artists', {
+  async getTopArtists(timeRange: 'short_term' | 'medium_term' | 'long_term' = 'medium_term', limit: number = 20): Promise<SpotifyArtist[]> {
+    const response = await this.api.get<SpotifyTopItemsResponse<SpotifyArtist>>('/me/top/artists', {
       params: { 
         time_range: timeRange, 
         limit 
@@ -490,8 +672,8 @@ export class SpotifyWebAPI {
     return response.data.items || [];
   }
 
-  async getTopTracks(timeRange: 'short_term' | 'medium_term' | 'long_term' = 'medium_term', limit: number = 20): Promise<any[]> {
-    const response = await this.api.get('/me/top/tracks', {
+  async getTopTracks(timeRange: 'short_term' | 'medium_term' | 'long_term' = 'medium_term', limit: number = 20): Promise<SpotifyTrack[]> {
+    const response = await this.api.get<SpotifyTopItemsResponse<SpotifyTrack>>('/me/top/tracks', {
       params: { 
         time_range: timeRange, 
         limit 
@@ -500,8 +682,8 @@ export class SpotifyWebAPI {
     return response.data.items || [];
   }
 
-  async getSavedTracks(limit: number = 50, offset: number = 0): Promise<any> {
-    const response = await this.api.get('/me/tracks', {
+  async getSavedTracks(limit: number = 50, offset: number = 0): Promise<SpotifySavedTracksResponse> {
+    const response = await this.api.get<SpotifySavedTracksResponse>('/me/tracks', {
       params: { 
         limit, 
         offset 
@@ -510,13 +692,15 @@ export class SpotifyWebAPI {
     return {
       items: response.data.items || [],
       total: response.data.total || 0,
+      limit: response.data.limit,
+      offset: response.data.offset,
       next: response.data.next,
       previous: response.data.previous
     };
   }
 
-  async getSavedAlbums(limit: number = 50, offset: number = 0): Promise<any> {
-    const response = await this.api.get('/me/albums', {
+  async getSavedAlbums(limit: number = 50, offset: number = 0): Promise<SpotifySavedAlbumsResponse> {
+    const response = await this.api.get<SpotifySavedAlbumsResponse>('/me/albums', {
       params: { 
         limit, 
         offset 
@@ -525,15 +709,17 @@ export class SpotifyWebAPI {
     return {
       items: response.data.items || [],
       total: response.data.total || 0,
+      limit: response.data.limit,
+      offset: response.data.offset,
       next: response.data.next,
       previous: response.data.previous
     };
   }
 
   // Playlist management methods
-  async createPlaylist(name: string, description?: string, isPublic: boolean = false): Promise<any> {
+  async createPlaylist(name: string, description?: string, isPublic: boolean = false): Promise<SpotifyPlaylist> {
     const user = await this.getCurrentUser();
-    const response = await this.api.post(`/users/${user.id}/playlists`, {
+    const response = await this.api.post<SpotifyPlaylist>(`/users/${user.id}/playlists`, {
       name,
       description: description || '',
       public: isPublic
@@ -541,19 +727,19 @@ export class SpotifyWebAPI {
     return response.data;
   }
 
-  async addTracksToPlaylist(playlistId: string, trackUris: string[]): Promise<any> {
-    const response = await this.api.post(`/playlists/${playlistId}/tracks`, {
+  async addTracksToPlaylist(playlistId: string, trackUris: string[]): Promise<{ snapshot_id: string }> {
+    const response = await this.api.post<{ snapshot_id: string }>(`/playlists/${playlistId}/tracks`, {
       uris: trackUris
     });
     return response.data;
   }
 
-  async findPlaylistByName(name: string): Promise<any | null> {
+  async findPlaylistByName(name: string): Promise<SpotifyPlaylist | null> {
     const playlists = await this.getPlaylists();
-    return playlists.find((playlist: any) => playlist.name === name) || null;
+    return playlists.find((playlist: SpotifyPlaylist) => playlist.name === name) || null;
   }
 
-  async ensurePlaylistExists(name: string, description?: string): Promise<any> {
+  async ensurePlaylistExists(name: string, description?: string): Promise<SpotifyPlaylist> {
     // Try to find existing playlist
     let playlist = await this.findPlaylistByName(name);
     

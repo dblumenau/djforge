@@ -1,4 +1,4 @@
-import { createClient } from 'redis';
+import { createClient, RedisClientType } from 'redis';
 
 export interface RedisConfig {
   host: string;
@@ -89,7 +89,7 @@ export async function createRedisClient() {
 }
 
 // Health check function
-export async function checkRedisHealth(client: any): Promise<boolean> {
+export async function checkRedisHealth(client: RedisClientType): Promise<boolean> {
   try {
     const result = await client.ping();
     return result === 'PONG';

@@ -1,15 +1,43 @@
-import { Router } from 'express';
-import { SpotifyWebAPI } from './api';
+import { Router, Request } from 'express';
+import { SpotifyWebAPI, SpotifyArtist } from './api';
 import { SpotifyAuthTokens, SpotifyTrack } from '../types';
 import { requireValidTokens } from '../middleware/session-auth';
 import { logDebugError } from '../utils/error-logger';
 import { playbackEventService } from '../services/event-emitter.service';
 import { logger } from '../config/logger';
 
+// Extended request interface for authenticated requests
+interface AuthenticatedRequest extends Request {
+  tokens: SpotifyAuthTokens;
+}
+
+// Control response interfaces
+interface ControlResponse {
+  success: boolean;
+  message: string;
+}
+
+interface TrackResponse extends ControlResponse {
+  track?: {
+    name: string;
+    artist: string;
+    album: string;
+    duration: number;
+    position: number;
+    id: string;
+  } | null;
+}
+
+interface SearchResponse extends ControlResponse {
+  track?: SpotifyTrack;
+  alternatives?: SpotifyTrack[];
+  retryLevel?: number;
+}
+
 export const controlRouter = Router();
 
 // Helper to get WebAPI instance from request
-const getWebAPI = (req: any): SpotifyWebAPI => {
+const getWebAPI = (req: AuthenticatedRequest): SpotifyWebAPI => {
   if (!req.tokens) {
     throw new Error('Not authenticated with Spotify');
   }
@@ -33,7 +61,7 @@ export class SpotifyControl {
     return this.webAPI;
   }
 
-  async play() {
+  async play(): Promise<ControlResponse> {
     try {
       await this.webAPI.play();
       return { success: true, message: 'Playing' };
@@ -42,7 +70,7 @@ export class SpotifyControl {
     }
   }
 
-  async pause() {
+  async pause(): Promise<ControlResponse> {
     try {
       await this.webAPI.pause();
       return { success: true, message: 'Paused' };
@@ -51,7 +79,7 @@ export class SpotifyControl {
     }
   }
 
-  async skip() {
+  async skip(): Promise<ControlResponse> {
     try {
       await this.webAPI.nextTrack();
       return { success: true, message: 'Skipped to next track' };
@@ -60,7 +88,7 @@ export class SpotifyControl {
     }
   }
 
-  async previous() {
+  async previous(): Promise<ControlResponse> {
     try {
       await this.webAPI.previousTrack();
       return { success: true, message: 'Went to previous track' };
@@ -69,7 +97,7 @@ export class SpotifyControl {
     }
   }
 
-  async setVolume(level: number) {
+  async setVolume(level: number): Promise<ControlResponse> {
     try {
       await this.webAPI.setVolume(level);
       return { success: true, message: `Volume set to ${level}` };
@@ -78,7 +106,7 @@ export class SpotifyControl {
     }
   }
 
-  async getCurrentTrack() {
+  async getCurrentTrack(): Promise<TrackResponse> {
     try {
       const playback = await this.webAPI.getCurrentPlayback();
       if (!playback || !playback.item) {
@@ -92,10 +120,10 @@ export class SpotifyControl {
       const track = playback.item;
       return { 
         success: true, 
-        message: `Now playing: ${track.name} by ${track.artists.map((a: any) => a.name).join(', ')}`,
+        message: `Now playing: ${track.name} by ${track.artists.map((a: SpotifyArtist) => a.name).join(', ')}`,
         track: {
           name: track.name,
-          artist: track.artists.map((a: any) => a.name).join(', '),
+          artist: track.artists.map((a: SpotifyArtist) => a.name).join(', '),
           album: track.album.name,
           duration: Math.floor(track.duration_ms / 1000),
           position: Math.floor(playback.progress_ms / 1000),
@@ -107,7 +135,7 @@ export class SpotifyControl {
     }
   }
 
-  async searchAndPlay(query: string, artist?: string, track?: string, album?: string) {
+  async searchAndPlay(query: string, artist?: string, track?: string, album?: string): Promise<SearchResponse> {
     try {
       // Search for tracks with retry logic
       const { tracks, retryLevel } = await this.searchWithRetry(query, artist, track, album);
@@ -124,24 +152,24 @@ export class SpotifyControl {
       let message = '';
       switch (retryLevel) {
         case 0:
-          message = `Playing: ${selectedTrack.name} by ${selectedTrack.artists.map((a: { name: string }) => a.name).join(', ')}`;
+          message = `Playing: ${selectedTrack.name} by ${selectedTrack.artists.map((a: SpotifyArtist) => a.name).join(', ')}`;
           break;
         case 1:
           // Check if we found the exact requested track even though we had to retry without album
           const foundExactTrack = artist && track && 
-            selectedTrack.artists.some((a: { name: string }) => a.name.toLowerCase() === artist.toLowerCase()) &&
+            selectedTrack.artists.some((a: SpotifyArtist) => a.name.toLowerCase() === artist.toLowerCase()) &&
             selectedTrack.name.toLowerCase() === track.toLowerCase();
           
           if (foundExactTrack) {
             // We found the exact song, just had to search without album (likely due to special characters)
-            message = `Playing: ${selectedTrack.name} by ${selectedTrack.artists.map((a: { name: string }) => a.name).join(', ')}`;
+            message = `Playing: ${selectedTrack.name} by ${selectedTrack.artists.map((a: SpotifyArtist) => a.name).join(', ')}`;
           } else {
             // We actually found a different song
-            message = `The exact song wasn't found on Spotify, so I'm playing: ${selectedTrack.name} by ${selectedTrack.artists.map((a: { name: string }) => a.name).join(', ')} instead`;
+            message = `The exact song wasn't found on Spotify, so I'm playing: ${selectedTrack.name} by ${selectedTrack.artists.map((a: SpotifyArtist) => a.name).join(', ')} instead`;
           }
           break;
         case 2:
-          message = `The requested song doesn't exist on Spotify, so I found the closest match: ${selectedTrack.name} by ${selectedTrack.artists.map((a: { name: string }) => a.name).join(', ')}`;
+          message = `The requested song doesn't exist on Spotify, so I found the closest match: ${selectedTrack.name} by ${selectedTrack.artists.map((a: SpotifyArtist) => a.name).join(', ')}`;
           break;
       }
       
@@ -157,7 +185,7 @@ export class SpotifyControl {
     }
   }
 
-  async queueTrack(query: string, artist?: string, track?: string, album?: string) {
+  async queueTrack(query: string, artist?: string, track?: string, album?: string): Promise<SearchResponse> {
     try {
       // Search for tracks with retry logic
       const { tracks, retryLevel } = await this.searchWithRetry(query, artist, track, album);
@@ -174,24 +202,24 @@ export class SpotifyControl {
       let message = '';
       switch (retryLevel) {
         case 0:
-          message = `Added to queue: ${selectedTrack.name} by ${selectedTrack.artists.map((a: { name: string }) => a.name).join(', ')}`;
+          message = `Added to queue: ${selectedTrack.name} by ${selectedTrack.artists.map((a: SpotifyArtist) => a.name).join(', ')}`;
           break;
         case 1:
           // Check if we found the exact requested track even though we had to retry without album
           const foundExactTrack = artist && track && 
-            selectedTrack.artists.some((a: { name: string }) => a.name.toLowerCase() === artist.toLowerCase()) &&
+            selectedTrack.artists.some((a: SpotifyArtist) => a.name.toLowerCase() === artist.toLowerCase()) &&
             selectedTrack.name.toLowerCase() === track.toLowerCase();
           
           if (foundExactTrack) {
             // We found the exact song, just had to search without album (likely due to special characters)
-            message = `Added to queue: ${selectedTrack.name} by ${selectedTrack.artists.map((a: { name: string }) => a.name).join(', ')}`;
+            message = `Added to queue: ${selectedTrack.name} by ${selectedTrack.artists.map((a: SpotifyArtist) => a.name).join(', ')}`;
           } else {
             // We actually found a different song
-            message = `The exact song wasn't found on Spotify, so I added to queue: ${selectedTrack.name} by ${selectedTrack.artists.map((a: { name: string }) => a.name).join(', ')} instead`;
+            message = `The exact song wasn't found on Spotify, so I added to queue: ${selectedTrack.name} by ${selectedTrack.artists.map((a: SpotifyArtist) => a.name).join(', ')} instead`;
           }
           break;
         case 2:
-          message = `The requested song doesn't exist on Spotify, so I found the closest match and added to queue: ${selectedTrack.name} by ${selectedTrack.artists.map((a: { name: string }) => a.name).join(', ')}`;
+          message = `The requested song doesn't exist on Spotify, so I found the closest match and added to queue: ${selectedTrack.name} by ${selectedTrack.artists.map((a: SpotifyArtist) => a.name).join(', ')}`;
           break;
       }
       

@@ -1,4 +1,5 @@
 import { createRedisClient } from '../config/redis';
+import { RedisClientType } from 'redis';
 
 /**
  * Redis utility functions for session management and debugging
@@ -6,14 +7,33 @@ import { createRedisClient } from '../config/redis';
 
 export interface SessionInfo {
   id: string;
-  data: any;
+  data: Record<string, any>;
   expires: Date | null;
 }
 
+export interface RedisMemoryInfo {
+  used_memory: string;
+  used_memory_human: string;
+  used_memory_rss: string;
+  used_memory_rss_human: string;
+  used_memory_peak: string;
+  used_memory_peak_human: string;
+  used_memory_overhead: string;
+  [key: string]: string;
+}
+
+export interface RedisInfoSection {
+  [key: string]: string;
+}
+
+export interface RedisInfo {
+  [sectionName: string]: RedisInfoSection;
+}
+
 export class RedisUtils {
-  private client: any;
+  private client: RedisClientType;
   
-  constructor(client: any) {
+  constructor(client: RedisClientType) {
     this.client = client;
   }
   
@@ -103,33 +123,33 @@ export class RedisUtils {
   }
   
   // Get Redis memory usage
-  async getMemoryUsage(): Promise<any> {
+  async getMemoryUsage(): Promise<RedisMemoryInfo> {
     try {
       const info = await this.client.info('memory');
       const lines = info.split('\r\n');
-      const memory: any = {};
+      const memory: Partial<RedisMemoryInfo> = {};
       
       for (const line of lines) {
         if (line.includes(':')) {
           const [key, value] = line.split(':');
           if (key.startsWith('used_memory')) {
-            memory[key] = value;
+            memory[key as keyof RedisMemoryInfo] = value;
           }
         }
       }
       
-      return memory;
+      return memory as RedisMemoryInfo;
     } catch (error) {
       console.error('Error getting memory usage:', error);
-      return {};
+      return {} as RedisMemoryInfo;
     }
   }
   
   // Get Redis general info
-  async getRedisInfo(): Promise<any> {
+  async getRedisInfo(): Promise<RedisInfo> {
     try {
       const info = await this.client.info();
-      const sections: any = {};
+      const sections: RedisInfo = {};
       let currentSection = '';
       
       const lines = info.split('\r\n');

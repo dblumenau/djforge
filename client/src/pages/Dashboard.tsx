@@ -10,6 +10,133 @@ import ListeningTrends from '../components/dashboard/ListeningTrends';
 import PlaylistGrid from '../components/dashboard/PlaylistGrid';
 import { useSpotifyPlayback } from '../hooks/useSpotifyPlayback';
 
+// Spotify type definitions for client-side
+interface SpotifyImage {
+  url: string;
+  width: number | null;
+  height: number | null;
+}
+
+interface SpotifyArtist {
+  id: string;
+  name: string;
+  type: 'artist';
+  uri: string;
+  href: string;
+  external_urls: {
+    spotify: string;
+  };
+  genres?: string[];
+  popularity?: number;
+  followers?: {
+    total: number;
+  };
+  images?: SpotifyImage[];
+}
+
+interface SpotifyAlbum {
+  id: string;
+  name: string;
+  type: 'album';
+  uri: string;
+  href: string;
+  album_type: 'album' | 'single' | 'compilation';
+  total_tracks: number;
+  available_markets: string[];
+  external_urls: {
+    spotify: string;
+  };
+  images: SpotifyImage[];
+  release_date: string;
+  release_date_precision: 'year' | 'month' | 'day';
+  artists: SpotifyArtist[];
+}
+
+interface SpotifyTrack {
+  id: string;
+  name: string;
+  type: 'track';
+  uri: string;
+  href: string;
+  duration_ms: number;
+  explicit: boolean;
+  popularity: number;
+  preview_url: string | null;
+  track_number: number;
+  disc_number: number;
+  external_urls: {
+    spotify: string;
+  };
+  artists: SpotifyArtist[];
+  album: SpotifyAlbum;
+  is_local: boolean;
+}
+
+interface SpotifyPlaylist {
+  id: string;
+  name: string;
+  type: 'playlist';
+  uri: string;
+  href: string;
+  description: string | null;
+  public: boolean;
+  collaborative: boolean;
+  external_urls: {
+    spotify: string;
+  };
+  images: SpotifyImage[];
+  owner: {
+    id: string;
+    display_name: string;
+    type: 'user';
+  };
+  tracks: {
+    href: string;
+    total: number;
+  };
+}
+
+interface SpotifyUser {
+  id: string;
+  display_name?: string;
+  email?: string;
+  type: 'user';
+  uri: string;
+  href: string;
+  external_urls: {
+    spotify: string;
+  };
+  followers?: {
+    total: number;
+  };
+  images?: SpotifyImage[];
+  country?: string;
+  product?: string;
+}
+
+interface SpotifyRecentlyPlayedItem {
+  track: SpotifyTrack;
+  played_at: string;
+  context: {
+    type: 'artist' | 'playlist' | 'album' | 'show' | 'episode';
+    href: string;
+    external_urls: {
+      spotify: string;
+    };
+    uri: string;
+  } | null;
+}
+
+interface SpotifySavedTrackItem {
+  added_at: string;
+  track: SpotifyTrack;
+}
+
+interface SpotifySavedAlbumItem {
+  added_at: string;
+  album: SpotifyAlbum;
+}
+
 // Skeleton components
 import ProfileSkeleton from '../components/skeletons/ProfileSkeleton';
 import StatCardSkeleton from '../components/skeletons/StatCardSkeleton';
@@ -19,31 +146,31 @@ import TimelineSkeleton from '../components/skeletons/TimelineSkeleton';
 import ChartSkeleton from '../components/skeletons/ChartSkeleton';
 
 interface DashboardData {
-  profile: any;
+  profile: SpotifyUser;
   topArtists: {
-    short_term: any[];
-    medium_term: any[];
-    long_term: any[];
+    short_term: SpotifyArtist[];
+    medium_term: SpotifyArtist[];
+    long_term: SpotifyArtist[];
   };
   topTracks: {
-    short_term: any[];
-    medium_term: any[];
-    long_term: any[];
+    short_term: SpotifyTrack[];
+    medium_term: SpotifyTrack[];
+    long_term: SpotifyTrack[];
   };
   savedTracks: {
-    items: any[];
+    items: SpotifySavedTrackItem[];
     total: number;
     limit: number;
     offset: number;
   };
   savedAlbums: {
-    items: any[];
+    items: SpotifySavedAlbumItem[];
     total: number;
     limit: number;
     offset: number;
   };
-  recentlyPlayed: any[];
-  playlists: any[];
+  recentlyPlayed: SpotifyRecentlyPlayedItem[];
+  playlists: SpotifyPlaylist[];
 }
 
 type Section = 'overview' | 'top' | 'saved' | 'recent' | 'playlists' | 'insights';
