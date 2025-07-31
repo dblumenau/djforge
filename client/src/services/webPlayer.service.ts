@@ -289,7 +289,6 @@ class WebPlayerService {
 
 
   private syncPosition(position: number, timestamp: number, paused: boolean): void {
-    const localTime = Date.now();
     // Don't add elapsed time correction here - just store the raw position
     // The correction will be applied when getCurrentPosition is called
     this.positionTracker.lastKnownPosition = position;
