@@ -248,6 +248,28 @@ export class SpotifyControl {
   async playTrack(uri: string) {
     return this.webAPI.playTrack(uri);
   }
+  
+  async playTracks(uris: string[]) {
+    try {
+      const deviceId = await this.webAPI.ensureDeviceId();
+      
+      // First, try to transfer playback to ensure device is active
+      try {
+        await this.webAPI.transferPlayback(deviceId, false); // Don't auto-play during transfer
+        // Small delay to ensure transfer completes
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } catch (transferError: any) {
+        console.log('Transfer playback attempt failed (device might already be active):', transferError.message);
+      }
+      
+      // Now play the tracks
+      await this.webAPI.playTracksWithUris(uris, deviceId);
+      return { success: true, message: `Started playing ${uris.length} tracks` };
+    } catch (error: any) {
+      console.error('Failed to play tracks:', error);
+      return { success: false, message: error.message || 'Failed to play tracks' };
+    }
+  }
 
   async playPlaylist(uri: string) {
     try {

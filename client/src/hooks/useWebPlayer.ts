@@ -14,6 +14,7 @@ interface UseWebPlayerReturn {
   setVolume: (volume: number) => Promise<void>;
   activateElement: () => Promise<void>;
   transferPlayback: () => Promise<void>;
+  getCurrentPosition: () => number;
 }
 
 export function useWebPlayer(
@@ -147,6 +148,10 @@ export function useWebPlayer(
     }
   };
 
+  const getCurrentPosition = () => {
+    return webPlayerService.getCurrentPosition();
+  };
+
   return {
     playerState,
     isReady,
@@ -159,6 +164,7 @@ export function useWebPlayer(
     seek,
     setVolume,
     activateElement,
-    transferPlayback
+    transferPlayback,
+    getCurrentPosition
   };
 }

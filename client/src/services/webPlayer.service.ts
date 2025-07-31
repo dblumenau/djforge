@@ -18,6 +18,8 @@ export interface PlayerState {
     albumArt: string;
     duration: number;
     position: number;
+    uri?: string;
+    id?: string;
   } | null;
   deviceId: string | null;
   volume: number;
@@ -236,10 +238,6 @@ class WebPlayerService {
 
       const currentTrack = state.track_window.current_track;
       
-      // DEBUG: Log track data
-      if (currentTrack) {
-      }
-      
       // Sync position tracker
       this.syncPosition(state.position, state.timestamp || Date.now(), state.paused);
       
@@ -271,7 +269,9 @@ class WebPlayerService {
           album: currentTrack.album.name,
           albumArt: currentTrack.album.images[0]?.url || '',
           duration: currentTrack.duration_ms,
-          position: state.position
+          position: state.position,
+          uri: currentTrack.uri,
+          id: currentTrack.id
         } : null,
         deviceId: this.deviceId,
         volume: this.playerState.volume, // Volume is not in state object
@@ -290,10 +290,10 @@ class WebPlayerService {
 
   private syncPosition(position: number, timestamp: number, paused: boolean): void {
     const localTime = Date.now();
-    const correctedPosition = paused ? position : position + (localTime - timestamp);
-
-    this.positionTracker.lastKnownPosition = correctedPosition;
-    this.positionTracker.lastKnownTimestamp = localTime;
+    // Don't add elapsed time correction here - just store the raw position
+    // The correction will be applied when getCurrentPosition is called
+    this.positionTracker.lastKnownPosition = position;
+    this.positionTracker.lastKnownTimestamp = timestamp;
     this.positionTracker.isPlaying = !paused;
 
     this.stopPositionTimer();
@@ -344,6 +344,18 @@ class WebPlayerService {
 
   async seek(positionMs: number): Promise<void> {
     if (!this.player) throw new Error('Player not initialized');
+    
+    // Update position tracker BEFORE the seek
+    this.positionTracker.lastKnownPosition = positionMs;
+    this.positionTracker.lastKnownTimestamp = Date.now();
+    
+    // Update player state to reflect new position
+    if (this.playerState.currentTrack) {
+      this.playerState.currentTrack.position = positionMs;
+      this.notifyStateChange();
+    }
+    
+    // Now perform the actual seek
     await this.player.seek(positionMs);
   }
 
@@ -389,8 +401,12 @@ class WebPlayerService {
 
   // Get current position without triggering state change
   getCurrentPosition(): number {
-    if (!this.positionTracker.isPlaying || !this.playerState.currentTrack) {
-      return this.playerState.currentTrack?.position || 0;
+    if (!this.playerState.currentTrack) {
+      return 0;
+    }
+    
+    if (!this.positionTracker.isPlaying) {
+      return this.positionTracker.lastKnownPosition;
     }
     
     const elapsed = Date.now() - this.positionTracker.lastKnownTimestamp;

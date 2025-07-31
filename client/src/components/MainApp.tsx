@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import MusicLoader from './MusicLoader';
 import PlaybackControls from './PlaybackControls';
-import SpotifyPlayer from './SpotifyPlayer';
+import WebPlayerControls from './WebPlayerControls';
 import CommandHistorySkeleton from './skeletons/CommandHistorySkeleton';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
@@ -12,6 +12,7 @@ import { AuthTestPanel } from './AuthTestPanel';
 import { useAuth } from '../contexts/AuthContext';
 import { useTrackLibrary } from '../hooks/useTrackLibrary';
 import { useIOSKeyboardFix } from '../hooks/useIOSKeyboardFix';
+import { useWebPlayer } from '../hooks/useWebPlayer';
 import { apiEndpoint } from '../config/api';
 import { authenticatedFetch, api } from '../utils/temp-auth';
 import { useModel } from '../contexts/ModelContext';
@@ -40,8 +41,6 @@ const ExampleList: React.FC<{ examples: string[]; onSelectExample: (example: str
 };
 
 const MainApp: React.FC = () => {
-  console.log('[MainApp] Component mounted/rendered - Web Player feature enabled');
-  
   const navigate = useNavigate();
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const typeAnimationRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -205,11 +204,19 @@ const MainApp: React.FC = () => {
   const handleWebPlayerReady = useCallback((deviceId: string) => {
     console.log('[MainApp] Web Player device ready:', deviceId);
     console.log('[MainApp] Web Player ready!');
+    // You could update UI state or perform other actions when the web player is ready
   }, []);
 
-  const handlePlayerStateChanged = useCallback((state: any) => {
-    console.log('[MainApp] Web Player state changed:', state);
-  }, []);
+  // Initialize web player with device ready callback
+  const { playerState: webPlayerState } = useWebPlayer(handleWebPlayerReady);
+  
+  // Handle player state changes
+  useEffect(() => {
+    // Only log significant changes to avoid console spam
+    if (webPlayerState.currentTrack?.uri) {
+      // Track changed
+    }
+  }, [webPlayerState.currentTrack?.uri]);
 
   // Cleanup animation on unmount
   useEffect(() => {
@@ -802,11 +809,10 @@ const MainApp: React.FC = () => {
 
         {/* Playback Controls or Web Player - Floating on desktop, in menu on mobile */}
         <div className="hidden md:block fixed top-20 left-1/2 -translate-x-1/2 z-10" style={{ maxWidth: '600px', width: '90%' }}>
-          {showWebPlayer && isAuthenticated ? (
-            <SpotifyPlayer
-              key="spotify-player"
-              onDeviceReady={handleWebPlayerReady}
-              onPlayerStateChanged={handlePlayerStateChanged}
+          {showWebPlayer ? (
+            <WebPlayerControls
+              key="web-player-controls"
+              className="w-full"
             />
           ) : (
             <PlaybackControls 

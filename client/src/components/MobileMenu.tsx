@@ -4,9 +4,8 @@ import ModelSelector from './ModelSelector';
 import DeviceSelector from './DeviceSelector';
 import WeatherDisplay from './WeatherDisplay';
 import PlaybackControls from './PlaybackControls';
-import SpotifyPlayer from './SpotifyPlayer';
+import WebPlayerControls from './WebPlayerControls';
 import QueueDisplay from './QueueDisplay';
-import { useAuth } from '../contexts/AuthContext';
 import { webPlayerService } from '../services/webPlayer.service';
 import { isMobileDevice } from '../utils/deviceDetection';
 import { MessageSquare, BarChart3, Target, ClipboardList, Plug, LogOut } from 'lucide-react';
@@ -32,7 +31,6 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
   const [showQueue, setShowQueue] = useState(false);
   const [devicePreference, setDevicePreference] = useState<string>('auto');
   const [needsWebPlayerActivation, setNeedsWebPlayerActivation] = useState(false);
-  const { isAuthenticated } = useAuth();
 
   // Close menu on escape key
   useEffect(() => {
@@ -202,15 +200,8 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
             {/* Playback Controls or Web Player */}
             <div className="bg-zinc-800/50 rounded-lg p-4">
               <h3 className="text-sm font-medium text-gray-400 mb-3">Playback</h3>
-              {devicePreference === 'web-player' && isAuthenticated ? (
-                <SpotifyPlayer
-                  onDeviceReady={(deviceId) => {
-                    console.log('[MobileMenu] Web Player device ready:', deviceId);
-                  }}
-                  onPlayerStateChanged={(state) => {
-                    console.log('[MobileMenu] Web Player state changed:', state);
-                  }}
-                />
+              {devicePreference === 'web-player' ? (
+                <WebPlayerControls className="w-full" />
               ) : (
                 <PlaybackControls 
                   onShowQueue={() => setShowQueue(true)} 
