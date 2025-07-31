@@ -74,9 +74,15 @@ const WeatherDisplay: React.FC<WeatherDisplayProps> = ({ compact = false }) => {
 
   if (loading) {
     return (
-      <div className="flex items-center gap-3 px-4 py-2 bg-zinc-800/50 rounded-full">
-        <div className="animate-pulse">
-          <div className="h-4 w-20 bg-zinc-700 rounded"></div>
+      <div className="flex items-center justify-between px-4 py-2 bg-zinc-800/50 rounded-full border border-zinc-700/50">
+        <div className="animate-pulse flex-1">
+          <div className="h-4 w-16 bg-zinc-700 rounded"></div>
+        </div>
+        <div className="animate-pulse flex-1 text-center">
+          <div className="h-4 w-20 bg-zinc-700 rounded mx-auto"></div>
+        </div>
+        <div className="animate-pulse flex-1 flex justify-end">
+          <div className="h-4 w-12 bg-zinc-700 rounded"></div>
         </div>
       </div>
     );
@@ -87,28 +93,24 @@ const WeatherDisplay: React.FC<WeatherDisplayProps> = ({ compact = false }) => {
   }
 
   return (
-    <div className={`flex items-center gap-3 ${compact ? 'px-3 py-1.5' : 'px-4 py-2'} bg-zinc-800/50 rounded-full border border-zinc-700/50`}>
-      {/* Temperature */}
-      <div className="flex items-center gap-1.5">
+    <div className={`flex items-center justify-between ${compact ? 'px-3 py-1.5' : 'px-4 py-2'} bg-zinc-800/50 rounded-full border border-zinc-700/50`}>
+      {/* Temperature - Left aligned */}
+      <div className="flex items-center gap-1.5 flex-1">
         <span className={compact ? 'text-base' : 'text-lg'}>{getTemperatureIcon(weather.temperature)}</span>
         <span className={`${compact ? 'text-xs' : 'text-sm'} font-medium text-gray-300`}>
           {weather.temperature.toFixed(1)}°C
         </span>
       </div>
 
-      {/* Divider */}
-      <div className="w-px h-4 bg-zinc-700"></div>
+      {/* City name - Center aligned */}
+      <div className="flex-1 text-center">
+        <span className={`${compact ? 'text-xs' : 'text-sm'} font-medium text-gray-300`}>
+          Copenhagen
+        </span>
+      </div>
 
-      {/* City name in the middle */}
-      <span className={`${compact ? 'text-xs' : 'text-sm'} font-medium text-gray-300`}>
-        Copenhagen
-      </span>
-
-      {/* Divider */}
-      <div className="w-px h-4 bg-zinc-700"></div>
-
-      {/* Humidity */}
-      <div className="flex items-center gap-1.5">
+      {/* Humidity - Right aligned */}
+      <div className="flex items-center gap-1.5 flex-1 justify-end">
         <span className={compact ? 'text-base' : 'text-lg'}>💧</span>
         <span className={`${compact ? 'text-xs' : 'text-sm'} font-medium text-gray-300`}>
           {weather.humidity.toFixed(0)}%
@@ -117,7 +119,7 @@ const WeatherDisplay: React.FC<WeatherDisplayProps> = ({ compact = false }) => {
 
       {/* Time - only in compact desktop mode */}
       {compact && (
-        <div className="hidden lg:flex items-center gap-1.5 text-xs text-gray-500">
+        <div className="hidden lg:flex items-center gap-1.5 text-xs text-gray-500 ml-2">
           <span>•</span>
           <span>{formatTime(weather.observationTime)}</span>
         </div>
