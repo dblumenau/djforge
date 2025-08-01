@@ -1,9 +1,9 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import ModelSelector from './ModelSelector';
 import DeviceSelector from './DeviceSelector';
 import WeatherDisplay from './WeatherDisplay';
-import { MessageSquare, BarChart3, Target, ClipboardList, Plug, RefreshCw, LogOut } from 'lucide-react';
+import { MessageSquare, BarChart3, Target, ClipboardList, Plug, RefreshCw, LogOut, MoreVertical } from 'lucide-react';
 
 interface HeaderNavProps {
   onModelChange: (model: string) => void;
@@ -24,10 +24,25 @@ const HeaderNav: React.FC<HeaderNavProps> = ({
   isAdmin = false
 }) => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [showSettings, setShowSettings] = useState(false);
+  const settingsRef = useRef<HTMLDivElement>(null);
+
+  // Close settings when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (settingsRef.current && !settingsRef.current.contains(event.target as Node)) {
+        setShowSettings(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   return (
-    <header className="app-header">
-      <div className="h-16 flex items-center justify-between px-2 md:px-4" style={{ maxWidth: '1440px', margin: '0 auto' }}>
+    <header className="app-header border-b border-zinc-800/50 backdrop-blur-md">
+      <div className="h-16 flex items-center justify-between px-4" style={{ maxWidth: '1440px', margin: '0 auto' }}>
           {/* Mobile Layout */}
           <div className="md:hidden flex items-center justify-between w-full h-full py-1">
             {/* Left: Mobile Menu Button */}
@@ -56,102 +71,168 @@ const HeaderNav: React.FC<HeaderNavProps> = ({
 
           {/* Desktop Layout */}
           <div className="hidden md:flex items-center justify-between w-full">
-            {/* Left: Logo and Title */}
-            <div className="flex items-center gap-3">
-              <img 
-                src="/square_icon.png" 
-                alt="DJ Forge" 
-                className="h-8 w-8"
-              />
-              <h1 className="text-xl font-bold">DJ Forge</h1>
-            </div>
+            {/* Left: Logo and Navigation */}
+            <div className="flex items-center gap-8">
+              <div className="flex items-center gap-3">
+                <img 
+                  src="/square_icon.png" 
+                  alt="DJ Forge" 
+                  className="h-8 w-8"
+                />
+                <h1 className="text-xl font-bold">DJ Forge</h1>
+              </div>
 
-            {/* Center: Weather */}
-            <div>
-              <WeatherDisplay compact />
-            </div>
-
-            {/* Right: Controls and Navigation */}
-            <div className="flex items-center gap-2 lg:gap-3">
-            {/* Model and Device Selectors (desktop only) */}
-            <div className="hidden md:flex items-center gap-2 lg:gap-3">
-              <ModelSelector onModelChange={onModelChange} compact />
-              <DeviceSelector onDeviceChange={onDeviceChange} compact />
-            </div>
-
-            {/* Navigation Buttons (desktop only) */}
-            <div className="hidden md:flex items-center gap-1 lg:gap-2">
-              <button
-                onClick={() => navigate('/')}
-                className="px-2 lg:px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-200 hover:text-white border border-zinc-600 hover:border-zinc-500 rounded-md transition-all text-xs font-medium flex items-center gap-1.5"
-              >
-                <MessageSquare className="w-3.5 h-3.5 text-green-500" />
-                <span className="hidden lg:inline">Chat</span>
-              </button>
-              <button
-                onClick={() => navigate('/dashboard')}
-                className="px-2 lg:px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-200 hover:text-white border border-zinc-600 hover:border-zinc-500 rounded-md transition-all text-xs font-medium flex items-center gap-1.5"
-              >
-                <BarChart3 className="w-3.5 h-3.5 text-green-500" />
-                <span className="hidden lg:inline">Dashboard</span>
-              </button>
-              <button
-                onClick={() => navigate('/feedback-dashboard')}
-                className="px-2 lg:px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-200 hover:text-white border border-zinc-600 hover:border-zinc-500 rounded-md transition-all text-xs font-medium flex items-center gap-1.5"
-              >
-                <Target className="w-3.5 h-3.5 text-green-500" />
-                <span className="hidden lg:inline">Feedback</span>
-              </button>
-              <button 
-                className="px-2 lg:px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-300 hover:text-zinc-100 border border-zinc-600 hover:border-zinc-500 rounded-md transition-all text-xs flex items-center gap-1.5"
-                onClick={() => navigate('/logs')}
-              >
-                <ClipboardList className="w-3.5 h-3.5 text-green-500" />
-                <span className="hidden lg:inline">Logs</span>
-              </button>
-              {isAdmin && (
-                <button 
-                  className="px-2 lg:px-3 py-1.5 bg-purple-900/20 hover:bg-purple-900/30 text-purple-300 hover:text-purple-200 border border-purple-800/50 hover:border-purple-700/50 rounded-md transition-all text-xs font-medium flex items-center gap-1.5"
-                  onClick={() => navigate('/admin/sse-status')}
+              <nav className="flex items-center gap-6">
+                <button
+                  onClick={() => navigate('/')}
+                  className={`flex items-center gap-2 text-sm font-medium transition-all ${
+                    location.pathname === '/' 
+                      ? 'text-white' 
+                      : 'text-zinc-400 hover:text-white'
+                  }`}
                 >
-                  <Plug className="w-3.5 h-3.5 text-green-500" />
-                  <span className="hidden lg:inline">SSE Status</span>
+                  <MessageSquare className={`w-4 h-4 ${location.pathname === '/' ? 'text-green-500' : ''}`} />
+                  Chat
                 </button>
-              )}
-              <button 
-                className="px-2 lg:px-3 py-1.5 bg-blue-900/20 hover:bg-blue-900/30 text-blue-300 hover:text-blue-200 border border-blue-800/50 hover:border-blue-700/50 rounded-md transition-all text-xs font-medium flex items-center gap-1.5"
-                onClick={() => window.location.reload()}
-              >
-                <RefreshCw className="w-3.5 h-3.5 text-green-500" />
-                <span className="hidden lg:inline">Refresh</span>
-              </button>
-              <button 
-                className="px-2 lg:px-3 py-1.5 bg-red-900/20 hover:bg-red-900/30 text-red-300 hover:text-red-200 border border-red-800/50 hover:border-red-700/50 rounded-md transition-all text-xs font-medium flex items-center gap-1.5"
-                onClick={onLogout}
-              >
-                <LogOut className="w-3.5 h-3.5 text-green-500" />
-                <span className="hidden lg:inline">Logout</span>
-              </button>
-
-              {/* Dev Tools - Hidden in production */}
-              {/* {isDevMode && (
-                <>
+                <button
+                  onClick={() => navigate('/dashboard')}
+                  className={`flex items-center gap-2 text-sm font-medium transition-all ${
+                    location.pathname === '/dashboard' 
+                      ? 'text-white' 
+                      : 'text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  <BarChart3 className={`w-4 h-4 ${location.pathname === '/dashboard' ? 'text-green-500' : ''}`} />
+                  Dashboard
+                </button>
+                <button
+                  onClick={() => navigate('/feedback-dashboard')}
+                  className={`flex items-center gap-2 text-sm font-medium transition-all ${
+                    location.pathname === '/feedback-dashboard' 
+                      ? 'text-white' 
+                      : 'text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  <Target className={`w-4 h-4 ${location.pathname === '/feedback-dashboard' ? 'text-green-500' : ''}`} />
+                  Feedback
+                </button>
+                <button 
+                  onClick={() => navigate('/logs')}
+                  className={`hidden lg:flex items-center gap-2 text-sm font-medium transition-all ${
+                    location.pathname === '/logs' 
+                      ? 'text-white' 
+                      : 'text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  <ClipboardList className={`w-4 h-4 ${location.pathname === '/logs' ? 'text-green-500' : ''}`} />
+                  Logs
+                </button>
+                {isAdmin && (
                   <button 
-                    className="px-2 py-1 bg-yellow-900/20 hover:bg-yellow-900/30 text-yellow-400/70 hover:text-yellow-300 border border-yellow-800/30 rounded text-xs opacity-50"
-                    onClick={onExpireTokens}
+                    onClick={() => navigate('/admin/sse-status')}
+                    className={`hidden lg:flex items-center gap-2 text-sm font-medium transition-all ${
+                      location.pathname === '/admin/sse-status' 
+                        ? 'text-white' 
+                        : 'text-zinc-400 hover:text-white'
+                    }`}
                   >
-                    ⏰ Expire
+                    <Plug className={`w-4 h-4 ${location.pathname === '/admin/sse-status' ? 'text-green-500' : ''}`} />
+                    Admin
                   </button>
-                  <button 
-                    className="px-2 py-1 bg-red-900/20 hover:bg-red-900/30 text-red-400/70 hover:text-red-300 border border-red-800/30 rounded text-xs opacity-50"
-                    onClick={onRevokeTokens}
-                  >
-                    🚫 Revoke
-                  </button>
-                </>
-              )} */}
+                )}
+              </nav>
             </div>
-          </div>
+
+            {/* Right: Weather and Settings */}
+            <div className="flex items-center gap-4">
+              <WeatherDisplay compact />
+              
+              {/* Settings Dropdown */}
+              <div className="relative" ref={settingsRef}>
+                <button 
+                  onClick={() => setShowSettings(!showSettings)}
+                  className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800/50 rounded-lg transition-all"
+                  aria-label="Settings"
+                >
+                  <MoreVertical className="w-5 h-5" />
+                </button>
+
+                {showSettings && (
+                  <div className="absolute top-full right-0 mt-2 w-72 bg-zinc-900 border border-zinc-800 rounded-lg shadow-xl z-50">
+                    <div className="p-2">
+                      {/* Navigation links visible on medium screens */}
+                      <div className="lg:hidden">
+                        <div className="px-3 py-2 text-xs font-medium text-zinc-500 uppercase tracking-wider">Navigation</div>
+                        <div className="space-y-1 mb-2">
+                          <button 
+                            className={`w-full px-3 py-2 text-left text-sm hover:bg-zinc-800 rounded transition-all flex items-center gap-3 ${
+                              location.pathname === '/logs' ? 'text-white bg-zinc-800' : 'text-zinc-300 hover:text-white'
+                            }`}
+                            onClick={() => {
+                              navigate('/logs');
+                              setShowSettings(false);
+                            }}
+                          >
+                            <ClipboardList className={`w-4 h-4 ${location.pathname === '/logs' ? 'text-green-500' : ''}`} />
+                            Logs
+                          </button>
+                          {isAdmin && (
+                            <button 
+                              className={`w-full px-3 py-2 text-left text-sm hover:bg-zinc-800 rounded transition-all flex items-center gap-3 ${
+                                location.pathname === '/admin/sse-status' ? 'text-white bg-zinc-800' : 'text-zinc-300 hover:text-white'
+                              }`}
+                              onClick={() => {
+                                navigate('/admin/sse-status');
+                                setShowSettings(false);
+                              }}
+                            >
+                              <Plug className={`w-4 h-4 ${location.pathname === '/admin/sse-status' ? 'text-green-500' : ''}`} />
+                              Admin
+                            </button>
+                          )}
+                        </div>
+                        <div className="border-t border-zinc-800 my-2"></div>
+                      </div>
+
+                      <div className="px-3 py-2 text-xs font-medium text-zinc-500 uppercase tracking-wider">Controls</div>
+                      <div className="space-y-1">
+                        <div className="px-3 py-2">
+                          <div className="text-xs text-zinc-500 mb-1">AI Model</div>
+                          <ModelSelector onModelChange={onModelChange} fullWidth />
+                        </div>
+                        <div className="px-3 py-2">
+                          <div className="text-xs text-zinc-500 mb-1">Playback Device</div>
+                          <DeviceSelector onDeviceChange={onDeviceChange} fullWidth />
+                        </div>
+                      </div>
+                      
+                      <div className="border-t border-zinc-800 mt-2 pt-2">
+                        <button 
+                          className="w-full px-3 py-2 text-left text-sm text-zinc-300 hover:text-white hover:bg-zinc-800 rounded transition-all flex items-center gap-3"
+                          onClick={() => {
+                            window.location.reload();
+                            setShowSettings(false);
+                          }}
+                        >
+                          <RefreshCw className="w-4 h-4" />
+                          Refresh Page
+                        </button>
+                        <button 
+                          className="w-full px-3 py-2 text-left text-sm text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded transition-all flex items-center gap-3"
+                          onClick={() => {
+                            onLogout();
+                            setShowSettings(false);
+                          }}
+                        >
+                          <LogOut className="w-4 h-4" />
+                          Logout
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
       </div>
     </header>

@@ -17,19 +17,6 @@ const WeatherDisplay: React.FC<WeatherDisplayProps> = ({ compact = false }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Function to format time string
-  const formatTime = (timeString: string) => {
-    try {
-      const date = new Date(timeString);
-      return date.toLocaleTimeString('en-US', { 
-        hour: '2-digit', 
-        minute: '2-digit',
-        hour12: false 
-      });
-    } catch {
-      return timeString;
-    }
-  };
 
   // Function to fetch weather data
   const fetchWeather = async () => {
@@ -92,38 +79,44 @@ const WeatherDisplay: React.FC<WeatherDisplayProps> = ({ compact = false }) => {
     return null; // Don't show anything if there's an error
   }
 
+  // Compact mode for header - just temp and emoji
+  if (compact) {
+    return (
+      <div className="flex items-center gap-1.5 text-sm text-gray-400">
+        <span className="text-base">{getTemperatureIcon(weather.temperature)}</span>
+        <span className="font-medium">{weather.temperature.toFixed(1)}°C</span>
+        <span className="text-xs">Copenhagen</span>
+        <span className="text-xs">💧</span>
+        <span className="text-xs">{weather.humidity}%</span>
+      </div>
+    );
+  }
+
+  // Full mode for mobile menu and other places
   return (
-    <div className={`flex items-center justify-between ${compact ? 'px-3 py-1.5' : 'px-4 py-2'} bg-zinc-800/50 rounded-full border border-zinc-700/50`}>
+    <div className="flex items-center justify-between px-4 py-2 bg-zinc-800/50 rounded-full border border-zinc-700/50">
       {/* Temperature - Left aligned */}
       <div className="flex items-center gap-1.5 flex-1">
-        <span className={compact ? 'text-base' : 'text-lg'}>{getTemperatureIcon(weather.temperature)}</span>
-        <span className={`${compact ? 'text-xs' : 'text-sm'} font-medium text-gray-300`}>
+        <span className="text-lg">{getTemperatureIcon(weather.temperature)}</span>
+        <span className="text-sm font-medium text-gray-300">
           {weather.temperature.toFixed(1)}°C
         </span>
       </div>
 
       {/* City name - Center aligned */}
       <div className="flex-1 text-center">
-        <span className={`${compact ? 'text-xs' : 'text-sm'} font-medium text-gray-300`}>
+        <span className="text-sm font-medium text-gray-300">
           Copenhagen
         </span>
       </div>
 
       {/* Humidity - Right aligned */}
       <div className="flex items-center gap-1.5 flex-1 justify-end">
-        <span className={compact ? 'text-base' : 'text-lg'}>💧</span>
-        <span className={`${compact ? 'text-xs' : 'text-sm'} font-medium text-gray-300`}>
+        <span className="text-lg">💧</span>
+        <span className="text-sm font-medium text-gray-300">
           {weather.humidity.toFixed(0)}%
         </span>
       </div>
-
-      {/* Time - only in compact desktop mode */}
-      {compact && (
-        <div className="hidden lg:flex items-center gap-1.5 text-xs text-gray-500 ml-2">
-          <span>•</span>
-          <span>{formatTime(weather.observationTime)}</span>
-        </div>
-      )}
     </div>
   );
 };

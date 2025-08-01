@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import ModelSelector from './ModelSelector';
 import DeviceSelector from './DeviceSelector';
 import WeatherDisplay from './WeatherDisplay';
@@ -28,6 +28,7 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
   isAdmin = false
 }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [showQueue, setShowQueue] = useState(false);
   const [devicePreference, setDevicePreference] = useState<string>('auto');
   const [needsWebPlayerActivation, setNeedsWebPlayerActivation] = useState(false);
@@ -220,7 +221,11 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
                     navigate('/');
                     onClose();
                   }}
-                  className="w-full px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-left rounded-lg transition-colors flex items-center gap-2"
+                  className={`w-full px-4 py-2 text-left rounded-lg transition-colors flex items-center gap-2 ${
+                    location.pathname === '/' 
+                      ? 'bg-green-900/30 text-green-300 border border-green-700/50' 
+                      : 'bg-zinc-800 hover:bg-zinc-700'
+                  }`}
                 >
                   <MessageSquare className="w-4 h-4 text-green-500" />
                   <span>Chat</span>
@@ -230,7 +235,11 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
                     navigate('/dashboard');
                     onClose();
                   }}
-                  className="w-full px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-left rounded-lg transition-colors flex items-center gap-2"
+                  className={`w-full px-4 py-2 text-left rounded-lg transition-colors flex items-center gap-2 ${
+                    location.pathname === '/dashboard' 
+                      ? 'bg-green-900/30 text-green-300 border border-green-700/50' 
+                      : 'bg-zinc-800 hover:bg-zinc-700'
+                  }`}
                 >
                   <BarChart3 className="w-4 h-4 text-green-500" />
                   <span>Dashboard</span>
@@ -240,7 +249,11 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
                     navigate('/feedback-dashboard');
                     onClose();
                   }}
-                  className="w-full px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-left rounded-lg transition-colors flex items-center gap-2"
+                  className={`w-full px-4 py-2 text-left rounded-lg transition-colors flex items-center gap-2 ${
+                    location.pathname === '/feedback-dashboard' 
+                      ? 'bg-green-900/30 text-green-300 border border-green-700/50' 
+                      : 'bg-zinc-800 hover:bg-zinc-700'
+                  }`}
                 >
                   <Target className="w-4 h-4 text-green-500" />
                   <span>Feedback</span>
@@ -250,7 +263,11 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
                     navigate('/logs');
                     onClose();
                   }}
-                  className="w-full px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-left rounded-lg transition-colors flex items-center gap-2"
+                  className={`w-full px-4 py-2 text-left rounded-lg transition-colors flex items-center gap-2 ${
+                    location.pathname === '/logs' 
+                      ? 'bg-green-900/30 text-green-300 border border-green-700/50' 
+                      : 'bg-zinc-800 hover:bg-zinc-700'
+                  }`}
                 >
                   <ClipboardList className="w-4 h-4 text-green-500" />
                   <span>Logs</span>
@@ -261,7 +278,11 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
                       navigate('/admin/sse-status');
                       onClose();
                     }}
-                    className="w-full px-4 py-2 bg-purple-900/20 hover:bg-purple-900/30 text-purple-300 hover:text-purple-200 text-left rounded-lg transition-colors flex items-center gap-2"
+                    className={`w-full px-4 py-2 text-left rounded-lg transition-colors flex items-center gap-2 ${
+                      location.pathname === '/admin/sse-status' 
+                        ? 'bg-green-900/30 text-green-300 border border-green-700/50' 
+                        : 'bg-purple-900/20 hover:bg-purple-900/30 text-purple-300 hover:text-purple-200'
+                    }`}
                   >
                     <Plug className="w-4 h-4 text-green-500" />
                     <span>SSE Status</span>

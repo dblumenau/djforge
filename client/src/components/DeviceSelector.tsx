@@ -221,7 +221,7 @@ const DeviceSelector: React.FC<DeviceSelectorProps> = ({ onDeviceChange, compact
       </button>
 
       {isOpen && (
-        <div className="absolute top-full mt-2 right-0 w-64 bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-50">
+        <div className="absolute top-full mt-2 right-0 lg:right-auto lg:left-0 w-64 bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-50 max-h-[400px] overflow-y-auto">
           {loading ? (
             <div className="p-3 text-center text-gray-400">
               Loading devices...
