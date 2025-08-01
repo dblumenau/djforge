@@ -214,7 +214,7 @@ You must respond with a JSON object containing these fields:
 - isAIDiscovery (optional): true when AI made creative choice (not following explicit user request)
 - aiReasoning (optional): explanation of why AI chose this when isAIDiscovery is true
 
-When you make a creative choice (like "play something melancholy" where you choose a specific track), set isAIDiscovery: true and include aiReasoning explaining your choice.
+Set isAIDiscovery: true for ALL songs you queue/play EXCEPT when the user explicitly names BOTH artist AND track (e.g., "play Anti-Hero by Taylor Swift"). Always include aiReasoning explaining your choice when isAIDiscovery is true.
 
 Be creative in interpreting vague requests while maintaining high confidence in clear commands.`,
 

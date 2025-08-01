@@ -503,7 +503,7 @@ CRITICAL ACCURACY REQUIREMENTS:
 • If you're unsure about a song title, choose a different artist or song you're certain about
 • Double-check your music knowledge before recommending specific tracks
 
-CRITICAL: You must use the discriminated union pattern - when intent is "play_specific_song" or "queue_specific_song", you MUST include artist, track, and alternatives fields. ${ALTERNATIVES_APPROACH} When intent is "play_playlist" or "queue_playlist", use query field. Never use generic search queries for specific song requests - always recommend exact songs using your music knowledge. Distinguish between playing (immediate) and queuing (add to queue) for both songs and playlists. For conversational intents (chat, ask_question), include the actual answer in the responseMessage field. If you're making a creative choice (not following an explicit user request), set isAIDiscovery: true and include aiReasoning explaining your choice. ${RESPONSE_VARIATION}` },
+CRITICAL: You must use the discriminated union pattern - when intent is "play_specific_song" or "queue_specific_song", you MUST include artist, track, and alternatives fields. ${ALTERNATIVES_APPROACH} When intent is "play_playlist" or "queue_playlist", use query field. Never use generic search queries for specific song requests - always recommend exact songs using your music knowledge. Distinguish between playing (immediate) and queuing (add to queue) for both songs and playlists. For conversational intents (chat, ask_question), include the actual answer in the responseMessage field. Set isAIDiscovery: true for ALL songs you queue/play EXCEPT when the user explicitly names BOTH artist AND track. Always include aiReasoning explaining your choice when isAIDiscovery is true. ${RESPONSE_VARIATION}` },
       { role: 'user' as const, content: `Command: "${command}"` }
     ];
     
@@ -1431,7 +1431,14 @@ simpleLLMInterpreterRouter.post('/command', requireValidTokens, async (req: any,
                     artists: track.artists.map((a: any) => a.name).join(', '),
                     success: true,
                     uri: track.uri, // Add URI for AI discovery tracking
-                    track: track    // Add full track data for AI discovery tracking
+                    track: {
+                      // Send cleaned track data, not the raw Spotify object
+                      name: track.name,
+                      artists: track.artists.map((a: any) => a.name).join(', '),
+                      album: track.album.name,
+                      uri: track.uri,
+                      preview_url: track.preview_url
+                    }
                   });
                   console.log(`[DEBUG] Successfully queued: ${track.name} by ${track.artists[0]?.name}`);
                   
@@ -1449,13 +1456,26 @@ simpleLLMInterpreterRouter.post('/command', requireValidTokens, async (req: any,
                         previewUrl: track.preview_url || undefined
                       };
                       
-                      // Store each song as a separate discovery
-                      await loggingService.redisClient.lPush(
-                        `user:${userId}:ai_discoveries`,
-                        JSON.stringify(discovery)
-                      );
+                      // Check if this track has already been discovered
+                      const userDataService = new UserDataService(loggingService.redisClient, spotifyControl.getApi(), userId);
+                      const existingDiscovery = await userDataService.checkAIDiscoveryExists(discovery.trackUri);
                       
-                      console.log(`[DEBUG] Tracked AI discovery ${i + 1}: ${discovery.trackName} by ${discovery.artist}`);
+                      if (existingDiscovery) {
+                        // If it exists with feedback, preserve that feedback
+                        if (existingDiscovery.feedback) {
+                          console.log(`[DEBUG] AI discovery ${i + 1} already exists with feedback (${existingDiscovery.feedback}): ${discovery.trackName} by ${discovery.artist}`);
+                        } else {
+                          console.log(`[DEBUG] AI discovery ${i + 1} already exists (no feedback): ${discovery.trackName} by ${discovery.artist}`);
+                        }
+                      } else {
+                        // Store each song as a separate discovery
+                        await loggingService.redisClient.lPush(
+                          `user:${userId}:ai_discoveries`,
+                          JSON.stringify(discovery)
+                        );
+                        
+                        console.log(`[DEBUG] Tracked new AI discovery ${i + 1}: ${discovery.trackName} by ${discovery.artist}`);
+                      }
                     } catch (trackingError) {
                       console.error(`Error tracking AI discovery for song ${i + 1}:`, trackingError);
                     }
@@ -1780,7 +1800,9 @@ simpleLLMInterpreterRouter.post('/command', requireValidTokens, async (req: any,
           artists: ((result as any).track || (result as any).data?.track)?.artists || (interpretation.artist ? [{ name: interpretation.artist }] : []),
           // Use the real Spotify URI from the successful result
           uri: ((result as any).track || (result as any).data?.track)?.uri || `ai-discovery:${encodeURIComponent(interpretation.track)}-${encodeURIComponent(interpretation.artist || 'unknown')}`
-        }
+        },
+        // Also include artist as a string for backward compatibility
+        artist: ((result as any).track || (result as any).data?.track)?.artists?.map((a: any) => a.name).join(', ') || interpretation.artist || 'Unknown Artist'
       }),
       // Include device info if available
       ...(currentDevice && { currentDevice }),
@@ -1823,19 +1845,32 @@ simpleLLMInterpreterRouter.post('/command', requireValidTokens, async (req: any,
         
         // Only store if we have meaningful track info
         if (discovery.trackUri || (discovery.trackName !== 'Unknown Track' && discovery.artist !== 'Unknown Artist')) {
-          // Store in Redis discoveries list
-          await loggingService.redisClient.lPush(
-            `user:${userId}:ai_discoveries`,
-            JSON.stringify(discovery)
-          );
-          // Trim to keep only last 500 discoveries
-          await loggingService.redisClient.lTrim(
-            `user:${userId}:ai_discoveries`, 
-            0, 
-            499
-          );
+          // Check if this track has already been discovered
+          const userDataService = new UserDataService(loggingService.redisClient, spotifyControl.getApi(), userId);
+          const existingDiscovery = await userDataService.checkAIDiscoveryExists(discovery.trackUri);
           
-          console.log(`[DEBUG] Tracked AI discovery: ${discovery.trackName} by ${discovery.artist}`);
+          if (existingDiscovery) {
+            // If it exists with feedback, preserve that feedback
+            if (existingDiscovery.feedback) {
+              console.log(`[DEBUG] AI discovery already exists with feedback (${existingDiscovery.feedback}): ${discovery.trackName} by ${discovery.artist}`);
+            } else {
+              console.log(`[DEBUG] AI discovery already exists (no feedback): ${discovery.trackName} by ${discovery.artist}`);
+            }
+          } else {
+            // Store in Redis discoveries list
+            await loggingService.redisClient.lPush(
+              `user:${userId}:ai_discoveries`,
+              JSON.stringify(discovery)
+            );
+            // Trim to keep only last 500 discoveries
+            await loggingService.redisClient.lTrim(
+              `user:${userId}:ai_discoveries`, 
+              0, 
+              499
+            );
+            
+            console.log(`[DEBUG] Tracked new AI discovery: ${discovery.trackName} by ${discovery.artist}`);
+          }
         }
       } catch (error) {
         console.error('Error tracking AI discovery:', error);

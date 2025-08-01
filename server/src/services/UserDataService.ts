@@ -448,11 +448,48 @@ export class UserDataService {
     }
   }
 
-  async recordFeedback(trackUri: string, feedback: 'loved' | 'disliked'): Promise<void> {
+  async checkAIDiscoveryExists(trackUri: string): Promise<AIDiscoveredTrack | null> {
+    try {
+      const discoveriesKey = `user:${this.userId}:ai_discoveries`;
+      const discoveries = await this.redis.lRange(discoveriesKey, 0, -1);
+      
+      for (const discovery of discoveries) {
+        try {
+          // Try parsing as JSON (current format)
+          const parsed = JSON.parse(discovery);
+          if (parsed.trackUri === trackUri) {
+            return parsed;
+          }
+        } catch {
+          // Try parsing as pipe-separated (legacy format)
+          const parts = discovery.split('|');
+          if (parts.length >= 4 && parts[0] === trackUri) {
+            return {
+              trackUri: parts[0],
+              trackName: parts[1],
+              artist: parts[2],
+              reasoning: parts[3],
+              discoveredAt: Date.now(), // We don't have the original timestamp
+              feedback: undefined,
+              feedbackAt: undefined
+            };
+          }
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error checking AI discovery existence:', error);
+      return null;
+    }
+  }
+
+  async recordFeedback(trackUri: string, feedback: 'loved' | 'disliked' | 'blocked'): Promise<void> {
     try {
       const discoveriesKey = `user:${this.userId}:ai_discoveries`;
       const lovedKey = `user:${this.userId}:ai_loved`;
       const dislikedKey = `user:${this.userId}:ai_disliked`;
+      const blockedKey = `user:${this.userId}:ai_blocked`;
       
       // Find the track in discoveries list
       const discoveries = await this.redis.lRange(discoveriesKey, 0, -1);
@@ -475,12 +512,13 @@ export class UserDataService {
         const discoveryData = JSON.parse(targetDiscovery);
         
         // Remove any existing feedback for this track (to allow changing feedback)
-        const [lovedMembers, dislikedMembers] = await Promise.all([
+        const [lovedMembers, dislikedMembers, blockedMembers] = await Promise.all([
           this.redis.zRange(lovedKey, 0, -1),
-          this.redis.zRange(dislikedKey, 0, -1)
+          this.redis.zRange(dislikedKey, 0, -1),
+          this.redis.zRange(blockedKey, 0, -1)
         ]);
         
-        const allFeedback = [...lovedMembers, ...dislikedMembers];
+        const allFeedback = [...lovedMembers, ...dislikedMembers, ...blockedMembers];
         const existingFeedback = allFeedback.find((member: string) => {
           try {
             const parsed = JSON.parse(member);
@@ -491,10 +529,11 @@ export class UserDataService {
         });
         
         if (existingFeedback) {
-          // Remove existing feedback from both lists to allow changing mind
+          // Remove existing feedback from all lists to allow changing mind
           await Promise.all([
             this.redis.zRem(lovedKey, existingFeedback),
-            this.redis.zRem(dislikedKey, existingFeedback)
+            this.redis.zRem(dislikedKey, existingFeedback),
+            this.redis.zRem(blockedKey, existingFeedback)
           ]);
           console.log(`🔄 Updating existing feedback for ${discoveryData.trackName} by ${discoveryData.artist}`);
         }
@@ -504,9 +543,19 @@ export class UserDataService {
         discoveryData.feedbackAt = Date.now();
         
         // Add to appropriate feedback list  
-        const targetKey = feedback === 'loved' ? lovedKey : dislikedKey;
-        await this.redis.zAdd(targetKey, { score: Date.now(), value: JSON.stringify(discoveryData) });
-        await this.redis.expire(targetKey, 86400 * 30); // 30 days
+        let targetKey;
+        if (feedback === 'loved') {
+          targetKey = lovedKey;
+        } else if (feedback === 'disliked') {
+          targetKey = dislikedKey;
+        } else if (feedback === 'blocked') {
+          targetKey = blockedKey;
+        }
+        
+        if (targetKey) {
+          await this.redis.zAdd(targetKey, { score: Date.now(), value: JSON.stringify(discoveryData) });
+          await this.redis.expire(targetKey, 86400 * 30); // 30 days
+        }
         
         // Update the original discovery in the ai_discoveries list with feedback status
         const discoveryIndex = discoveries.indexOf(targetDiscovery);
@@ -541,14 +590,16 @@ export class UserDataService {
       const discoveriesKey = `user:${this.userId}:ai_discoveries`;
       const lovedKey = `user:${this.userId}:ai_loved`;
       const dislikedKey = `user:${this.userId}:ai_disliked`;
+      const blockedKey = `user:${this.userId}:ai_blocked`;
       
       // Remove from feedback lists
-      const [lovedMembers, dislikedMembers] = await Promise.all([
+      const [lovedMembers, dislikedMembers, blockedMembers] = await Promise.all([
         this.redis.zRange(lovedKey, 0, -1),
-        this.redis.zRange(dislikedKey, 0, -1)
+        this.redis.zRange(dislikedKey, 0, -1),
+        this.redis.zRange(blockedKey, 0, -1)
       ]);
       
-      const allMembers = [...lovedMembers, ...dislikedMembers];
+      const allMembers = [...lovedMembers, ...dislikedMembers, ...blockedMembers];
       const targetMember = allMembers.find((member: string) => {
         try {
           const parsed = JSON.parse(member);
@@ -564,7 +615,8 @@ export class UserDataService {
         // Remove from feedback lists
         await Promise.all([
           this.redis.zRem(lovedKey, targetMember),
-          this.redis.zRem(dislikedKey, targetMember)
+          this.redis.zRem(dislikedKey, targetMember),
+          this.redis.zRem(blockedKey, targetMember)
         ]);
         
         // Update the original discovery in the ai_discoveries list to remove feedback status
@@ -650,10 +702,12 @@ export class UserDataService {
     discoveries: AIDiscoveredTrack[],
     loved: AIDiscoveredTrack[],
     disliked: AIDiscoveredTrack[],
+    blocked: AIDiscoveredTrack[],
     stats: {
       totalDiscoveries: number,
       lovedCount: number,
       dislikedCount: number,
+      blockedCount: number,
       pendingCount: number
     }
   }> {
@@ -661,22 +715,45 @@ export class UserDataService {
       const discoveriesKey = `user:${this.userId}:ai_discoveries`;
       const lovedKey = `user:${this.userId}:ai_loved`;
       const dislikedKey = `user:${this.userId}:ai_disliked`;
+      const blockedKey = `user:${this.userId}:ai_blocked`;
+
+      console.log('[getAIFeedbackDashboard] Redis keys:', {
+        discoveriesKey,
+        lovedKey,
+        dislikedKey,
+        blockedKey
+      });
 
       // Get all data in parallel
-      const [rawDiscoveries, lovedMembers, dislikedMembers] = await Promise.all([
+      // Use ZREVRANGE to get items in descending order by score (most recent first)
+      const [rawDiscoveries, lovedMembers, dislikedMembers, blockedMembers] = await Promise.all([
         this.redis.lRange(discoveriesKey, 0, 99), // Last 100 discoveries
-        this.redis.zRangeWithScores(lovedKey, 0, -1),
-        this.redis.zRangeWithScores(dislikedKey, 0, -1)
+        this.redis.zRangeWithScores(lovedKey, 0, -1, { REV: true }),
+        this.redis.zRangeWithScores(dislikedKey, 0, -1, { REV: true }),
+        this.redis.zRangeWithScores(blockedKey, 0, -1, { REV: true })
       ]);
 
-      // Parse discoveries
+      console.log('[getAIFeedbackDashboard] Raw data lengths:', {
+        rawDiscoveries: rawDiscoveries.length,
+        lovedMembers: lovedMembers.length,
+        dislikedMembers: dislikedMembers.length,
+        blockedMembers: blockedMembers.length
+      });
+
+      // Debug the raw discoveries
+      if (rawDiscoveries.length > 0) {
+        console.log('[getAIFeedbackDashboard] Sample raw discovery:', rawDiscoveries[0]);
+      }
+
+      // Parse discoveries and sort by most recent first
       const discoveries = rawDiscoveries.map((item: string) => {
         try {
           return JSON.parse(item);
-        } catch {
+        } catch (e) {
+          console.error('[getAIFeedbackDashboard] Failed to parse discovery:', item, e);
           return null;
         }
-      }).filter(Boolean);
+      }).filter(Boolean).sort((a: any, b: any) => b.discoveredAt - a.discoveredAt);
 
       // Parse loved tracks
       const loved = lovedMembers.map((item: any) => {
@@ -696,22 +773,35 @@ export class UserDataService {
         }
       }).filter(Boolean);
 
+      // Parse blocked tracks
+      const blocked = blockedMembers.map((item: any) => {
+        try {
+          return JSON.parse(item.value);
+        } catch {
+          return null;
+        }
+      }).filter(Boolean);
+
       // Calculate stats
       const stats = {
         totalDiscoveries: discoveries.length,
         lovedCount: loved.length,
         dislikedCount: disliked.length,
-        pendingCount: discoveries.length - loved.length - disliked.length
+        blockedCount: blocked.length,
+        pendingCount: discoveries.length - loved.length - disliked.length - blocked.length
       };
 
-      return { discoveries, loved, disliked, stats };
+      console.log('[getAIFeedbackDashboard] Final stats:', stats);
+
+      return { discoveries, loved, disliked, blocked, stats };
     } catch (error) {
       console.error('Error getting AI feedback dashboard:', error);
       return {
         discoveries: [],
         loved: [],
         disliked: [],
-        stats: { totalDiscoveries: 0, lovedCount: 0, dislikedCount: 0, pendingCount: 0 }
+        blocked: [],
+        stats: { totalDiscoveries: 0, lovedCount: 0, dislikedCount: 0, blockedCount: 0, pendingCount: 0 }
       };
     }
   }

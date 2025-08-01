@@ -149,7 +149,13 @@ export class SpotifyControl {
         success: true, 
         message,
         track: selectedTrack,
-        alternatives: tracks.slice(1, 5), // Return other options
+        alternatives: tracks.slice(1, 5).map(t => ({
+          name: t.name,
+          artists: t.artists.map((a: { name: string }) => a.name).join(', '),
+          album: t.album.name,
+          popularity: t.popularity,
+          uri: t.uri
+        })), // Return cleaned alternatives
         retryLevel
       };
     } catch (error: any) {

@@ -49,7 +49,7 @@ export const api = {
   
   // Legacy feedback method compatibility
   recordFeedback: async (trackUri: string, feedback: string) => {
-    return authenticatedFetch('/api/feedback', {
+    return authenticatedFetch('/api/feedback/ai-discovery', {
       method: 'POST',
       body: JSON.stringify({ trackUri, feedback })
     });

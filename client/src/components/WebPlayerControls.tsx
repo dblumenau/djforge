@@ -71,7 +71,7 @@ const WebPlayerControls: React.FC<WebPlayerControlsProps> = ({ className }) => {
   const [needsActivation, setNeedsActivation] = useState(isMobile);
   const [isStartingPlayback, setIsStartingPlayback] = useState(false);
   const [seekCounter, setSeekCounter] = useState(0); // Force animation restart
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true); // Start collapsed by default
   
   // Refs for position tracking
   const lastUpdateTimeRef = useRef<number>(Date.now());
@@ -156,6 +156,8 @@ const WebPlayerControls: React.FC<WebPlayerControlsProps> = ({ className }) => {
     if (playerState.currentTrack) {
       setCurrentPosition(playerState.currentTrack.position);
       lastUpdateTimeRef.current = Date.now();
+      // Auto-expand when a track starts playing
+      setIsCollapsed(false);
     }
   }, [playerState.currentTrack?.uri, playerState.currentTrack?.position]);
 
@@ -410,11 +412,103 @@ const WebPlayerControls: React.FC<WebPlayerControlsProps> = ({ className }) => {
 
   // No track playing - show different UI based on whether web player is selected
   if (!playerState.currentTrack) {
+    // Collapsed empty state
+    if (isCollapsed) {
+      return (
+        <div className={`relative overflow-hidden rounded-xl shadow-2xl ${className}`}>
+          <div className="relative bg-black/60 backdrop-blur-sm border border-white/10">
+            <div className="p-3 flex items-center gap-4">
+              {/* Mini album art placeholder */}
+              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center shadow-lg">
+                <span className="text-lg">🎵</span>
+              </div>
+              
+              {/* Track info */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium text-gray-400 truncate">
+                    No track playing
+                  </p>
+                </div>
+                {/* Mini progress bar */}
+                <div className="mt-1 h-1 bg-white/20 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gray-600 transition-all duration-300"
+                    style={{ width: '0%' }}
+                  />
+                </div>
+              </div>
+              
+              {/* Mini controls */}
+              <button 
+                onClick={async () => {
+                  if (isStartingPlayback) return;
+                  setIsStartingPlayback(true);
+                  
+                  try {
+                    const response = await api.post('/api/direct/start-playback', {
+                      playType: 'recent'
+                    });
+                    
+                    if (response.ok) {
+                      const data = await response.json();
+                      console.log('Started playback:', data.message);
+                    } else {
+                      const errorData = await response.json();
+                      console.error('Failed to start playback:', errorData.error);
+                    }
+                  } catch (startError) {
+                    console.error('Error starting playback:', startError);
+                  } finally {
+                    setIsStartingPlayback(false);
+                  }
+                }}
+                className="p-2 bg-white/10 rounded-full text-white hover:bg-white/20 transition-all"
+                disabled={isStartingPlayback}
+              >
+                {isStartingPlayback ? (
+                  <div className="w-4 h-4 border-2 border-gray-400 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z"/>
+                  </svg>
+                )}
+              </button>
+              
+              {/* Expand button */}
+              <button
+                onClick={() => setIsCollapsed(false)}
+                className="p-2 text-gray-400 hover:text-white transition-colors"
+                title="Expand player"
+                aria-label="Expand player"
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M7 14l5-5 5 5z"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
     // If web player is selected, show a player-like interface
     if (isWebPlayerSelected) {
       return (
         <div className={`relative overflow-hidden rounded-xl shadow-2xl ${className}`}>
           <div className="relative bg-black/60 backdrop-blur-sm border border-white/10">
+            {/* Collapse button in top right */}
+            <button
+              onClick={() => setIsCollapsed(true)}
+              className="absolute top-2 right-2 p-1.5 text-gray-400 hover:text-white transition-colors z-10"
+              title="Collapse player"
+              aria-label="Collapse player"
+            >
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M7 10l5 5 5-5z"/>
+              </svg>
+            </button>
+            
             <div className="p-4 md:p-6">
               {/* Desktop layout with smaller sizing */}
               <div className="md:flex md:gap-6 md:items-start">

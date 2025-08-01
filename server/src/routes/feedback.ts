@@ -29,7 +29,7 @@ feedbackRouter.post('/ai-discovery', requireValidTokens, async (req: any, res) =
       return res.status(400).json({ error: 'Missing trackUri or feedback' });
     }
     
-    if (!['loved', 'disliked', 'remove'].includes(feedback)) {
+    if (!['loved', 'disliked', 'blocked', 'remove'].includes(feedback)) {
       return res.status(400).json({ error: 'Invalid feedback value' });
     }
     
@@ -117,6 +117,15 @@ feedbackRouter.get('/dashboard', requireValidTokens, async (req: any, res) => {
     );
 
     const dashboardData = await userDataService.getAIFeedbackDashboard();
+    
+    // Debug logging
+    console.log('[Feedback Dashboard] User ID:', userId);
+    console.log('[Feedback Dashboard] Data returned:', {
+      discoveriesCount: dashboardData.discoveries?.length || 0,
+      lovedCount: dashboardData.loved?.length || 0,
+      dislikedCount: dashboardData.disliked?.length || 0,
+      stats: dashboardData.stats
+    });
     
     res.json({
       success: true,

@@ -467,10 +467,14 @@ Key guidelines:
 
 Supported intents: play_specific_song, queue_specific_song, queue_multiple_songs, play_playlist, queue_playlist, play, pause, skip, previous, volume, set_volume, resume, next, back, get_current_track, set_shuffle, set_repeat, clear_queue, get_devices, get_playlists, get_recently_played, search, get_playback_info, chat, ask_question, unknown.
 
-AI Discovery Detection: When you make a creative choice (not following an explicit user request), set isAIDiscovery: true and include aiReasoning (keep it brief - 1-2 sentences max). Examples:
+AI Discovery Detection: Set isAIDiscovery: true for ALL songs you queue/play EXCEPT when the user explicitly names BOTH artist AND track. Include aiReasoning (keep it brief - 1-2 sentences max). Examples:
 - "play something melancholy" → isAIDiscovery: true (you choose the specific track)
-- "queue up something else that is sad" → isAIDiscovery: true (you choose the tracks)  
-- "play Anti-Hero by Taylor Swift" → isAIDiscovery: false (user was specific)
+- "queue up something else that is sad" → isAIDiscovery: true (you choose the tracks)
+- "play some Taylor Swift" → isAIDiscovery: true (you choose which Taylor Swift songs)
+- "queue songs like this one" → isAIDiscovery: true (you choose similar songs)
+- "play my discover weekly" → isAIDiscovery: true (you select from the playlist)
+- "play Anti-Hero by Taylor Swift" → isAIDiscovery: false (user specified exact artist AND track)
+- "play the song I just mentioned" → isAIDiscovery: false (direct repeat of user's specific request)
 
 Your response will be automatically validated against a strict schema.`,
 

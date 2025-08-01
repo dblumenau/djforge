@@ -55,7 +55,7 @@ export interface AIDiscoveredTrack {
   artist: string;
   discoveredAt: number;
   reasoning: string;        // AI's explanation of why it chose this
-  feedback?: 'loved' | 'disliked';  // Only stored if user gave feedback
+  feedback?: 'loved' | 'disliked' | 'blocked';  // Only stored if user gave feedback
   feedbackAt?: number;
   previewUrl?: string;      // 30-second preview URL from Spotify API
 }
