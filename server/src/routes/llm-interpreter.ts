@@ -17,6 +17,7 @@ import { ConversationEntry, DialogState } from '../utils/redisConversation';
 import { UserDataService } from '../services/UserDataService';
 import { createRedisClient } from '../config/redis';
 import { detectRequestContextType } from '../utils/requestContext';
+import { getWebSocketService } from '../services/websocket.service';
 
 export const llmInterpreterRouter = Router();
 
@@ -41,6 +42,83 @@ async function getUserModelPreference(userId: string): Promise<string | null> {
 
 interface TrackWithScore extends SpotifyTrack {
   relevanceScore: number;
+}
+
+// Helper function to emit WebSocket events for schema-based LLM actions
+async function emitSchemaLLMWebSocketEvents(
+  userId: string, 
+  interpretation: MusicCommand, 
+  result: any, 
+  spotifyControl: SpotifyControl
+): Promise<void> {
+  const wsService = getWebSocketService();
+  const musicService = wsService?.getMusicService();
+  
+  if (!musicService || !userId) {
+    return;
+  }
+
+  try {
+    // Emit command execution status
+    musicService.emitCommandExecuted(userId, {
+      command: `[Schema LLM] ${interpretation.intent}`,
+      intent: interpretation.intent,
+      success: result.success || false,
+      confidence: interpretation.confidence || 0,
+      result: result.success ? result.data || result.message : undefined,
+      error: result.success ? undefined : result.message,
+      timestamp: Date.now()
+    });
+
+    // If the action was successful, emit additional events based on intent
+    if (result.success && ['play', 'queue_specific_song', 'queue_playlist'].includes(interpretation.intent)) {
+      const currentPlayback = await spotifyControl.getCurrentTrack();
+      
+      // Handle track change events for play actions
+      if (interpretation.intent === 'play') {
+        if (currentPlayback.success && currentPlayback.track) {
+          musicService.emitTrackChange(userId, {
+            previous: null,
+            current: currentPlayback.track,
+            source: 'ai',
+            reasoning: interpretation.reasoning,
+            isAIDiscovery: interpretation.isAIDiscovery,
+            timestamp: Date.now()
+          });
+        }
+        
+        // Get full playback state
+        const playbackState = await spotifyControl.getApi().getCurrentPlayback();
+        if (playbackState) {
+          musicService.emitPlaybackStateChange(userId, {
+            isPlaying: playbackState.is_playing || false,
+            track: playbackState.item,
+            position: Math.floor((playbackState.progress_ms || 0) / 1000),
+            duration: Math.floor((playbackState.item?.duration_ms || 0) / 1000),
+            device: playbackState.device?.name || 'Unknown',
+            shuffleState: playbackState.shuffle_state || false,
+            repeatState: playbackState.repeat_state || 'off',
+            volume: playbackState.device?.volume_percent || 0,
+            timestamp: Date.now()
+          });
+        }
+      }
+      
+      // Handle queue events
+      if (['queue_specific_song', 'queue_playlist'].includes(interpretation.intent) && result.track) {
+        musicService.emitQueueUpdate(userId, {
+          action: 'added',
+          tracks: [result.track],
+          totalItems: 1,
+          source: 'ai',
+          timestamp: Date.now()
+        });
+      }
+    }
+  } catch (error) {
+    console.error('Failed to emit schema LLM WebSocket events:', error);
+    // Don't throw - WebSocket failures shouldn't break the main response
+  }
 }
 
 // Interpret command using LLM orchestrator
@@ -566,6 +644,13 @@ llmInterpreterRouter.post('/command', requireValidTokens, async (req: any, res) 
       interpretation,
       result
     });
+
+    // Emit WebSocket events for schema-based LLM actions
+    if (userId && ['play', 'queue', 'play_playlist', 'queue_multiple_songs'].includes(interpretation.intent)) {
+      emitSchemaLLMWebSocketEvents(userId, interpretation, result, spotifyControl).catch(error => {
+        console.error('WebSocket emission failed for schema LLM:', error);
+      });
+    }
 
   } catch (error) {
     console.error('LLM command processing error:', error);

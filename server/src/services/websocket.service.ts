@@ -9,6 +9,7 @@ import {
   WebSocketConfig 
 } from '../types/websocket.types';
 import { WebSocketAuth } from '../auth/websocket-auth';
+import { MusicWebSocketService } from './musicWebSocket.service';
 
 export class WebSocketService {
   private io: SocketIOServer<ClientToServerEvents, ServerToClientEvents, {}, SocketData>;
@@ -32,6 +33,9 @@ export class WebSocketService {
   
   // WebSocket authentication helper
   private wsAuth: WebSocketAuth | null = null;
+  
+  // Music WebSocket service
+  private musicService: MusicWebSocketService | null = null;
   
   // Configuration
   private config: WebSocketConfig = {
@@ -70,10 +74,14 @@ export class WebSocketService {
     this.setupNamespace();
     this.startBroadcastInterval();
     
+    // Initialize music WebSocket service
+    this.musicService = new MusicWebSocketService(this.io, redisClient);
+    
     this.logger.info('WebSocket service initialized', {
       namespace: this.config.namespace,
       corsOrigins: this.config.corsOrigins,
-      authEnabled: !!this.wsAuth
+      authEnabled: !!this.wsAuth,
+      musicServiceEnabled: !!this.musicService
     });
   }
 
@@ -311,11 +319,22 @@ export class WebSocketService {
     });
     return result;
   }
+  
+  // Getter for music service
+  public getMusicService(): MusicWebSocketService | null {
+    return this.musicService;
+  }
 
   public shutdown(): void {
     if (this.broadcastInterval) {
       clearTimeout(this.broadcastInterval);
       this.broadcastInterval = null;
+    }
+    
+    // Shutdown music service
+    if (this.musicService) {
+      this.musicService.shutdown();
+      this.musicService = null;
     }
     
     this.io.of(this.config.namespace).disconnectSockets();

@@ -11,6 +11,13 @@ Sentry.init({
   environment: import.meta.env.MODE,
   release: import.meta.env.VITE_SENTRY_RELEASE || 'spotify-claude-controller@dev',
   sendDefaultPii: true,
+  // Ignore cross-origin frame errors from Spotify SDK
+  ignoreErrors: [
+    'Blocked a frame with origin',
+    'SecurityError: Blocked a frame',
+    'sdk.scdn.co',
+    'Cross-Origin-Opener-Policy',
+  ],
   integrations: [
     Sentry.browserTracingIntegration({
       // Enable navigation instrumentation
@@ -29,6 +36,17 @@ Sentry.init({
     Sentry.replayIntegration({
       maskAllText: false,
       blockAllMedia: false,
+      // Don't capture cross-origin iframes (like Spotify SDK)
+      maskAllInputs: false,
+      // Exclude cross-origin iframes from replay
+      beforeAddRecordingEvent: (event) => {
+        // Filter out events from cross-origin iframes
+        if (event && 'data' in event && (event as any).data?.source === 5) {
+          // Source 5 is iframe, check if it's cross-origin
+          return null;
+        }
+        return event;
+      },
     })
   ],
   // Tracing
@@ -60,8 +78,26 @@ Sentry.init({
           typeof error.message === 'string' && error.message.includes('/api/health')) {
         return null;
       }
+      // Don't send cross-origin frame access errors
+      if (error && typeof error === 'object' && 'message' in error && 
+          typeof error.message === 'string' && 
+          (error.message.includes('Blocked a frame') || 
+           error.message.includes('cross-origin') ||
+           error.message.includes('sdk.scdn.co'))) {
+        return null;
+      }
     }
     return event;
+  },
+  // Filter out cross-origin frame transactions
+  beforeSendTransaction(transaction) {
+    // Exclude transactions from cross-origin iframes
+    if (transaction.transaction && 
+        (transaction.transaction.includes('sdk.scdn.co') || 
+         transaction.transaction.includes('scdn.co'))) {
+      return null;
+    }
+    return transaction;
   },
 });
 

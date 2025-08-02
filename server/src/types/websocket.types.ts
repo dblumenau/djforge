@@ -14,6 +14,59 @@ export interface ServerToClientEvents {
     message: string;    // Human-readable error message
     code?: string;      // Optional error code
   }) => void;
+  
+  // Music namespace events
+  playbackStateChanged: (data: {
+    isPlaying: boolean;
+    track: any | null; // Using 'any' to match existing SpotifyTrack usage
+    position: number;
+    duration: number;
+    device: string;
+    shuffleState: boolean;
+    repeatState: 'off' | 'track' | 'context';
+    volume: number;
+    timestamp: number;
+  }) => void;
+  
+  trackChanged: (data: {
+    previous: any | null; // Using 'any' to match existing SpotifyTrack usage
+    current: any;
+    source: 'user' | 'ai' | 'auto';
+    reasoning?: string;
+    isAIDiscovery?: boolean;
+    timestamp: number;
+  }) => void;
+  
+  queueUpdated: (data: {
+    action: 'added' | 'removed' | 'cleared';
+    tracks?: any[]; // Using 'any' to match existing SpotifyTrack usage
+    trackUris?: string[];
+    totalItems: number;
+    source: 'user' | 'ai';
+    timestamp: number;
+  }) => void;
+  
+  volumeChanged: (data: {
+    volume: number;
+    device: string;
+    timestamp: number;
+  }) => void;
+  
+  commandExecuted: (data: {
+    command: string;
+    intent: string;
+    success: boolean;
+    confidence: number;
+    result?: any;
+    error?: string;
+    timestamp: number;
+  }) => void;
+  
+  deviceChanged: (data: {
+    previousDevice: string | null;
+    currentDevice: string;
+    timestamp: number;
+  }) => void;
 }
 
 // Define the events that client can send to server
@@ -33,6 +86,11 @@ export interface ClientToServerEvents {
     userId?: string;
     error?: string;
   }) => void) => void;
+  
+  // Music namespace events
+  subscribeToPlayback: (callback: (response: { status: string }) => void) => void;
+  unsubscribeFromPlayback: (callback: (response: { status: string }) => void) => void;
+  requestPlaybackSync: (callback: (response: { playbackState: any }) => void) => void;
 }
 
 // Socket-specific data stored per connection

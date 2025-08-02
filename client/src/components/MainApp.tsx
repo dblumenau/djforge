@@ -8,6 +8,7 @@ import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
 import QueueDisplay from './QueueDisplay';
 import WebPlayerAutoInit from './WebPlayerAutoInit';
+import MusicEventLog from './MusicEventLog';
 import { useAuth } from '../contexts/AuthContext';
 import { useTrackLibrary } from '../hooks/useTrackLibrary';
 import { useIOSKeyboardFix } from '../hooks/useIOSKeyboardFix';
@@ -1174,6 +1175,9 @@ const MainApp: React.FC = () => {
 
       {/* Queue Display Modal - Rendered at root level to avoid z-index issues */}
       {showQueue && <QueueDisplay onClose={() => setShowQueue(false)} />}
+      
+      {/* Music Event Log - Show real-time music events */}
+      <MusicEventLog />
       
       {/* Toast Notifications */}
       <Toaster />

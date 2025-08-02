@@ -5,6 +5,7 @@ import { requireValidTokens } from '../middleware/session-auth';
 import { ConversationManager, getConversationManager } from '../services/ConversationManager';
 import { UserDataService } from '../services/UserDataService';
 import { ConversationEntry } from '../utils/redisConversation';
+import { getWebSocketService } from '../services/websocket.service';
 
 export const directActionRouter = Router();
 
@@ -21,6 +22,83 @@ export function setRedisClient(client: any) {
 // Helper to get user data service with SpotifyWebAPI
 function getUserDataService(userId: string, spotifyWebAPI: any, redisClient: any) {
   return new UserDataService(redisClient, spotifyWebAPI, userId);
+}
+
+// Helper function to emit WebSocket events for direct actions
+async function emitDirectActionWebSocketEvents(
+  userId: string, 
+  action: string, 
+  success: boolean, 
+  result: any,
+  spotifyControl: SpotifyControl
+): Promise<void> {
+  const wsService = getWebSocketService();
+  const musicService = wsService?.getMusicService();
+  
+  if (!musicService || !userId) {
+    return;
+  }
+
+  try {
+    // Emit command execution status
+    musicService.emitCommandExecuted(userId, {
+      command: `[Direct Action] ${action}`,
+      intent: action,
+      success: success,
+      confidence: 100, // Direct actions have 100% confidence
+      result: success ? result : undefined,
+      error: success ? undefined : result.error || 'Direct action failed',
+      timestamp: Date.now()
+    });
+
+    // If action was successful, emit appropriate events
+    if (success) {
+      if (action === 'play' || action === 'queue') {
+        // Get current track information
+        const currentPlayback = await spotifyControl.getCurrentTrack();
+        
+        if (action === 'play' && currentPlayback.success && currentPlayback.track) {
+          musicService.emitTrackChange(userId, {
+            previous: null,
+            current: currentPlayback.track,
+            source: 'user',
+            timestamp: Date.now()
+          });
+        }
+        
+        if (action === 'queue' && result.track) {
+          musicService.emitQueueUpdate(userId, {
+            action: 'added',
+            tracks: [result.track],
+            totalItems: 1,
+            source: 'user',
+            timestamp: Date.now()
+          });
+        }
+        
+        // Get full playback state for play actions
+        if (action === 'play') {
+          const playbackState = await spotifyControl.getApi().getCurrentPlayback();
+          if (playbackState) {
+            musicService.emitPlaybackStateChange(userId, {
+              isPlaying: playbackState.is_playing || false,
+              track: playbackState.item,
+              position: Math.floor((playbackState.progress_ms || 0) / 1000),
+              duration: Math.floor((playbackState.item?.duration_ms || 0) / 1000),
+              device: playbackState.device?.name || 'Unknown',
+              shuffleState: playbackState.shuffle_state || false,
+              repeatState: playbackState.repeat_state || 'off',
+              volume: playbackState.device?.volume_percent || 0,
+              timestamp: Date.now()
+            });
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Failed to emit direct action WebSocket events:', error);
+    // Don't throw - WebSocket failures shouldn't break the main response
+  }
 }
 
 // Direct play/queue endpoint for songs with known URIs
@@ -95,6 +173,19 @@ directActionRouter.post('/song', requireValidTokens, async (req: any, res) => {
       action,
       track: { name, artists, uri }
     });
+
+    // Emit WebSocket events for direct actions
+    if (userId) {
+      emitDirectActionWebSocketEvents(
+        userId, 
+        action, 
+        success, 
+        { track: { name, artists, uri }, message: response }, 
+        spotifyControl
+      ).catch(error => {
+        console.error('WebSocket emission failed for direct action:', error);
+      });
+    }
 
   } catch (error) {
     console.error('Direct action error:', error);
@@ -214,11 +305,26 @@ directActionRouter.post('/start-playback', requireValidTokens, async (req: any, 
       
       await conversationManager.addConversationEntry(userId, conversationEntry);
 
-      return res.json({
+      const responseData = {
         success: true,
         message: `Started playing your ${playType === 'recent' ? 'recently played' : 'top'} tracks`,
         trackCount: trackUris.length
+      };
+      
+      res.json(responseData);
+      
+      // Emit WebSocket events for start-playback
+      emitDirectActionWebSocketEvents(
+        userId, 
+        'play', 
+        true, 
+        responseData, 
+        spotifyControl
+      ).catch(error => {
+        console.error('WebSocket emission failed for start-playback:', error);
       });
+      
+      return;
     } else {
       return res.status(500).json({
         success: false,

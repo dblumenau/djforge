@@ -9,6 +9,7 @@ import { ConversationManager, getConversationManager } from '../services/Convers
 import { LLMLoggingService } from '../services/llm-logging.service';
 import { createHash } from 'crypto';
 import { UserDataService } from '../services/UserDataService';
+import { getWebSocketService } from '../services/websocket.service';
 import { 
   FULL_CURATOR_GUIDELINES,
   ALTERNATIVES_APPROACH,
@@ -67,6 +68,97 @@ function sanitizeResponse(response: string): string {
     .substring(0, MAX_RESPONSE_SIZE)
     // Allow ASCII + common whitespace + emoji ranges + other common unicode
     .replace(/[^\x20-\x7E\n\r\t\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '');
+}
+
+// Helper function to emit WebSocket events for Spotify actions
+async function emitSpotifyWebSocketEvents(
+  userId: string, 
+  interpretation: any, 
+  result: any, 
+  command: string,
+  spotifyControl: SpotifyControl
+): Promise<void> {
+  const wsService = getWebSocketService();
+  const musicService = wsService?.getMusicService();
+  
+  if (!musicService || !userId) {
+    return;
+  }
+
+  try {
+    // Emit command execution status first
+    musicService.emitCommandExecuted(userId, {
+      command: command,
+      intent: interpretation.intent,
+      success: result.success,
+      confidence: interpretation.confidence,
+      result: result.success ? result.data || result.message : undefined,
+      error: result.success ? undefined : result.message,
+      timestamp: Date.now()
+    });
+
+    // If the action was successful, emit additional events based on intent
+    if (result.success) {
+      const currentPlayback = await spotifyControl.getCurrentTrack();
+      
+      // Handle track change events for play actions
+      if (['play_specific_song', 'play', 'resume'].includes(interpretation.intent)) {
+        if (currentPlayback.success && currentPlayback.track) {
+          musicService.emitTrackChange(userId, {
+            previous: null, // We don't track previous track for now
+            current: currentPlayback.track,
+            source: interpretation.intent.includes('specific') ? 'ai' : 'user',
+            reasoning: interpretation.aiReasoning,
+            isAIDiscovery: interpretation.isAIDiscovery,
+            timestamp: Date.now()
+          });
+        }
+        
+        // Get full playback state
+        const playbackState = await spotifyControl.getApi().getCurrentPlayback();
+        if (playbackState) {
+          musicService.emitPlaybackStateChange(userId, {
+            isPlaying: playbackState.is_playing || false,
+            track: playbackState.item,
+            position: Math.floor((playbackState.progress_ms || 0) / 1000),
+            duration: Math.floor((playbackState.item?.duration_ms || 0) / 1000),
+            device: playbackState.device?.name || 'Unknown',
+            shuffleState: playbackState.shuffle_state || false,
+            repeatState: playbackState.repeat_state || 'off',
+            volume: playbackState.device?.volume_percent || 0,
+            timestamp: Date.now()
+          });
+        }
+      }
+      
+      // Handle queue events
+      if (['queue_specific_song', 'queue_multiple_songs'].includes(interpretation.intent)) {
+        let tracks = [];
+        let trackCount = 0;
+        
+        if (interpretation.intent === 'queue_multiple_songs' && result.tracks) {
+          tracks = result.tracks;
+          trackCount = result.tracks.length;
+        } else if (result.track) {
+          tracks = [result.track];
+          trackCount = 1;
+        }
+        
+        if (trackCount > 0) {
+          musicService.emitQueueUpdate(userId, {
+            action: 'added',
+            tracks: tracks,
+            totalItems: trackCount,
+            source: 'ai',
+            timestamp: Date.now()
+          });
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Failed to emit WebSocket events:', error);
+    // Don't throw - WebSocket failures shouldn't break the main response
+  }
 }
 
 // Normalize LLM response with defensive parsing
@@ -1053,6 +1145,9 @@ simpleLLMInterpreterRouter.post('/command', requireValidTokens, async (req: any,
     const userId = getUserIdFromRequest(req);
     console.log('User ID:', userId);
     
+    // Get WebSocket service for emitting events
+    const wsService = getWebSocketService();
+    
     // Get user's preferred model from Redis
     let preferredModel = OPENROUTER_MODELS.GEMINI_2_5_FLASH;
     
@@ -1342,6 +1437,62 @@ simpleLLMInterpreterRouter.post('/command', requireValidTokens, async (req: any,
             );
           }
           
+          // Emit WebSocket events if successful
+          if (result.success && wsService) {
+            const musicService = wsService.getMusicService();
+            if (musicService && userId) {
+              // Get track details from result
+              const track = (result as any).track || (result as any).details;
+              if (track) {
+                // Emit track change for play, queue update for queue
+                if (canonicalIntent === 'play_specific_song') {
+                  musicService.emitTrackChange(userId, {
+                    track: {
+                      id: track.id || '',
+                      name: track.name || track.track || '',
+                      artist: track.artist || (track.artists && track.artists[0]?.name) || '',
+                      album: track.album || (track.album_name) || '',
+                      duration_ms: track.duration_ms || 0,
+                      uri: track.uri || ''
+                    },
+                    isAIDiscovery: interpretation.isAIDiscovery || false,
+                    aiReasoning: interpretation.reasoning,
+                    source: 'ai',
+                    timestamp: Date.now()
+                  });
+                } else {
+                  // Queue update
+                  musicService.emitQueueUpdate(userId, {
+                    action: 'added',
+                    track: {
+                      id: track.id || '',
+                      name: track.name || track.track || '',
+                      artist: track.artist || (track.artists && track.artists[0]?.name) || '',
+                      album: track.album || (track.album_name) || '',
+                      duration_ms: track.duration_ms || 0,
+                      uri: track.uri || ''
+                    },
+                    timestamp: Date.now()
+                  });
+                }
+                
+                // Emit command executed event
+                musicService.emitCommandExecuted(userId, {
+                  intent: canonicalIntent,
+                  confidence: interpretation.confidence || 0.9,
+                  source: 'ai',
+                  success: result.success,
+                  metadata: {
+                    query: searchQuery,
+                    artist: interpretation.artist,
+                    track: interpretation.track
+                  },
+                  timestamp: Date.now()
+                });
+              }
+            }
+          }
+          
           // Add alternatives from LLM response if provided (for both play and queue)
           if (interpretation.alternatives && interpretation.alternatives.length > 0 && result.success) {
             // Convert LLM-provided alternatives to proper format with URIs
@@ -1543,6 +1694,43 @@ simpleLLMInterpreterRouter.post('/command', requireValidTokens, async (req: any,
               failures
             };
           }
+          
+          // Emit WebSocket events for successfully queued songs
+          if (wsService && successCount > 0) {
+            const musicService = wsService.getMusicService();
+            if (musicService && userId) {
+              // Emit queue update event for batch
+              const successfulTracks = queueResults.filter(r => r.success).map(r => ({
+                id: '',
+                name: r.name,
+                artist: r.artists,
+                album: r.track?.album || '',
+                duration_ms: 0,
+                uri: r.uri
+              }));
+              
+              musicService.emitQueueUpdate(userId, {
+                action: 'batch_added',
+                tracks: successfulTracks,
+                count: successCount,
+                timestamp: Date.now()
+              });
+              
+              // Emit command executed event
+              musicService.emitCommandExecuted(userId, {
+                intent: 'queue_multiple_songs',
+                confidence: interpretation.confidence || 0.9,
+                source: 'ai',
+                success: successCount > 0,
+                metadata: {
+                  theme: interpretation.theme,
+                  count: successCount,
+                  total: songs.length
+                },
+                timestamp: Date.now()
+              });
+            }
+          }
           break;
         }
 
@@ -1596,24 +1784,116 @@ simpleLLMInterpreterRouter.post('/command', requireValidTokens, async (req: any,
 
         case 'pause': {
           result = await spotifyControl.pause();
+          
+          // Emit WebSocket event
+          const musicService = wsService?.getMusicService();
+          if (musicService && userId) {
+            musicService.emitPlaybackStateChange(userId, {
+              isPlaying: false,
+              timestamp: Date.now()
+            });
+            
+            musicService.emitCommandExecuted(userId, {
+              intent: 'pause',
+              confidence: interpretation.confidence || 1.0,
+              source: 'ai',
+              success: result.success,
+              timestamp: Date.now()
+            });
+          }
           break;
         }
 
         case 'play':
         case 'resume': {
           result = await spotifyControl.play();
+          
+          // Emit WebSocket event
+          const musicService = wsService?.getMusicService();
+          if (musicService && userId) {
+            musicService.emitPlaybackStateChange(userId, {
+              isPlaying: true,
+              timestamp: Date.now()
+            });
+            
+            musicService.emitCommandExecuted(userId, {
+              intent: interpretation.intent,
+              confidence: interpretation.confidence || 1.0,
+              source: 'ai',
+              success: result.success,
+              timestamp: Date.now()
+            });
+          }
           break;
         }
 
         case 'skip':
         case 'next': {
           result = await spotifyControl.skip();
+          
+          // Get the new track info and emit WebSocket event
+          const musicService = wsService?.getMusicService();
+          if (musicService && userId) {
+            const trackInfo = await spotifyControl.getCurrentTrack();
+            if (trackInfo.success && trackInfo.track) {
+              musicService.emitTrackChange(userId, {
+                track: {
+                  id: trackInfo.track.id || '',
+                  name: trackInfo.track.name,
+                  artist: trackInfo.track.artist,
+                  album: trackInfo.track.album,
+                  duration_ms: trackInfo.track.duration * 1000,
+                  uri: ''
+                },
+                isAIDiscovery: false,
+                source: 'ai',
+                timestamp: Date.now()
+              });
+            }
+            
+            musicService.emitCommandExecuted(userId, {
+              intent: 'skip',
+              confidence: interpretation.confidence || 1.0,
+              source: 'ai',
+              success: result.success,
+              timestamp: Date.now()
+            });
+          }
           break;
         }
 
         case 'previous':
         case 'back': {
           result = await spotifyControl.previous();
+          
+          // Get the new track info and emit WebSocket event
+          const musicService = wsService?.getMusicService();
+          if (musicService && userId) {
+            const trackInfo = await spotifyControl.getCurrentTrack();
+            if (trackInfo.success && trackInfo.track) {
+              musicService.emitTrackChange(userId, {
+                track: {
+                  id: trackInfo.track.id || '',
+                  name: trackInfo.track.name,
+                  artist: trackInfo.track.artist,
+                  album: trackInfo.track.album,
+                  duration_ms: trackInfo.track.duration * 1000,
+                  uri: ''
+                },
+                isAIDiscovery: false,
+                source: 'ai',
+                timestamp: Date.now()
+              });
+            }
+            
+            musicService.emitCommandExecuted(userId, {
+              intent: 'previous',
+              confidence: interpretation.confidence || 1.0,
+              source: 'ai',
+              success: result.success,
+              timestamp: Date.now()
+            });
+          }
           break;
         }
 
@@ -1645,6 +1925,24 @@ simpleLLMInterpreterRouter.post('/command', requireValidTokens, async (req: any,
             };
           } else {
             result = await spotifyControl.setVolume(volumeLevel);
+            
+            // Emit WebSocket event
+            const musicService = wsService?.getMusicService();
+            if (musicService && userId) {
+              musicService.emitVolumeChanged(userId, {
+                volume: volumeLevel,
+                timestamp: Date.now()
+              });
+              
+              musicService.emitCommandExecuted(userId, {
+                intent: 'set_volume',
+                confidence: interpretation.confidence || 1.0,
+                source: 'ai',
+                success: result.success,
+                metadata: { volume: volumeLevel },
+                timestamp: Date.now()
+              });
+            }
           }
           break;
         }
@@ -1777,6 +2075,14 @@ simpleLLMInterpreterRouter.post('/command', requireValidTokens, async (req: any,
     }
     
     res.json(responseData);
+    
+    // Emit WebSocket events for successful Spotify actions
+    if (userId && ['play_specific_song', 'queue_specific_song', 'queue_multiple_songs', 'play', 'resume', 'pause'].includes(interpretation.intent)) {
+      // Fire and forget - don't await to avoid delaying the response
+      emitSpotifyWebSocketEvents(userId, interpretation, result, command, spotifyControl).catch(error => {
+        console.error('WebSocket emission failed:', error);
+      });
+    }
     
     // Track AI discovery if this was an AI-made creative choice (except queue_multiple_songs which tracks individually)
     if (interpretation.isAIDiscovery && result.success && userId && loggingService?.redisClient && interpretation.intent !== 'queue_multiple_songs') {

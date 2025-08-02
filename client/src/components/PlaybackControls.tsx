@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { api } from '../utils/api';
 import { useTrackLibrary } from '../hooks/useTrackLibrary';
+import { useMusicWebSocket } from '../hooks/useMusicWebSocket';
 import HeartIcon from './HeartIcon';
 interface PlaybackState {
   isPlaying: boolean;
@@ -48,6 +49,61 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue, isMobi
   const { savedStatus, loading: libraryLoading, toggleSave } = useTrackLibrary({
     trackIds: currentTrackId ? [currentTrackId] : []
   });
+
+  // WebSocket handlers for real-time updates
+  const handleWsPlaybackStateChange = useCallback((data: any) => {
+    console.log('[PlaybackControls] WS playback state changed:', data);
+    if (data.isPlaying !== undefined) {
+      setPlaybackState(prev => ({ ...prev, isPlaying: data.isPlaying }));
+    }
+  }, []);
+
+  const handleWsTrackChange = useCallback((data: any) => {
+    console.log('[PlaybackControls] WS track changed:', data);
+    if (data.track) {
+      // Trigger fade animation for track change
+      setIsTrackChanging(true);
+      
+      // Update playback state with new track info
+      setPlaybackState(prev => ({
+        ...prev,
+        track: {
+          name: data.track.name || 'Unknown',
+          artist: data.track.artist || 'Unknown Artist',
+          album: data.track.album || '',
+          duration: (data.track.duration_ms || 0) / 1000,
+          position: 0,
+          id: data.track.id || data.track.uri?.split(':').pop()
+        }
+      }));
+      
+      // Reset position tracking
+      setLocalPosition(0);
+      setLastFetchTime(Date.now());
+      
+      // Clear animation after fade completes
+      setTimeout(() => setIsTrackChanging(false), 500);
+    }
+  }, []);
+
+  const handleWsQueueUpdate = useCallback((data: any) => {
+    console.log('[PlaybackControls] WS queue updated:', data);
+    // Could trigger a refresh of queue state if needed
+  }, []);
+
+  const handleWsCommandExecuted = useCallback((data: any) => {
+    console.log('[PlaybackControls] WS command executed:', data);
+    // Commands are already reflected in track/playback state changes
+    // No additional action needed here
+  }, []);
+
+  // Initialize WebSocket connection
+  const { connected: wsConnected } = useMusicWebSocket(
+    handleWsPlaybackStateChange,
+    handleWsTrackChange,
+    handleWsQueueUpdate,
+    handleWsCommandExecuted
+  );
 
 
   // Fetch current playback state
@@ -362,7 +418,15 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue, isMobi
           <div className="flex items-center gap-3">
             {playbackState.track ? (
               <>
-                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                <div className={`w-2 h-2 rounded-full ${
+                  wsConnected 
+                    ? 'bg-green-500 animate-pulse' 
+                    : playbackState.isPlaying 
+                      ? 'bg-yellow-500 animate-pulse' 
+                      : 'bg-gray-500'
+                }`} 
+                title={wsConnected ? 'Live updates connected' : 'Live updates disconnected'}
+                />
                 <div className="text-sm">
                   <span className="text-white font-medium">{playbackState.track.name}</span>
                   <span className="text-gray-400"> • </span>
@@ -399,11 +463,21 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue, isMobi
       {/* Expanded Content */}
       {!isMinimized && (
         <div className="p-4 pt-0">
-          {/* Device Mode Indicator */}
-          <div className="mb-2 text-xs text-gray-400">
-            {devicePreference === 'auto' && 'Remote Control Mode - Controls active Spotify device'}
-            {devicePreference === 'web-player' && 'Note: Switch to Built In Player to use web playback'}
-            {devicePreference !== 'auto' && devicePreference !== 'web-player' && 'Controls specific device'}
+          {/* Device Mode & WebSocket Status */}
+          <div className="mb-2 text-xs text-gray-400 space-y-1">
+            <div>
+              {devicePreference === 'auto' && 'Remote Control Mode - Controls active Spotify device'}
+              {devicePreference === 'web-player' && 'Note: Switch to Built In Player to use web playback'}
+              {devicePreference !== 'auto' && devicePreference !== 'web-player' && 'Controls specific device'}
+            </div>
+            <div className="flex items-center gap-2">
+              <div className={`w-1.5 h-1.5 rounded-full ${
+                wsConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'
+              }`} />
+              <span className={wsConnected ? 'text-green-400' : 'text-red-400'}>
+                {wsConnected ? 'Live updates active' : 'Live updates offline'}
+              </span>
+            </div>
           </div>
           
           {/* Dev mode indicators */}
