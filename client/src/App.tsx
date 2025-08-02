@@ -7,7 +7,6 @@ import Dashboard from './pages/Dashboard';
 import TasteProfile from './pages/TasteProfile';
 import FeedbackDashboard from './pages/FeedbackDashboard';
 import LogsPage from './pages/LogsPage';
-import SSEStatus from './pages/SSEStatus';
 import AppLayout from './components/AppLayout';
 import ErrorFallback from './components/ErrorFallback';
 import AuthSuccess from './components/AuthSuccess';
@@ -56,10 +55,6 @@ export const router = createBrowserRouter([
       {
         path: "logs",
         element: <LogsPage />
-      },
-      {
-        path: "admin/sse-status",
-        element: <SSEStatus />
       }
     ]
   },

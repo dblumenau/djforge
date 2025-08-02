@@ -52,13 +52,7 @@ Users are frequently forced to re-authenticate with Spotify despite implementing
 - Despite deduplication cache, race conditions may still occur
 - The double-check pattern in `refreshAccessToken` helps but isn't perfect
 
-### 2. SSE Connection Issues
-- Logs show frequent SSE connection resets
-- Warning: "reached hard limit of 10 concurrent connections"
-- Multiple SSE connections opening/closing rapidly
-- This may trigger unnecessary authentication checks
-
-### 3. Why Tokens Expire So Frequently
+### 2. Why Tokens Expire So Frequently
 - Spotify access tokens should last 1 hour
 - Logs sometimes show refreshes after just minutes
 - Root cause of frequent refreshes still unknown
@@ -92,11 +86,7 @@ Users are frequently forced to re-authenticate with Spotify despite implementing
 - Redis would provide cross-instance coordination
 - Implementation stub exists but not completed
 
-### 2. Fix SSE Connection Leaks
-- Investigate why connections aren't closing properly
-- May need connection pooling or better lifecycle management
-
-### 3. Batch API Endpoints
+### 2. Batch API Endpoints
 - Create composite endpoints to reduce concurrent auth checks
 - E.g., single `/api/dashboard-data` instead of multiple calls
 

@@ -8,7 +8,7 @@ import WebPlayerControls from './WebPlayerControls';
 import QueueDisplay from './QueueDisplay';
 import { webPlayerService } from '../services/webPlayer.service';
 import { isMobileDevice } from '../utils/deviceDetection';
-import { MessageSquare, BarChart3, Target, ClipboardList, Plug, LogOut } from 'lucide-react';
+import { MessageSquare, BarChart3, Target, ClipboardList, LogOut } from 'lucide-react';
 
 interface MobileMenuProps {
   isOpen: boolean;
@@ -272,22 +272,6 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
                   <ClipboardList className="w-4 h-4 text-green-500" />
                   <span>Logs</span>
                 </button>
-                {isAdmin && (
-                  <button
-                    onClick={() => {
-                      navigate('/admin/sse-status');
-                      onClose();
-                    }}
-                    className={`w-full px-4 py-2 text-left rounded-lg transition-colors flex items-center gap-2 ${
-                      location.pathname === '/admin/sse-status' 
-                        ? 'bg-green-900/30 text-green-300 border border-green-700/50' 
-                        : 'bg-purple-900/20 hover:bg-purple-900/30 text-purple-300 hover:text-purple-200'
-                    }`}
-                  >
-                    <Plug className="w-4 h-4 text-green-500" />
-                    <span>SSE Status</span>
-                  </button>
-                )}
                 <button
                   onClick={() => {
                     window.location.reload();

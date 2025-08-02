@@ -17,7 +17,6 @@ import {
   formatMusicHistory 
 } from '../llm/music-curator-prompts';
 import { detectRequestContextType } from '../utils/requestContext';
-import { playbackEventService } from '../services/event-emitter.service';
 
 export const simpleLLMInterpreterRouter = Router();
 
@@ -1716,53 +1715,6 @@ simpleLLMInterpreterRouter.post('/command', requireValidTokens, async (req: any,
       }
     }
 
-    // Emit events for successful Spotify actions
-    if (result.success && userId) {
-      switch (interpretation.intent) {
-        case 'play_specific_song':
-        case 'play_playlist':
-          playbackEventService.emitTrackStarted(
-            userId,
-            interpretation.track || (result as any).track?.name,
-            interpretation.artist || (result as any).track?.artists?.[0]?.name
-          );
-          break;
-        case 'queue_specific_song':
-        case 'queue_multiple_songs':
-          playbackEventService.emitTrackQueued(
-            userId,
-            interpretation.track || (result as any).track?.name,
-            interpretation.artist || (result as any).track?.artists?.[0]?.name
-          );
-          break;
-        case 'pause':
-          playbackEventService.emitPlaybackPaused(userId);
-          break;
-        case 'play':
-        case 'resume':
-          playbackEventService.emitPlaybackResumed(userId);
-          break;
-        case 'skip':
-        case 'next':
-          playbackEventService.emitTrackSkipped(userId);
-          break;
-        case 'previous':
-          playbackEventService.emitTrackPrevious(userId);
-          break;
-        case 'set_volume':
-          playbackEventService.emitVolumeChanged(userId, interpretation.volume_level || 50);
-          break;
-        case 'set_shuffle':
-          playbackEventService.emitShuffleChanged(userId, interpretation.shuffle_state || false);
-          break;
-        case 'set_repeat':
-          playbackEventService.emitRepeatChanged(userId, interpretation.repeat_mode || 'off');
-          break;
-        case 'clear_queue':
-          playbackEventService.emitQueueCleared(userId);
-          break;
-      }
-    }
 
     // Get current device info if playback operation was successful
     let currentDevice = null;

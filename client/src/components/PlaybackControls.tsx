@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../utils/api';
-import { useSSE, PlaybackEvent } from '../hooks/useSSE';
 import { useTrackLibrary } from '../hooks/useTrackLibrary';
 import HeartIcon from './HeartIcon';
 interface PlaybackState {
@@ -51,31 +50,6 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue, isMobi
     trackIds: currentTrackId ? [currentTrackId] : []
   });
 
-  // Handle SSE events
-  const handleSSEEvent = (event: PlaybackEvent) => {
-    console.log('[PlaybackControls] SSE event received:', event.type);
-    setLastServerEvent(new Date());
-    
-    // Fetch new state immediately when server reports a change
-    // Use immediate flag to bypass rate limiting since this is server-triggered
-    fetchPlaybackState(true);
-    
-    // Reset polling timer to avoid redundant polls
-    if (pollTimeoutId) {
-      clearTimeout(pollTimeoutId);
-    }
-    // Schedule next poll with normal timing
-    const nextPollTime = calculateNextPollTime(playbackState.track, playbackState.isPlaying);
-    scheduleNextPoll(nextPollTime);
-  };
-  
-  // Set up SSE connection
-  const { isConnected: sseConnected } = useSSE({
-    onEvent: handleSSEEvent,
-    onConnect: () => console.log('[PlaybackControls] SSE connected'),
-    onDisconnect: () => console.log('[PlaybackControls] SSE disconnected'),
-    onError: (error) => console.error('[PlaybackControls] SSE error:', error)
-  });
 
   // Fetch current playback state
   const fetchPlaybackState = async (immediate = false) => {
@@ -408,15 +382,6 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue, isMobi
             )}
           </div>
           <div className="flex items-center gap-2">
-            {/* Connection Status Indicator - Only show when minimized */}
-            {isMinimized && (
-              <span 
-                className={`w-2 h-2 rounded-full ${
-                  sseConnected ? 'bg-green-500' : 'bg-red-500 animate-pulse'
-                }`} 
-                title={sseConnected ? 'Live updates active' : 'Live updates disconnected'}
-              />
-            )}
             <button className="p-1 hover:bg-zinc-600 rounded transition-colors">
               <svg 
                 className={`w-4 h-4 text-gray-400 transition-transform ${
@@ -440,16 +405,6 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue, isMobi
             {devicePreference === 'auto' && 'Remote Control Mode - Controls active Spotify device'}
             {devicePreference === 'web-player' && 'Note: Switch to Built In Player to use web playback'}
             {devicePreference !== 'auto' && devicePreference !== 'web-player' && 'Controls specific device'}
-          </div>
-          
-          {/* Connection Status */}
-          <div className="mb-2 flex items-center gap-2 text-xs">
-            <span className={`w-2 h-2 rounded-full ${
-              sseConnected ? 'bg-green-500' : 'bg-red-500 animate-pulse'
-            }`} />
-            <span className="text-gray-500">
-              Live updates: {sseConnected ? 'Connected' : 'Disconnected'}
-            </span>
           </div>
           
           {/* Dev mode indicators */}

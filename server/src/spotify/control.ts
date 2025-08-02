@@ -3,7 +3,6 @@ import { SpotifyWebAPI } from './api';
 import { SpotifyAuthTokens, SpotifyTrack } from '../types';
 import { requireValidTokens } from '../middleware/session-auth';
 import { logDebugError } from '../utils/error-logger';
-import { playbackEventService } from '../services/event-emitter.service';
 import { logger } from '../config/logger';
 
 export const controlRouter = Router();
@@ -782,10 +781,6 @@ controlRouter.post('/play', requireValidTokens, async (req, res) => {
     const webAPI = getWebAPI(req);
     await webAPI.play(req.body.deviceId);
     
-    // Emit playback resumed event
-    if ((req as any).user?.spotifyId) {
-      playbackEventService.emitPlaybackResumed((req as any).user.spotifyId);
-    }
     
     res.json({ success: true });
   } catch (error: any) {
@@ -798,10 +793,6 @@ controlRouter.post('/pause', requireValidTokens, async (req, res) => {
     const webAPI = getWebAPI(req);
     await webAPI.pause();
     
-    // Emit playback paused event
-    if ((req as any).user?.spotifyId) {
-      playbackEventService.emitPlaybackPaused((req as any).user.spotifyId);
-    }
     
     res.json({ success: true });
   } catch (error: any) {
@@ -814,10 +805,6 @@ controlRouter.post('/next', requireValidTokens, async (req, res) => {
     const webAPI = getWebAPI(req);
     await webAPI.nextTrack();
     
-    // Emit track skipped event
-    if ((req as any).user?.spotifyId) {
-      playbackEventService.emitTrackSkipped((req as any).user.spotifyId);
-    }
     
     res.json({ success: true });
   } catch (error: any) {
@@ -830,10 +817,6 @@ controlRouter.post('/previous', requireValidTokens, async (req, res) => {
     const webAPI = getWebAPI(req);
     await webAPI.previousTrack();
     
-    // Emit track previous event
-    if ((req as any).user?.spotifyId) {
-      playbackEventService.emitTrackPrevious((req as any).user.spotifyId);
-    }
     
     res.json({ success: true });
   } catch (error: any) {
@@ -853,10 +836,6 @@ controlRouter.post('/volume', requireValidTokens, async (req, res) => {
     const webAPI = getWebAPI(req);
     await webAPI.setVolume(volume, deviceId);
     
-    // Emit volume changed event
-    if ((req as any).user?.spotifyId) {
-      playbackEventService.emitVolumeChanged((req as any).user.spotifyId, volume);
-    }
     
     res.json({ success: true, volume });
   } catch (error: any) {
@@ -1061,10 +1040,6 @@ controlRouter.post('/clear-queue', requireValidTokens, async (req, res) => {
     const webAPI = getWebAPI(req);
     await webAPI.clearQueue();
     
-    // Emit queue cleared event
-    if ((req as any).user?.spotifyId) {
-      playbackEventService.emitQueueCleared((req as any).user.spotifyId);
-    }
     
     res.json({ success: true, message: 'Queue cleared' });
   } catch (error: any) {
@@ -1095,10 +1070,6 @@ controlRouter.post('/shuffle', requireValidTokens, async (req, res) => {
     const webAPI = getWebAPI(req);
     await webAPI.setShuffle(state);
     
-    // Emit shuffle changed event
-    if ((req as any).user?.spotifyId) {
-      playbackEventService.emitShuffleChanged((req as any).user.spotifyId, state);
-    }
     
     res.json({ success: true, message: `Shuffle ${state ? 'on' : 'off'}` });
   } catch (error: any) {
@@ -1118,10 +1089,6 @@ controlRouter.post('/repeat', requireValidTokens, async (req, res) => {
     const webAPI = getWebAPI(req);
     await webAPI.setRepeat(state);
     
-    // Emit repeat changed event
-    if ((req as any).user?.spotifyId) {
-      playbackEventService.emitRepeatChanged((req as any).user.spotifyId, state);
-    }
     
     res.json({ success: true, message: `Repeat set to ${state}` });
   } catch (error: any) {

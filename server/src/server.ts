@@ -21,7 +21,6 @@ import { directActionRouter, setRedisClient as setDirectActionRedisClient } from
 import { feedbackRouter, setRedisClient as setFeedbackRedisClient } from './routes/feedback';
 import songVerificationRouter from './routes/song-verification';
 import debugTokenRouter from './routes/debug-token';
-import adminSSERouter from './routes/admin-sse';
 import authRouter, { setRedisClient as setAuthRedisClient } from './routes/auth';
 import { setRedisClient as setSessionAuthRedisClient } from './middleware/session-auth';
 import { createRedisClient, checkRedisHealth } from './config/redis';
@@ -30,8 +29,6 @@ import weatherRouter from './routes/weather';
 import userDataRouter from './routes/user-data';
 import { webPlayerRouter } from './routes/web-player';
 import { overrideConsole, logger } from './utils/logger';
-import { playbackEventService } from './services/event-emitter.service';
-import { sseConnectionManager } from './services/sse-connection-manager';
 import { setSentryUserContext } from './middleware/sentry-auth';
 
 // Override console methods to use Winston logger
@@ -211,8 +208,6 @@ async function initializeAndStart() {
     app.use('/api/songs', songVerificationRouter);
     // Debug token endpoint
     app.use('/api/debug', debugTokenRouter);
-    // Admin SSE management endpoint
-    app.use('/api/admin/sse', adminSSERouter);
 
 
     // IMPORTANT: The Sentry error handler must be registered before any other error middleware and after all controllers
@@ -228,132 +223,6 @@ async function initializeAndStart() {
         message: process.env.NODE_ENV === 'development' ? err.message : 'An unexpected error occurred',
         sentryId: (res as any).sentry
       });
-    });
-
-    // SSE endpoint - REBUILT with full functionality (now that we know it works!)
-    app.get('/api/events', async (req, res) => {
-      // Session validation
-      const sessionId = req.query.sessionId as string;
-      if (!sessionId) {
-        console.error('[SSE] Connection attempt without session ID');
-        res.writeHead(401, {
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-          'Connection': 'close'
-        });
-        res.write(`event: error\ndata: ${JSON.stringify({ error: 'Session ID required', code: 'NO_SESSION' })}\n\n`);
-        res.end();
-        return;
-      }
-      
-      // Validate session with new auth system
-      const { SessionManager } = require('./auth/session-manager');
-      const sessionManager = new SessionManager(redisClient);
-      
-      let userId: string;
-      let connectionId: string;
-      
-      try {
-        const session = await sessionManager.getSession(sessionId);
-        if (!session || session.expiresAt < Date.now()) {
-          console.error('[SSE] Invalid or expired session:', sessionId);
-          res.writeHead(401, {
-            'Content-Type': 'text/event-stream',
-            'Cache-Control': 'no-cache',
-            'Connection': 'close'
-          });
-          res.write(`event: error\ndata: ${JSON.stringify({ error: 'Invalid session', code: 'INVALID_SESSION' })}\n\n`);
-          res.end();
-          return;
-        }
-        
-        userId = session.userId;
-        connectionId = `${userId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        
-        console.log('[SSE] New connection from user:', userId);
-        
-        // Add connection to manager
-        sseConnectionManager.addConnection(connectionId, userId, res);
-      } catch (error) {
-        console.error('[SSE] Session validation error:', error);
-        res.writeHead(500, {
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-          'Connection': 'close'
-        });
-        res.write(`event: error\ndata: ${JSON.stringify({ error: 'Session validation failed', code: 'SESSION_ERROR' })}\n\n`);
-        res.end();
-        return;
-      }
-      
-      // Set SSE headers
-      res.writeHead(200, {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache, no-transform',
-        'Connection': 'keep-alive',
-        'X-Accel-Buffering': 'no',
-        'Access-Control-Allow-Origin': req.headers.origin || '*',
-        'Access-Control-Allow-Credentials': 'true'
-      });
-
-      // Send initial connected message
-      res.write(`data: ${JSON.stringify({ type: 'connected', timestamp: Date.now() })}\n\n`);
-      console.log('[SSE] Initial connection message sent');
-
-      // Track connection state
-      let isConnectionActive = true;
-
-      // Listen for playback events
-      const handlePlaybackEvent = (event: any) => {
-        if (event.userId === userId && isConnectionActive && !res.destroyed) {
-          try {
-            res.write(`data: ${JSON.stringify(event)}\n\n`);
-            sseConnectionManager.updateActivity(connectionId);
-          } catch (error) {
-            console.error('[SSE] Failed to write event:', error);
-            isConnectionActive = false;
-            sseConnectionManager.removeConnection(connectionId);
-          }
-        }
-      };
-
-      playbackEventService.on('playback-event', handlePlaybackEvent);
-
-      // Heartbeat every 30 seconds
-      const heartbeat = setInterval(() => {
-        if (isConnectionActive && !res.destroyed) {
-          try {
-            res.write(': heartbeat\n\n');
-            sseConnectionManager.updateActivity(connectionId);
-          } catch (error) {
-            console.error('[SSE] Failed to send heartbeat:', error);
-            isConnectionActive = false;
-            clearInterval(heartbeat);
-            sseConnectionManager.removeConnection(connectionId);
-          }
-        }
-      }, 30000);
-
-      // Clean up on client disconnect
-      req.on('close', () => {
-        console.log('[SSE] Connection closed for user:', userId);
-        isConnectionActive = false;
-        playbackEventService.removeListener('playback-event', handlePlaybackEvent);
-        clearInterval(heartbeat);
-        sseConnectionManager.removeConnection(connectionId);
-      });
-      
-      req.on('error', (error) => {
-        console.error('[SSE] Request error for user:', userId, error);
-        isConnectionActive = false;
-        sseConnectionManager.removeConnection(connectionId);
-      });
-      
-      // Set socket options for better streaming
-      req.socket.setKeepAlive(true);
-      req.socket.setNoDelay(true);
-      
-      console.log(`[SSE] Connection ${connectionId} fully established for user: ${userId}`);
     });
 
     // Determine client URL based on environment
