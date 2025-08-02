@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { socket, getSocketId, getTransport } from '../services/socket';
+import { socket, getSocketId, getTransport, updateSocketAuth } from '../services/socket';
 
 // Message type for history
 export interface WebSocketMessage {
@@ -53,7 +53,20 @@ export function useWebSocket(): UseWebSocketReturn {
   // Connect to WebSocket
   const connect = useCallback(() => {
     if (!socket.connected && !hasConnected.current) {
-      console.log('[useWebSocket] Connecting to WebSocket...');
+      // Check if user is authenticated
+      const sessionId = localStorage.getItem('spotify_session_id');
+      if (!sessionId) {
+        console.warn('[useWebSocket] Cannot connect - no session ID found');
+        setConnectionInfo(prev => ({
+          ...prev,
+          connected: false,
+          lastError: 'Authentication required'
+        }));
+        return;
+      }
+      
+      console.log('[useWebSocket] Connecting to WebSocket with session...');
+      updateSocketAuth(); // Ensure auth is current
       socket.connect();
       hasConnected.current = true;
     }
@@ -129,10 +142,20 @@ export function useWebSocket(): UseWebSocketReturn {
 
     const handleConnectError = (error: Error) => {
       console.error('[useWebSocket] Connection error:', error);
+      
+      // Handle authentication errors specifically
+      let errorMessage = error.message;
+      if (error.message.includes('Authentication required') || 
+          error.message.includes('Invalid session')) {
+        errorMessage = 'Authentication required. Please log in again.';
+        // Clear the invalid session
+        hasConnected.current = false;
+      }
+      
       setConnectionInfo(prev => ({
         ...prev,
         connected: false,
-        lastError: error.message
+        lastError: errorMessage
       }));
     };
 

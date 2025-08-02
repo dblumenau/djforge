@@ -7,6 +7,7 @@ This directory contains custom React hooks that encapsulate reusable logic for t
 ### useWebSocket.ts
 - **Purpose**: WebSocket connection management and real-time communication
 - **Features**:
+  - **Authentication**: Automatically sends session ID from localStorage
   - Automatic connection lifecycle management
   - Message history tracking (limited to 50 messages)
   - Connection status monitoring
@@ -122,10 +123,12 @@ const fetchData = useCallback(async () => {
 ### WebSocket Integration Pattern
 The `useWebSocket` hook demonstrates best practices for real-time communication:
 1. **Singleton Socket**: Uses a single socket instance from `/services/socket.ts`
-2. **Automatic Lifecycle**: Connects on mount, disconnects on unmount
-3. **Event Cleanup**: Properly removes all listeners to prevent memory leaks
-4. **Message History**: Maintains limited history for performance
-5. **Connection State**: Tracks detailed connection information
+2. **Authentication**: Automatically includes session ID from localStorage in connection handshake
+3. **Automatic Lifecycle**: Connects on mount, disconnects on unmount
+4. **Event Cleanup**: Properly removes all listeners to prevent memory leaks
+5. **Message History**: Maintains limited history for performance
+6. **Connection State**: Tracks detailed connection information including auth status
+7. **Session Updates**: Reconnects with new auth when session changes via `updateSocketAuth()`
 
 ## Testing Hooks
 

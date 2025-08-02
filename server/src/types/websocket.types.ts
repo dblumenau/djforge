@@ -24,6 +24,15 @@ export interface ClientToServerEvents {
     timestamp: number;
     serverTime: number;
   }) => void) => void;
+  
+  // Authentication event (sent immediately after connection)
+  authenticate: (data: {
+    sessionId: string;
+  }, callback: (response: {
+    success: boolean;
+    userId?: string;
+    error?: string;
+  }) => void) => void;
 }
 
 // Socket-specific data stored per connection
@@ -31,6 +40,9 @@ export interface SocketData {
   connectionTime: number;  // When socket connected
   pingCount: number;       // Number of pings from this client
   ipAddress?: string;      // Client IP for rate limiting
+  userId?: string;         // Authenticated user ID
+  sessionId?: string;      // Session ID for auth validation
+  authenticated: boolean;  // Whether socket has been authenticated
 }
 
 // WebSocket service configuration

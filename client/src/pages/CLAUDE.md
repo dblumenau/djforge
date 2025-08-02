@@ -39,7 +39,7 @@ This directory contains the main page components for the Spotify Claude Controll
 - See "AI Feedback Dashboard Feature" section below
 
 ### WebSocketDemo.tsx
-- WebSocket demonstration page at `/websocket-demo`
+- WebSocket demonstration page accessible through authenticated area
 - Real-time bidirectional communication showcase
 - Features:
   - Live connection status indicator
@@ -48,9 +48,10 @@ This directory contains the main page components for the Spotify Claude Controll
   - Message history display (last 50 messages)
   - Connection/disconnection controls
   - Clear message history button
+- **Authentication Required**: Session ID automatically sent with connection
 - Uses `useWebSocket` hook for all WebSocket functionality
-- No authentication required (intentionally for demo purposes)
-- Accessible via navigation menu
+- Accessible via dropdown menu (... button) in navigation bar
+- Located at route `/websocket-demo` within AppLayout (authenticated)
 
 ## Spotify Dashboard Feature
 

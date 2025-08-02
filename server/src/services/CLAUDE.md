@@ -50,6 +50,33 @@ This directory contains service classes that encapsulate business logic and exte
   - `llm:user:{hashedUserId}:logs` - User-specific log index
   - `llm:stats:daily:{date}` - Daily statistics
 
+### websocket.service.ts
+- **Primary Purpose**: Real-time bidirectional communication with Socket.IO
+- **Key Features**:
+  - **Authentication Required**: All connections must provide a valid session ID
+  - Session validation via Redis through WebSocketAuth helper
+  - User-specific connection tracking in addition to IP-based rate limiting
+  - TypeScript-first with full type safety for events
+  - Namespace-based organization (`/demo` namespace)
+  - Automatic reconnection handling
+- **Security & Rate Limiting**:
+  - Maximum 10 connections per IP address
+  - Maximum 100 pings per client connection
+  - Session-based authentication with Redis validation
+  - Tracks connections both per-IP and per-user
+- **Events**:
+  - `ping` - Client-initiated latency check with callback
+  - `randomString` - Server broadcast of random strings
+  - `connectionStatus` - Connection state updates
+  - `error` - Error notifications with codes
+- **Configuration**:
+  - Configurable CORS origins for development/production
+  - WebSocket and polling transport support
+  - 60s ping timeout, 25s ping interval
+- **Redis Integration**:
+  - Uses WebSocketAuth for session validation
+  - Falls back to no-auth mode if Redis unavailable (development only)
+
 ### claude/ (Directory)
 - Legacy Claude CLI integration (deprecated)
 - Kept for reference but no longer used

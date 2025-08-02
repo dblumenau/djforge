@@ -56,12 +56,12 @@ export const router = createBrowserRouter([
       {
         path: "logs",
         element: <LogsPage />
+      },
+      {
+        path: "websocket-demo",
+        element: <WebSocketDemo />
       }
     ]
-  },
-  {
-    path: "/websocket-demo",
-    element: <WebSocketDemo />
   },
   {
     path: "/landing",

@@ -11,7 +11,7 @@ This repository contains the **Spotify Claude Controller** - a natural language 
 - **Backend**: Node.js + Express + TypeScript + Redis + Socket.IO v4
 - **Control**: Hybrid approach using AppleScript (instant control) + Spotify Web API (search/queue/playback)
 - **AI**: Multi-LLM architecture with OpenRouter (30+ models) and Google Gemini Direct API
-- **Real-time**: WebSocket implementation with Socket.IO for bidirectional communication
+- **Real-time**: Authenticated WebSocket with Socket.IO for secure bidirectional communication
 - **Deployment**: Docker + Fly.io ready with production configurations
 
 ## Essential Commands
@@ -108,8 +108,9 @@ cd client && npx tsc --noEmit
   See `/server/src/services/CLAUDE.md` for backend implementation
 - **Dashboard Features**: Spotify data visualization and insights  
   See `/client/src/pages/CLAUDE.md` for frontend details
-- **WebSocket Demo**: Real-time communication showcase at `/websocket-demo`  
-  See `/client/src/hooks/CLAUDE.md` for useWebSocket hook implementation
+- **WebSocket Demo**: Authenticated real-time communication showcase (requires login)  
+  See `/client/src/hooks/CLAUDE.md` for useWebSocket hook implementation  
+  See `/server/src/auth/CLAUDE.md` for WebSocket authentication details
 
 ### Critical Implementation Details
 
@@ -182,7 +183,9 @@ See `/client/src/components/CLAUDE.md` for component patterns
 See `/client/src/pages/CLAUDE.md` for data structures and caching
 
 **Implementing WebSocket features**:
-See `/server/src/services/CLAUDE.md` for WebSocket service architecture
+- See `/server/src/services/CLAUDE.md` for WebSocket service architecture
+- See `/server/src/auth/CLAUDE.md` for authentication requirements
+- See `/client/src/services/CLAUDE.md` for client-side socket implementation
 
 ### Debugging Tips
 
@@ -192,7 +195,7 @@ See `/server/src/services/CLAUDE.md` for WebSocket service architecture
 4. **Token refresh issues**: See "Known Issues" below
 5. **Skeleton loading issues**: See `/client/src/components/skeletons/CLAUDE.md`
 6. **AI feedback issues**: See `/server/src/services/CLAUDE.md`
-7. **WebSocket connection issues**: Check `/api/websocket/health` endpoint and Socket.IO logs
+7. **WebSocket connection issues**: Check session validity, `/api/websocket/health` endpoint, and Socket.IO logs
 
 ## Known Issues & Solutions
 

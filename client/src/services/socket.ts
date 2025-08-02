@@ -20,6 +20,11 @@ const getWebSocketURL = (): string => {
 const WEBSOCKET_URL = getWebSocketURL();
 const NAMESPACE = '/demo';
 
+// Function to get the session ID from localStorage
+const getSessionId = (): string | null => {
+  return localStorage.getItem('spotify_session_id');
+};
+
 // Create typed socket instance (singleton pattern)
 export const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(
   `${WEBSOCKET_URL}${NAMESPACE}`,
@@ -37,7 +42,13 @@ export const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(
     reconnectionDelayMax: 5000,
     
     // Timeout settings
-    timeout: 20000
+    timeout: 20000,
+    
+    // Authentication - send session ID with connection
+    auth: (cb) => {
+      const sessionId = getSessionId();
+      cb({ sessionId });
+    }
   }
 );
 
@@ -67,4 +78,17 @@ export const isSocketConnected = (): boolean => socket.connected;
 export const getSocketId = (): string | undefined => socket.id;
 export const getTransport = (): string | undefined => {
   return socket.io.engine?.transport?.name;
+};
+
+// Update authentication when session changes
+export const updateSocketAuth = (): void => {
+  const sessionId = getSessionId();
+  socket.auth = { sessionId };
+  
+  // If connected, reconnect with new auth
+  if (socket.connected) {
+    console.log('[Socket.IO] Reconnecting with updated auth');
+    socket.disconnect();
+    socket.connect();
+  }
 };

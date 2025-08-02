@@ -8,6 +8,7 @@ import {
   SocketData,
   WebSocketConfig 
 } from '../types/websocket.types';
+import { WebSocketAuth } from '../auth/websocket-auth';
 
 export class WebSocketService {
   private io: SocketIOServer<ClientToServerEvents, ServerToClientEvents, {}, SocketData>;
@@ -23,8 +24,14 @@ export class WebSocketService {
   // Track connections per IP for rate limiting
   private connectionsByIP = new Map<string, Set<string>>();
   
+  // Track connections per user
+  private connectionsByUser = new Map<string, Set<string>>();
+  
   // Single interval for all clients (performance optimization)
   private broadcastInterval: NodeJS.Timeout | null = null;
+  
+  // WebSocket authentication helper
+  private wsAuth: WebSocketAuth | null = null;
   
   // Configuration
   private config: WebSocketConfig = {
@@ -35,10 +42,18 @@ export class WebSocketService {
     randomStringInterval: { min: 5, max: 15 }
   };
 
-  constructor(httpServer: HTTPServer, corsOrigins?: string[]) {
+  constructor(httpServer: HTTPServer, corsOrigins?: string[], redisClient?: any) {
     // Override CORS origins if provided
     if (corsOrigins) {
       this.config.corsOrigins = corsOrigins;
+    }
+    
+    // Initialize WebSocket authentication if Redis client is provided
+    if (redisClient) {
+      this.wsAuth = new WebSocketAuth(redisClient);
+      this.logger.info('WebSocket authentication enabled');
+    } else {
+      this.logger.warn('WebSocket running without authentication (Redis client not provided)');
     }
 
     // Initialize Socket.IO with TypeScript types
@@ -57,18 +72,19 @@ export class WebSocketService {
     
     this.logger.info('WebSocket service initialized', {
       namespace: this.config.namespace,
-      corsOrigins: this.config.corsOrigins
+      corsOrigins: this.config.corsOrigins,
+      authEnabled: !!this.wsAuth
     });
   }
 
   private setupNamespace(): void {
     const namespace = this.io.of(this.config.namespace);
 
-    // Middleware for rate limiting
-    namespace.use((socket, next) => {
+    // Middleware for authentication and rate limiting
+    namespace.use(async (socket, next) => {
       const clientIP = this.getClientIP(socket);
       
-      // Check rate limit
+      // Check IP rate limit
       const existingConnections = this.connectionsByIP.get(clientIP) || new Set();
       if (existingConnections.size >= this.config.maxConnectionsPerIP) {
         this.logger.warn('Rate limit exceeded', { ip: clientIP });
@@ -79,6 +95,38 @@ export class WebSocketService {
       socket.data.connectionTime = Date.now();
       socket.data.pingCount = 0;
       socket.data.ipAddress = clientIP;
+      socket.data.authenticated = false;
+
+      // If authentication is enabled, validate session
+      if (this.wsAuth) {
+        const sessionId = this.wsAuth.extractSessionId(socket);
+        
+        if (!sessionId) {
+          this.logger.warn('WebSocket connection rejected - no session ID', { ip: clientIP });
+          return next(new Error('Authentication required'));
+        }
+        
+        const sessionData = await this.wsAuth.validateSession(sessionId);
+        
+        if (!sessionData) {
+          this.logger.warn('WebSocket connection rejected - invalid session', { 
+            ip: clientIP, 
+            sessionId 
+          });
+          return next(new Error('Invalid session'));
+        }
+        
+        // Store authenticated user data
+        socket.data.userId = sessionData.userId;
+        socket.data.sessionId = sessionData.sessionId;
+        socket.data.authenticated = true;
+        
+        this.logger.info('WebSocket authenticated connection', {
+          userId: sessionData.userId,
+          sessionId: sessionData.sessionId,
+          ip: clientIP
+        });
+      }
 
       next();
     });
@@ -92,16 +140,27 @@ export class WebSocketService {
   private handleConnection(socket: Socket<ClientToServerEvents, ServerToClientEvents, {}, SocketData>): void {
     const clientIP = socket.data.ipAddress!;
     const socketId = socket.id;
+    const userId = socket.data.userId;
 
-    // Track connection for rate limiting
+    // Track connection for IP rate limiting
     if (!this.connectionsByIP.has(clientIP)) {
       this.connectionsByIP.set(clientIP, new Set());
     }
     this.connectionsByIP.get(clientIP)!.add(socketId);
+    
+    // Track connection per user if authenticated
+    if (userId) {
+      if (!this.connectionsByUser.has(userId)) {
+        this.connectionsByUser.set(userId, new Set());
+      }
+      this.connectionsByUser.get(userId)!.add(socketId);
+    }
 
     this.logger.info('Client connected', {
       socketId,
       ip: clientIP,
+      userId: userId || 'unauthenticated',
+      authenticated: socket.data.authenticated,
       namespace: this.config.namespace
     });
 
@@ -152,19 +211,32 @@ export class WebSocketService {
   private handleDisconnection(socket: Socket<ClientToServerEvents, ServerToClientEvents, {}, SocketData>, reason: string): void {
     const clientIP = socket.data.ipAddress!;
     const socketId = socket.id;
+    const userId = socket.data.userId;
 
-    // Clean up rate limiting tracking
-    const connections = this.connectionsByIP.get(clientIP);
-    if (connections) {
-      connections.delete(socketId);
-      if (connections.size === 0) {
+    // Clean up IP rate limiting tracking
+    const ipConnections = this.connectionsByIP.get(clientIP);
+    if (ipConnections) {
+      ipConnections.delete(socketId);
+      if (ipConnections.size === 0) {
         this.connectionsByIP.delete(clientIP);
+      }
+    }
+    
+    // Clean up user connection tracking
+    if (userId) {
+      const userConnections = this.connectionsByUser.get(userId);
+      if (userConnections) {
+        userConnections.delete(socketId);
+        if (userConnections.size === 0) {
+          this.connectionsByUser.delete(userId);
+        }
       }
     }
 
     this.logger.info('Client disconnected', {
       socketId,
       ip: clientIP,
+      userId: userId || 'unauthenticated',
       reason,
       connectionDuration: Date.now() - socket.data.connectionTime,
       totalPings: socket.data.pingCount
@@ -256,9 +328,9 @@ export class WebSocketService {
 // Singleton instance
 let webSocketService: WebSocketService | null = null;
 
-export function initializeWebSocket(httpServer: HTTPServer, corsOrigins?: string[]): WebSocketService {
+export function initializeWebSocket(httpServer: HTTPServer, corsOrigins?: string[], redisClient?: any): WebSocketService {
   if (!webSocketService) {
-    webSocketService = new WebSocketService(httpServer, corsOrigins);
+    webSocketService = new WebSocketService(httpServer, corsOrigins, redisClient);
   }
   return webSocketService;
 }

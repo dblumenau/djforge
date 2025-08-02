@@ -5,6 +5,9 @@ export default function WebSocketDemo() {
   const { connectionInfo, messages, sendPing, clearMessages, connect, disconnect } = useWebSocket();
   const [autoScroll, setAutoScroll] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Get user info from localStorage (if available)
+  const sessionId = localStorage.getItem('spotify_session_id');
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -55,11 +58,21 @@ export default function WebSocketDemo() {
         <div className="bg-gray-800/50 backdrop-blur-md rounded-xl p-6 mb-6 border border-gray-700">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold text-white">Connection Status</h2>
-            <div className="flex items-center gap-2">
-              <div className={`w-3 h-3 rounded-full ${connectionInfo.connected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
-              <span className={`text-sm font-medium ${connectionInfo.connected ? 'text-green-400' : 'text-red-400'}`}>
-                {connectionInfo.connected ? 'Connected' : 'Disconnected'}
-              </span>
+            <div className="flex items-center gap-4">
+              {/* Authentication Status */}
+              <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${sessionId ? 'bg-blue-500' : 'bg-yellow-500'}`} />
+                <span className="text-sm text-gray-400">
+                  {sessionId ? 'Authenticated' : 'No Session'}
+                </span>
+              </div>
+              {/* Connection Status */}
+              <div className="flex items-center gap-2">
+                <div className={`w-3 h-3 rounded-full ${connectionInfo.connected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+                <span className={`text-sm font-medium ${connectionInfo.connected ? 'text-green-400' : 'text-red-400'}`}>
+                  {connectionInfo.connected ? 'Connected' : 'Disconnected'}
+                </span>
+              </div>
             </div>
           </div>
 

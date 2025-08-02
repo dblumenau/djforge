@@ -19,4 +19,12 @@ export interface ClientToServerEvents {
     timestamp: number;
     serverTime: number;
   }) => void) => void;
+  
+  authenticate: (data: {
+    sessionId: string;
+  }, callback: (response: {
+    success: boolean;
+    userId?: string;
+    error?: string;
+  }) => void) => void;
 }

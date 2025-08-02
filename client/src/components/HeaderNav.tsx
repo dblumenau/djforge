@@ -126,17 +126,6 @@ const HeaderNav: React.FC<HeaderNavProps> = ({
                   <ClipboardList className={`w-4 h-4 ${location.pathname === '/logs' ? 'text-green-500' : ''}`} />
                   Logs
                 </button>
-                <button 
-                  onClick={() => navigate('/websocket-demo')}
-                  className={`hidden xl:flex items-center gap-2 text-sm font-medium transition-all ${
-                    location.pathname === '/websocket-demo' 
-                      ? 'text-white' 
-                      : 'text-zinc-400 hover:text-white'
-                  }`}
-                >
-                  <Wifi className={`w-4 h-4 ${location.pathname === '/websocket-demo' ? 'text-green-500' : ''}`} />
-                  WebSocket
-                </button>
               </nav>
             </div>
 
@@ -157,37 +146,35 @@ const HeaderNav: React.FC<HeaderNavProps> = ({
                 {showSettings && (
                   <div className="absolute top-full right-0 mt-2 w-72 bg-zinc-900 border border-zinc-800 rounded-lg shadow-xl z-50">
                     <div className="p-2">
-                      {/* Navigation links visible on medium screens */}
-                      <div className="lg:hidden">
-                        <div className="px-3 py-2 text-xs font-medium text-zinc-500 uppercase tracking-wider">Navigation</div>
-                        <div className="space-y-1 mb-2">
-                          <button 
-                            className={`w-full px-3 py-2 text-left text-sm hover:bg-zinc-800 rounded transition-all flex items-center gap-3 ${
-                              location.pathname === '/logs' ? 'text-white bg-zinc-800' : 'text-zinc-300 hover:text-white'
-                            }`}
-                            onClick={() => {
-                              navigate('/logs');
-                              setShowSettings(false);
-                            }}
-                          >
-                            <ClipboardList className={`w-4 h-4 ${location.pathname === '/logs' ? 'text-green-500' : ''}`} />
-                            Logs
-                          </button>
-                          <button 
-                            className={`w-full px-3 py-2 text-left text-sm hover:bg-zinc-800 rounded transition-all flex items-center gap-3 ${
-                              location.pathname === '/websocket-demo' ? 'text-white bg-zinc-800' : 'text-zinc-300 hover:text-white'
-                            }`}
-                            onClick={() => {
-                              navigate('/websocket-demo');
-                              setShowSettings(false);
-                            }}
-                          >
-                            <Wifi className={`w-4 h-4 ${location.pathname === '/websocket-demo' ? 'text-green-500' : ''}`} />
-                            WebSocket Demo
-                          </button>
-                        </div>
-                        <div className="border-t border-zinc-800 my-2"></div>
+                      {/* Extra navigation items */}
+                      <div className="px-3 py-2 text-xs font-medium text-zinc-500 uppercase tracking-wider">More</div>
+                      <div className="space-y-1 mb-2">
+                        <button 
+                          className={`lg:hidden w-full px-3 py-2 text-left text-sm hover:bg-zinc-800 rounded transition-all flex items-center gap-3 ${
+                            location.pathname === '/logs' ? 'text-white bg-zinc-800' : 'text-zinc-300 hover:text-white'
+                          }`}
+                          onClick={() => {
+                            navigate('/logs');
+                            setShowSettings(false);
+                          }}
+                        >
+                          <ClipboardList className={`w-4 h-4 ${location.pathname === '/logs' ? 'text-green-500' : ''}`} />
+                          Logs
+                        </button>
+                        <button 
+                          className={`w-full px-3 py-2 text-left text-sm hover:bg-zinc-800 rounded transition-all flex items-center gap-3 ${
+                            location.pathname === '/websocket-demo' ? 'text-white bg-zinc-800' : 'text-zinc-300 hover:text-white'
+                          }`}
+                          onClick={() => {
+                            navigate('/websocket-demo');
+                            setShowSettings(false);
+                          }}
+                        >
+                          <Wifi className={`w-4 h-4 ${location.pathname === '/websocket-demo' ? 'text-green-500' : ''}`} />
+                          WebSocket Demo
+                        </button>
                       </div>
+                      <div className="border-t border-zinc-800 my-2"></div>
 
                       <div className="px-3 py-2 text-xs font-medium text-zinc-500 uppercase tracking-wider">Controls</div>
                       <div className="space-y-1">

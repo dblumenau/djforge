@@ -175,8 +175,8 @@ async function initializeAndStart() {
     // Add Sentry user context middleware (after session, before routes)
     app.use(setSentryUserContext);
 
-    // Initialize WebSocket service
-    const webSocketService = initializeWebSocket(httpServer, allowedOrigins);
+    // Initialize WebSocket service with Redis client for authentication
+    const webSocketService = initializeWebSocket(httpServer, allowedOrigins, redisClient);
 
     // New auth system (Phase 2 implementation)
     app.use('/api/auth', authRouter);
