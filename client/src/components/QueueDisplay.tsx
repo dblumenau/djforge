@@ -32,8 +32,15 @@ const QueueDisplay: React.FC<QueueDisplayProps> = ({ onClose }) => {
       const response = await api.get('/api/control/queue');
       if (response.ok) {
         const data = await response.json();
-        if (data.success) {
-          setQueue(data.queue);
+        console.log('Queue data from API:', data); // Debug log
+        if (data.success && data.queue) {
+          // The Spotify API returns queue data nested - extract it properly
+          const queueData = {
+            currently_playing: data.queue.currently_playing || null,
+            queue: data.queue.queue || []
+          };
+          console.log('Processed queue data:', queueData); // Debug log
+          setQueue(queueData);
         } else {
           setError('Failed to fetch queue');
         }
@@ -41,6 +48,7 @@ const QueueDisplay: React.FC<QueueDisplayProps> = ({ onClose }) => {
         setError('Failed to fetch queue');
       }
     } catch (err) {
+      console.error('Error fetching queue:', err);
       setError('Failed to fetch queue');
     } finally {
       setLoading(false);

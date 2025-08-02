@@ -24,8 +24,7 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
   onClose,
   onModelChange,
   onDeviceChange,
-  onLogout,
-  isAdmin = false
+  onLogout
 }) => {
   const navigate = useNavigate();
   const location = useLocation();

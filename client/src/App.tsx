@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard';
 import TasteProfile from './pages/TasteProfile';
 import FeedbackDashboard from './pages/FeedbackDashboard';
 import LogsPage from './pages/LogsPage';
+import WebSocketDemo from './pages/WebSocketDemo';
 import AppLayout from './components/AppLayout';
 import ErrorFallback from './components/ErrorFallback';
 import AuthSuccess from './components/AuthSuccess';
@@ -57,6 +58,10 @@ export const router = createBrowserRouter([
         element: <LogsPage />
       }
     ]
+  },
+  {
+    path: "/websocket-demo",
+    element: <WebSocketDemo />
   },
   {
     path: "/landing",

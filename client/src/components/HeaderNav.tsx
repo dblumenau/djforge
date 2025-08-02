@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import ModelSelector from './ModelSelector';
 import DeviceSelector from './DeviceSelector';
 import WeatherDisplay from './WeatherDisplay';
-import { MessageSquare, BarChart3, Target, ClipboardList, RefreshCw, LogOut, MoreVertical } from 'lucide-react';
+import { MessageSquare, BarChart3, Target, ClipboardList, RefreshCw, LogOut, MoreVertical, Wifi } from 'lucide-react';
 
 interface HeaderNavProps {
   onModelChange: (model: string) => void;
@@ -20,8 +20,7 @@ const HeaderNav: React.FC<HeaderNavProps> = ({
   onModelChange,
   onDeviceChange,
   onLogout,
-  onMenuToggle,
-  isAdmin = false
+  onMenuToggle
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -127,6 +126,17 @@ const HeaderNav: React.FC<HeaderNavProps> = ({
                   <ClipboardList className={`w-4 h-4 ${location.pathname === '/logs' ? 'text-green-500' : ''}`} />
                   Logs
                 </button>
+                <button 
+                  onClick={() => navigate('/websocket-demo')}
+                  className={`hidden xl:flex items-center gap-2 text-sm font-medium transition-all ${
+                    location.pathname === '/websocket-demo' 
+                      ? 'text-white' 
+                      : 'text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  <Wifi className={`w-4 h-4 ${location.pathname === '/websocket-demo' ? 'text-green-500' : ''}`} />
+                  WebSocket
+                </button>
               </nav>
             </div>
 
@@ -162,6 +172,18 @@ const HeaderNav: React.FC<HeaderNavProps> = ({
                           >
                             <ClipboardList className={`w-4 h-4 ${location.pathname === '/logs' ? 'text-green-500' : ''}`} />
                             Logs
+                          </button>
+                          <button 
+                            className={`w-full px-3 py-2 text-left text-sm hover:bg-zinc-800 rounded transition-all flex items-center gap-3 ${
+                              location.pathname === '/websocket-demo' ? 'text-white bg-zinc-800' : 'text-zinc-300 hover:text-white'
+                            }`}
+                            onClick={() => {
+                              navigate('/websocket-demo');
+                              setShowSettings(false);
+                            }}
+                          >
+                            <Wifi className={`w-4 h-4 ${location.pathname === '/websocket-demo' ? 'text-green-500' : ''}`} />
+                            WebSocket Demo
                           </button>
                         </div>
                         <div className="border-t border-zinc-800 my-2"></div>

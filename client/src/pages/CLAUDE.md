@@ -38,6 +38,20 @@ This directory contains the main page components for the Spotify Claude Controll
 - Optimistic UI updates without page reloads
 - See "AI Feedback Dashboard Feature" section below
 
+### WebSocketDemo.tsx
+- WebSocket demonstration page at `/websocket-demo`
+- Real-time bidirectional communication showcase
+- Features:
+  - Live connection status indicator
+  - Automatic random string reception every 5-15 seconds
+  - Manual ping/pong with latency measurement
+  - Message history display (last 50 messages)
+  - Connection/disconnection controls
+  - Clear message history button
+- Uses `useWebSocket` hook for all WebSocket functionality
+- No authentication required (intentionally for demo purposes)
+- Accessible via navigation menu
+
 ## Spotify Dashboard Feature
 
 The dashboard provides comprehensive visualization of user's Spotify data with real-time playback controls.

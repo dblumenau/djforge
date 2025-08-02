@@ -8,7 +8,6 @@ import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
 import QueueDisplay from './QueueDisplay';
 import WebPlayerAutoInit from './WebPlayerAutoInit';
-import { AuthTestPanel } from './AuthTestPanel';
 import { useAuth } from '../contexts/AuthContext';
 import { useTrackLibrary } from '../hooks/useTrackLibrary';
 import { useIOSKeyboardFix } from '../hooks/useIOSKeyboardFix';
@@ -838,13 +837,6 @@ const MainApp: React.FC = () => {
               >
                 Clear History
               </button>
-            </div>
-          )}
-
-          {/* Auth Test Panel - Only in development */}
-          {import.meta.env.DEV && (
-            <div className="mb-4">
-              <AuthTestPanel />
             </div>
           )}
 

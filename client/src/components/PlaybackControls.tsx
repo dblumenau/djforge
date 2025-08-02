@@ -39,7 +39,6 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue, isMobi
   const [pollTimeoutId, setPollTimeoutId] = useState<number | null>(null);
   const [animationFrameId, setAnimationFrameId] = useState<number | null>(null);
   const [apiCallCount, setApiCallCount] = useState<number[]>([]);
-  const [, setLastServerEvent] = useState<Date | null>(null);
   const [isTrackChanging, setIsTrackChanging] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const previousTrackNameRef = useRef<string | null>(null);

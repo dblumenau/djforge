@@ -3,6 +3,7 @@ import './instrument';
 
 import * as Sentry from '@sentry/node';
 import express from 'express';
+import { createServer } from 'http';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
@@ -30,6 +31,7 @@ import userDataRouter from './routes/user-data';
 import { webPlayerRouter } from './routes/web-player';
 import { overrideConsole, logger } from './utils/logger';
 import { setSentryUserContext } from './middleware/sentry-auth';
+import { initializeWebSocket, getWebSocketService } from './services/websocket.service';
 
 // Override console methods to use Winston logger
 overrideConsole();
@@ -43,6 +45,9 @@ logger.info('🚀 Starting Spotify Claude Controller server...');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Create HTTP server for both Express and WebSocket
+const httpServer = createServer(app);
 
 // Initialize Redis client
 let redisClient: any = null;
@@ -169,6 +174,9 @@ async function initializeAndStart() {
 
     // Add Sentry user context middleware (after session, before routes)
     app.use(setSentryUserContext);
+
+    // Initialize WebSocket service
+    const webSocketService = initializeWebSocket(httpServer, allowedOrigins);
 
     // New auth system (Phase 2 implementation)
     app.use('/api/auth', authRouter);
@@ -344,15 +352,34 @@ async function initializeAndStart() {
       res.json(health);
     });
 
+    // WebSocket health check endpoint
+    app.get('/api/websocket/health', (req, res) => {
+      const wsService = getWebSocketService();
+      if (!wsService) {
+        return res.status(503).json({ 
+          status: 'unhealthy', 
+          message: 'WebSocket service not initialized' 
+        });
+      }
+
+      res.json({
+        status: 'healthy',
+        connections: wsService.getConnectionCount(),
+        connectionsByIP: Object.fromEntries(wsService.getConnectionsByIP()),
+        timestamp: Date.now()
+      });
+    });
+
     // Start the server
     // Listen on all interfaces to ensure both localhost and 127.0.0.1 work
     const host = '0.0.0.0';
     const port = typeof PORT === 'string' ? parseInt(PORT) : PORT;
-    const server = app.listen(port, host, () => {
+    const server = httpServer.listen(port, host, () => {
       const displayHost = process.env.NODE_ENV === 'production' ? host : 'localhost';
       console.log(`🎵 Spotify Controller server running on http://${displayHost}:${port}`);
       console.log(`🤖 Ready to receive commands!`);
       console.log(`📦 Session storage: ${redisClient ? 'Redis' : 'File-based'}`);
+      console.log(`🔌 WebSocket service available at ws://${displayHost}:${port}/demo`);
       
       // Mark server as ready after a short delay to ensure full initialization
       setTimeout(() => {
@@ -370,6 +397,12 @@ async function initializeAndStart() {
 process.on('SIGTERM', async () => {
   console.log('📡 Received SIGTERM, shutting down gracefully');
   
+  const wsService = getWebSocketService();
+  if (wsService) {
+    wsService.shutdown();
+    console.log('✅ WebSocket service shut down');
+  }
+  
   if (redisClient) {
     try {
       await redisClient.quit();
@@ -384,6 +417,12 @@ process.on('SIGTERM', async () => {
 
 process.on('SIGINT', async () => {
   console.log('📡 Received SIGINT, shutting down gracefully');
+  
+  const wsService = getWebSocketService();
+  if (wsService) {
+    wsService.shutdown();
+    console.log('✅ WebSocket service shut down');
+  }
   
   if (redisClient) {
     try {

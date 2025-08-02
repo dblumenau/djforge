@@ -60,6 +60,9 @@ export interface AIDiscoveredTrack {
   previewUrl?: string;      // 30-second preview URL from Spotify API
 }
 
+// WebSocket types
+export * from './websocket.types';
+
 declare module 'express-session' {
   interface SessionData {
     spotifyTokens?: SpotifyAuthTokens;

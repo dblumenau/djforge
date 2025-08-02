@@ -2,19 +2,20 @@ module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   roots: ['<rootDir>/src'],
-  testMatch: ['**/*.test.ts', '**/*.spec.ts'],
-  transform: {
-    '^.+\\.ts$': 'ts-jest',
-  },
+  testMatch: ['**/__tests__/**/*.test.ts'],
   collectCoverageFrom: [
     'src/**/*.ts',
+    '!src/**/*.d.ts',
     '!src/**/*.test.ts',
-    '!src/**/*.spec.ts',
+    '!src/server.ts' // Exclude main server file
   ],
-  setupFilesAfterEnv: ['<rootDir>/src/test-setup.ts'],
-  moduleNameMapping: {
-    '^@/(.*)$': '<rootDir>/src/$1',
+  coverageThreshold: {
+    global: {
+      branches: 70,
+      functions: 70,
+      lines: 70,
+      statements: 70
+    }
   },
-  testTimeout: 10000,
-  verbose: true
+  setupFilesAfterEnv: ['<rootDir>/src/__tests__/setup.ts']
 };

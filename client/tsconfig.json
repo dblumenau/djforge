@@ -21,6 +21,6 @@
     }
   },
   "include": ["src", "src/**/*.d.ts"],
-  "types": ["vite/client"],
+  "types": ["vite/client", "jest", "node"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

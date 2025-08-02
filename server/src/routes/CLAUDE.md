@@ -75,6 +75,30 @@ This directory contains Express route handlers that define the API endpoints for
 - `weather.ts` - DMI weather API integration
 - `direct-action.ts` - Direct action execution with confidence scoring
 
+### WebSocket Health Endpoint
+- **Endpoint**: `GET /api/websocket/health`
+- **Purpose**: Monitor WebSocket service health and connections
+- **Authentication**: None required (public endpoint)
+- **Response Format**:
+  ```json
+  {
+    "status": "healthy",
+    "connections": 5,
+    "connectionsByIP": {
+      "127.0.0.1": 2,
+      "192.168.1.10": 3
+    },
+    "uptime": 3600000
+  }
+  ```
+- **Error Response** (503 Service Unavailable):
+  ```json
+  {
+    "status": "unhealthy",
+    "message": "WebSocket service not initialized"
+  }
+  ```
+
 ## Common Patterns
 
 ### Authentication
