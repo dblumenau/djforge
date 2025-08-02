@@ -19,39 +19,49 @@ kill_timeout = '5s'
   PORT = '8080'
   LOG_RETENTION_DAYS = '90'
 
-[[services]]
-  protocol = 'tcp'
+# Modern Fly.io configuration for HTTP service with WebSocket support
+[http_service]
   internal_port = 8080
+  force_https = true
+  auto_stop_machines = "suspend"
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
 
-  [[services.ports]]
-    port = 80
-    handlers = ['http']
-    force_https = true
+  [http_service.concurrency]
+    type = 'requests'
+    hard_limit = 250
+    soft_limit = 200
 
-  [[services.ports]]
-    port = 443
-    handlers = ['tls', 'http']
-
-  [services.concurrency]
-    type = 'connections'
-    hard_limit = 10
-    soft_limit = 5
-
-  [[services.tcp_checks]]
-    interval = '15s'
-    timeout = '2s'
-    grace_period = '5s'
-
-  [[services.http_checks]]
+  [[http_service.checks]]
     interval = '30s'
     timeout = '5s'
     grace_period = '30s'
-    method = 'get'
+    method = 'GET'
     path = '/api/health'
-    protocol = 'http'
-    tls_skip_verify = false
+
+  # WebSocket health check
+  [[http_service.checks]]
+    interval = '60s'
+    timeout = '5s'
+    grace_period = '30s'
+    method = 'GET'
+    path = '/api/websocket/health'
 
 [[vm]]
   memory = '256mb'
   cpu_kind = 'shared'
   cpus = 1
+
+[checks]
+  [checks.alive]
+    type = "tcp"
+    interval = "15s"
+    timeout = "2s"
+    grace_period = "5s"
+    port = 8080
+
+# Machine restart policy
+[restart]
+  policy = "on-failure"
+  max_retries = 3
