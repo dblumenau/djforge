@@ -273,6 +273,20 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
                 </button>
                 <button
                   onClick={() => {
+                    navigate('/websocket-demo');
+                    onClose();
+                  }}
+                  className={`w-full px-4 py-2 text-left rounded-lg transition-colors flex items-center gap-2 ${
+                    location.pathname === '/websocket-demo' 
+                      ? 'bg-green-900/30 text-green-300 border border-green-700/50' 
+                      : 'bg-zinc-800 hover:bg-zinc-700'
+                  }`}
+                >
+                  <span>🔌</span>
+                  <span>WebSocket Demo</span>
+                </button>
+                <button
+                  onClick={() => {
                     window.location.reload();
                   }}
                   className="w-full px-4 py-2 bg-blue-900/20 hover:bg-blue-900/30 text-blue-300 hover:text-blue-200 border border-blue-800/50 hover:border-blue-700/50 rounded-lg transition-all flex items-center gap-2"
