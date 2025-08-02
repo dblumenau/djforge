@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import { api } from '../utils/api';
 import { webPlayerService } from '../services/webPlayer.service';
 import { Radio, Laptop, Smartphone, Speaker, Wifi, RefreshCw } from 'lucide-react';
@@ -15,21 +16,50 @@ interface DeviceSelectorProps {
   onDeviceChange?: (deviceId: string | 'auto') => void;
   compact?: boolean;
   fullWidth?: boolean;
+  customTrigger?: (onClick: () => void, isOpen: boolean) => React.ReactNode;
 }
 
-const DeviceSelector: React.FC<DeviceSelectorProps> = ({ onDeviceChange, compact = false, fullWidth = false }) => {
+const DeviceSelector: React.FC<DeviceSelectorProps> = ({ onDeviceChange, compact = false, fullWidth = false, customTrigger }) => {
   const [devices, setDevices] = useState<SpotifyDevice[]>([]);
   const [selectedDevice, setSelectedDevice] = useState<string>('auto');
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [currentDevice, setCurrentDevice] = useState<SpotifyDevice | null>(null);
   const [isChangingDevice, setIsChangingDevice] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
+  const triggerRef = useRef<HTMLDivElement>(null);
 
   // Load saved preference from localStorage
   useEffect(() => {
     const savedPreference = localStorage.getItem('spotifyDevicePreference') || 'auto';
     setSelectedDevice(savedPreference);
   }, []);
+
+  // Calculate dropdown position when opening
+  useEffect(() => {
+    if (isOpen && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + 8,
+        left: rect.right - 256 // 256px is the width of the dropdown (w-64)
+      });
+    }
+  }, [isOpen]);
+
+  // Handle click outside to close dropdown
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!triggerRef.current?.contains(target) && !target.closest('.device-selector-dropdown')) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen]);
 
   // Fetch devices
   const fetchDevices = async () => {
@@ -193,35 +223,47 @@ const DeviceSelector: React.FC<DeviceSelectorProps> = ({ onDeviceChange, compact
   };
 
   return (
-    <div className={`relative ${fullWidth ? 'w-full' : ''}`}>
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        disabled={isChangingDevice}
-        className={`flex items-center gap-2 ${compact ? 'px-3 py-1.5' : 'px-3 py-2'} bg-gray-800 border border-gray-700 rounded-lg hover:bg-gray-700 transition-colors text-sm ${fullWidth ? 'w-full justify-between' : ''} ${isChangingDevice ? 'opacity-50 cursor-not-allowed' : ''}`}
-        title="Select Spotify playback device"
-      >
-        <span className={`text-gray-400 ${compact ? 'hidden' : ''}`}>Device:</span>
-        <div className="text-white truncate max-w-[120px] flex items-center gap-2">
-          {getSelectedDisplayName()}
-          {isChangingDevice && (
-            <svg className="animate-spin h-3 w-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-          )}
-        </div>
-        <svg
-          className={`w-4 h-4 transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
+    <div ref={triggerRef} className={`relative ${fullWidth ? 'w-full' : ''}`}>
+      {/* Use custom trigger if provided, otherwise use default button */}
+      {customTrigger ? (
+        customTrigger(() => setIsOpen(!isOpen), isOpen)
+      ) : (
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          disabled={isChangingDevice}
+          className={`flex items-center gap-2 ${compact ? 'px-3 py-1.5' : 'px-3 py-2'} bg-gray-800 border border-gray-700 rounded-lg hover:bg-gray-700 transition-colors text-sm ${fullWidth ? 'w-full justify-between' : ''} ${isChangingDevice ? 'opacity-50 cursor-not-allowed' : ''}`}
+          title="Select Spotify playback device"
         >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
+          <span className={`text-gray-400 ${compact ? 'hidden' : ''}`}>Device:</span>
+          <div className="text-white truncate max-w-[120px] flex items-center gap-2">
+            {getSelectedDisplayName()}
+            {isChangingDevice && (
+              <svg className="animate-spin h-3 w-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            )}
+          </div>
+          <svg
+            className={`w-4 h-4 transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+      )}
 
-      {isOpen && (
-        <div className="absolute top-full mt-2 right-0 lg:right-auto lg:left-0 w-64 bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-50 max-h-[400px] overflow-y-auto">
+      {/* Render dropdown in a portal */}
+      {isOpen && ReactDOM.createPortal(
+        <div 
+          className="device-selector-dropdown fixed w-64 bg-gray-800 border border-gray-700 rounded-lg shadow-lg max-h-[400px] overflow-y-auto"
+          style={{ 
+            zIndex: 9999,
+            top: `${dropdownPosition.top}px`,
+            left: `${dropdownPosition.left}px`
+          }}>
           {loading ? (
             <div className="p-3 text-center text-gray-400">
               Loading devices...
@@ -337,7 +379,8 @@ const DeviceSelector: React.FC<DeviceSelectorProps> = ({ onDeviceChange, compact
               )}
             </>
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

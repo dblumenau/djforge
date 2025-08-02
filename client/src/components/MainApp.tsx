@@ -48,6 +48,7 @@ const MainApp: React.FC = () => {
   const { currentModel } = useModel();
   const [showExamplesModal, setShowExamplesModal] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
+  const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [checking, setChecking] = useState(true);
   const [command, setCommand] = useState('');
@@ -377,6 +378,192 @@ const MainApp: React.FC = () => {
     };
     loadUserProfile();
   }, [isAuthenticated]);
+
+  // Keyboard shortcuts for playback control
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const handleKeyPress = async (e: KeyboardEvent) => {
+      // Don't trigger shortcuts when typing in input fields
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      // Debug logging
+      if (e.key === ' ') {
+        console.log('[Keyboard] Spacebar pressed, target:', e.target);
+      }
+
+      let endpoint = '';
+      let method = 'POST';
+      
+      switch(e.key) {
+        case ' ': // Spacebar - Play/Pause
+          e.preventDefault(); // Prevent page scroll
+          console.log('[Keyboard] Triggering play/pause');
+          endpoint = 'PLAY_PAUSE_TOGGLE';
+          break;
+        case 'MediaPlayPause':
+          e.preventDefault();
+          endpoint = 'PLAY_PAUSE_TOGGLE';
+          break;
+        case 'MediaStop':
+          e.preventDefault();
+          endpoint = '/api/control/pause';
+          break;
+        case 'MediaTrackNext':
+          e.preventDefault();
+          endpoint = '/api/control/next';
+          break;
+        case 'ArrowRight':
+          if (e.shiftKey) {
+            e.preventDefault();
+            endpoint = '/api/control/next';
+          }
+          break;
+        case 'MediaTrackPrevious':
+          e.preventDefault();
+          endpoint = '/api/control/previous';
+          break;
+        case 'ArrowLeft':
+          if (e.shiftKey) {
+            e.preventDefault();
+            endpoint = '/api/control/previous';
+          }
+          break;
+        case 'ArrowUp':
+          if (e.shiftKey) {
+            endpoint = '/api/control/volume';
+            method = 'POST';
+            // Volume up by 10%
+            break;
+          }
+          return;
+        case 'ArrowDown':
+          if (e.shiftKey) {
+            endpoint = '/api/control/volume';
+            method = 'POST';
+            // Volume down by 10%
+            break;
+          }
+          return;
+        case 's':
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            endpoint = '/api/control/shuffle';
+          }
+          break;
+        case 'm':
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            endpoint = '/api/control/mute';
+          }
+          break;
+        case '?':
+        case '/':
+          if (e.shiftKey || e.key === '?') {
+            e.preventDefault();
+            setShowKeyboardShortcuts(true);
+            return;
+          }
+          break;
+        default:
+          return;
+      }
+
+      if (!endpoint) return;
+
+      try {
+        // Special handling for play/pause toggle
+        if (endpoint === 'PLAY_PAUSE_TOGGLE') {
+          // Get current playback state
+          const stateResponse = await authenticatedFetch(apiEndpoint('/api/control/current-track'));
+          if (stateResponse.ok) {
+            const data = await stateResponse.json();
+            const isPlaying = data.isPlaying || false;
+            const toggleEndpoint = isPlaying ? '/api/control/pause' : '/api/control/play';
+            
+            console.log('[Keyboard] Current playing state:', isPlaying, '-> Using endpoint:', toggleEndpoint);
+            
+            await authenticatedFetch(apiEndpoint(toggleEndpoint), {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ source: 'keyboard_shortcut' })
+            });
+          } else {
+            console.error('[Keyboard] Failed to get current track state');
+          }
+        } else if (endpoint === '/api/control/volume') {
+          // Get current volume first
+          const stateResponse = await authenticatedFetch(apiEndpoint('/api/control/current-track'));
+          if (stateResponse.ok) {
+            const data = await stateResponse.json();
+            const currentVolume = data.volume || 50;
+            const newVolume = e.key === 'ArrowUp' 
+              ? Math.min(100, currentVolume + 10)
+              : Math.max(0, currentVolume - 10);
+            
+            console.log('[Keyboard] Volume change:', currentVolume, '->', newVolume);
+            
+            await authenticatedFetch(apiEndpoint('/api/control/volume'), {
+              method,
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ volume: newVolume, source: 'keyboard_shortcut' })
+            });
+          }
+        } else if (endpoint === '/api/control/mute') {
+          // Mute toggles volume to 0 or restores to previous
+          const stateResponse = await authenticatedFetch(apiEndpoint('/api/control/current-track'));
+          if (stateResponse.ok) {
+            const data = await stateResponse.json();
+            const currentVolume = data.volume || 50;
+            const newVolume = currentVolume > 0 ? 0 : 50; // Toggle between 0 and 50
+            
+            console.log('[Keyboard] Mute toggle:', currentVolume, '->', newVolume);
+            
+            await authenticatedFetch(apiEndpoint('/api/control/volume'), {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ volume: newVolume, source: 'keyboard_shortcut' })
+            });
+          }
+        } else if (endpoint === '/api/control/shuffle') {
+          // Get current shuffle state and toggle it
+          const stateResponse = await authenticatedFetch(apiEndpoint('/api/control/current-track'));
+          if (stateResponse.ok) {
+            const data = await stateResponse.json();
+            const currentShuffle = data.shuffleState || false;
+            const newShuffle = !currentShuffle;
+            
+            console.log('[Keyboard] Shuffle toggle:', currentShuffle, '->', newShuffle);
+            
+            await authenticatedFetch(apiEndpoint('/api/control/shuffle'), {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ enabled: newShuffle, source: 'keyboard_shortcut' })
+            });
+          }
+        } else {
+          // Regular playback control commands (next, previous)
+          await authenticatedFetch(apiEndpoint(endpoint), {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ source: 'keyboard_shortcut' })
+          });
+        }
+        
+        // Trigger a playback state refresh after action
+        window.dispatchEvent(new CustomEvent('playback-action'));
+      } catch (error) {
+        console.error('Keyboard shortcut error:', error);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyPress);
+    };
+  }, [isAuthenticated, setShowKeyboardShortcuts]);
 
   // Show "Everything is ready!" toast when app is fully loaded
   // useEffect(() => {
@@ -883,6 +1070,7 @@ const MainApp: React.FC = () => {
         onSubmit={handleSubmit}
         isProcessing={isProcessing}
         onShowExamples={() => setShowExamplesModal(true)}
+        onShowKeyboardShortcuts={() => setShowKeyboardShortcuts(true)}
         currentModel={currentModel}
       />
 
@@ -1172,6 +1360,100 @@ const MainApp: React.FC = () => {
         </div>
       )}
 
+
+      {/* Keyboard Shortcuts Modal */}
+      {showKeyboardShortcuts && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-zinc-800 rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold">Keyboard Shortcuts</h2>
+              <button 
+                onClick={() => setShowKeyboardShortcuts(false)}
+                className="text-gray-400 hover:text-white text-xl"
+              >
+                ×
+              </button>
+            </div>
+            
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold mb-3 text-green-400">Playback Control</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Play/Pause</span>
+                    <kbd className="px-2 py-1 bg-zinc-700 rounded text-white">Space</kbd>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Next Track</span>
+                    <kbd className="px-2 py-1 bg-zinc-700 rounded text-white">Shift + →</kbd>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Previous Track</span>
+                    <kbd className="px-2 py-1 bg-zinc-700 rounded text-white">Shift + ←</kbd>
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                <h3 className="text-lg font-semibold mb-3 text-green-400">Volume Control</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Volume Up (+10%)</span>
+                    <kbd className="px-2 py-1 bg-zinc-700 rounded text-white">Shift + ↑</kbd>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Volume Down (-10%)</span>
+                    <kbd className="px-2 py-1 bg-zinc-700 rounded text-white">Shift + ↓</kbd>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Mute/Unmute</span>
+                    <div>
+                      <kbd className="px-2 py-1 bg-zinc-700 rounded text-white">Cmd/Ctrl</kbd>
+                      <span className="mx-1">+</span>
+                      <kbd className="px-2 py-1 bg-zinc-700 rounded text-white">M</kbd>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                <h3 className="text-lg font-semibold mb-3 text-green-400">Playback Modes</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Toggle Shuffle</span>
+                    <div>
+                      <kbd className="px-2 py-1 bg-zinc-700 rounded text-white">Cmd/Ctrl</kbd>
+                      <span className="mx-1">+</span>
+                      <kbd className="px-2 py-1 bg-zinc-700 rounded text-white">S</kbd>
+                    </div>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Toggle Repeat</span>
+                    <span className="text-gray-500 italic">Use playback controls</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                <h3 className="text-lg font-semibold mb-3 text-green-400">Help</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Show Keyboard Shortcuts</span>
+                    <kbd className="px-2 py-1 bg-zinc-700 rounded text-white">?</kbd>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="mt-6 p-4 bg-zinc-700 rounded-lg">
+                <p className="text-xs text-gray-400">
+                  <strong>Note:</strong> Media keys (if available on your keyboard) are also supported for playback control.
+                  Shortcuts are disabled when typing in input fields.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Queue Display Modal - Rendered at root level to avoid z-index issues */}
       {showQueue && <QueueDisplay onClose={() => setShowQueue(false)} />}

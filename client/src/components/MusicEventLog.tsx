@@ -4,14 +4,15 @@ import { SpotifyTrack } from '../types/websocket.types';
 
 interface MusicEvent {
   id: string;
-  type: 'track' | 'queue' | 'command' | 'volume' | 'device';
+  type: 'track' | 'queue' | 'command' | 'volume' | 'device' | 'state';
   title: string;
   description: string;
   timestamp: number;
-  source: 'user' | 'ai' | 'auto';
+  source: 'user' | 'ai' | 'auto' | 'keyboard_shortcut' | 'control_endpoint';
   track?: SpotifyTrack;
   confidence?: number;
   success?: boolean;
+  endpoint?: string;
 }
 
 interface MusicEventLogProps {
@@ -52,15 +53,28 @@ function MusicEventLog({
     const { type, data, timestamp } = update;
     
     switch (type) {
+      case 'state':
+        const playPauseEndpoint = data.isPlaying ? '/play' : '/pause';
+        return {
+          id: generateEventId(),
+          type: 'state',
+          title: data.isPlaying ? 'Playback Started' : 'Playback Paused',
+          description: data.source === 'keyboard_shortcut' ? 'Via keyboard shortcut' : 'Via control',
+          timestamp,
+          source: data.source || 'control_endpoint',
+          endpoint: data.endpoint || playPauseEndpoint
+        };
+        
       case 'track':
         return {
           id: generateEventId(),
           type: 'track',
-          title: `Now Playing: ${data.track?.name || 'Unknown'}`,
-          description: `by ${data.track?.artist || 'Unknown Artist'}`,
+          title: `Now Playing: ${data.track?.name || data.current?.name || 'Unknown'}`,
+          description: `by ${data.track?.artist || data.current?.artists || 'Unknown Artist'}`,
           timestamp,
           source: data.source || 'auto',
-          track: data.track
+          track: data.track || data.current,
+          endpoint: data.endpoint || (data.source === 'keyboard_shortcut' ? '/next or /previous' : undefined)
         };
         
       case 'queue':
@@ -81,9 +95,10 @@ function MusicEventLog({
           id: generateEventId(),
           type: 'volume',
           title: 'Volume Changed',
-          description: `Set to ${data.volume}% on ${data.device}`,
+          description: `Set to ${data.volume}%${data.source === 'keyboard_shortcut' ? ' via keyboard' : ''}`,
           timestamp,
-          source: 'user'
+          source: data.source || 'user',
+          endpoint: data.endpoint || '/volume'
         };
         
       case 'device':
@@ -103,15 +118,21 @@ function MusicEventLog({
 
   // Handle command executed events separately
   const handleCommandExecuted = (data: any) => {
+    // Special handling for shuffle command from keyboard
+    const isShuffleKeyboard = data.intent === 'set_shuffle' && data.source === 'keyboard_shortcut';
+    
     const event: MusicEvent = {
       id: generateEventId(),
       type: 'command',
-      title: data.success ? 'Command Executed' : 'Command Failed',
-      description: `${data.intent} (${Math.round(data.confidence * 100)}%)`,
+      title: isShuffleKeyboard ? `Shuffle ${data.metadata?.enabled ? 'On' : 'Off'}` : 
+             data.success ? 'Command Executed' : 'Command Failed',
+      description: isShuffleKeyboard ? 'Via keyboard shortcut' :
+                  data.confidence ? `${data.intent} (${Math.round(data.confidence * 100)}%)` : data.intent,
       timestamp: data.timestamp,
-      source: 'ai',
+      source: data.source || 'ai',
       confidence: data.confidence,
-      success: data.success
+      success: data.success,
+      endpoint: data.endpoint || (isShuffleKeyboard ? '/shuffle' : '/llm/simple/command')
     };
     
     setEvents(prev => {
@@ -122,16 +143,16 @@ function MusicEventLog({
 
   // Set up WebSocket connection
   const { connected, lastUpdate } = useMusicWebSocket(
-    undefined, // No playback state handler needed
+    (data) => addEvent({ type: 'state', data, timestamp: Date.now() }), // Playback state changes
     (data) => addEvent({ type: 'track', data, timestamp: Date.now() }),
     (data) => addEvent({ type: 'queue', data, timestamp: Date.now() }),
     handleCommandExecuted
   );
 
-  // Handle volume and device updates
+  // Handle volume, device, and state updates
   useEffect(() => {
     if (lastUpdate) {
-      if (lastUpdate.type === 'volume' || lastUpdate.type === 'device') {
+      if (lastUpdate.type === 'volume' || lastUpdate.type === 'device' || lastUpdate.type === 'state') {
         addEvent(lastUpdate);
       }
     }
@@ -156,10 +177,16 @@ function MusicEventLog({
 
   // Get icon for event type
   const getEventIcon = (event: MusicEvent): string => {
+    // Special icon for keyboard shortcuts
+    if (event.source === 'keyboard_shortcut') {
+      return '⌨️';
+    }
+    
     switch (event.type) {
+      case 'state': return event.title.includes('Started') ? '▶️' : '⏸️';
       case 'track': return '🎵';
       case 'queue': return '📄';
-      case 'command': return event.success ? '✅' : '❌';
+      case 'command': return event.success !== false ? '✅' : '❌';
       case 'volume': return '🔊';
       case 'device': return '📱';
       default: return '•';
@@ -171,6 +198,8 @@ function MusicEventLog({
     switch (source) {
       case 'ai': return 'text-blue-400';
       case 'user': return 'text-green-400';
+      case 'keyboard_shortcut': return 'text-purple-400';
+      case 'control_endpoint': return 'text-yellow-400';
       default: return 'text-gray-400';
     }
   };
@@ -260,11 +289,19 @@ function MusicEventLog({
                         {event.description}
                       </p>
                       
-                      {/* Source and confidence */}
+                      {/* Source, endpoint and confidence */}
                       <div className="flex items-center gap-2 mt-2">
                         <span className={`text-xs px-2 py-0.5 rounded-full bg-zinc-700/50 ${getSourceColor(event.source)}`}>
-                          {event.source}
+                          {event.source === 'keyboard_shortcut' ? 'keyboard' : 
+                           event.source === 'control_endpoint' ? 'control' :
+                           event.source}
                         </span>
+                        
+                        {event.endpoint && (
+                          <span className="text-xs text-gray-500 font-mono">
+                            {event.endpoint}
+                          </span>
+                        )}
                         
                         {event.confidence !== undefined && (
                           <span className="text-xs text-gray-500">

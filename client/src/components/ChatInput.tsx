@@ -7,6 +7,7 @@ interface ChatInputProps {
   onSubmit: (e: React.FormEvent) => void;
   isProcessing: boolean;
   onShowExamples: () => void;
+  onShowKeyboardShortcuts?: () => void;
   currentModel: string;
 }
 
@@ -16,6 +17,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
   onSubmit,
   isProcessing,
   onShowExamples,
+  onShowKeyboardShortcuts,
   currentModel
 }) => {
   return (
@@ -62,6 +64,18 @@ const ChatInput: React.FC<ChatInputProps> = ({
             >
               Examples
             </button>
+            
+            {onShowKeyboardShortcuts && (
+              <button
+                type="button"
+                onClick={onShowKeyboardShortcuts}
+                className="px-3 py-1.5 bg-zinc-700 text-gray-300 text-sm font-medium rounded-lg hover:bg-zinc-600 hover:text-white transition-all flex items-center gap-2"
+                title="Keyboard Shortcuts (Press ? to open)"
+              >
+                <span>⌨️</span>
+                <span className="hidden sm:inline">Shortcuts</span>
+              </button>
+            )}
             
             {/* Dummy toggle for future features */}
             <label className="flex items-center gap-2 cursor-pointer">

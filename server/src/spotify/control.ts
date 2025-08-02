@@ -843,7 +843,8 @@ controlRouter.post('/play', requireValidTokens, async (req: any, res) => {
     if (musicService && req.userId) {
       musicService.emitPlaybackStateChange(req.userId, {
         isPlaying: true,
-        source: req.body?.source || 'control_endpoint'
+        source: req.body?.source || 'control_endpoint',
+        endpoint: '/play'
       });
     }
     
@@ -872,7 +873,8 @@ controlRouter.post('/pause', requireValidTokens, async (req: any, res) => {
     if (musicService && req.userId) {
       musicService.emitPlaybackStateChange(req.userId, {
         isPlaying: false,
-        source: req.body?.source || 'control_endpoint'
+        source: req.body?.source || 'control_endpoint',
+        endpoint: '/pause'
       });
     }
     
@@ -908,11 +910,16 @@ controlRouter.post('/next', requireValidTokens, async (req: any, res) => {
           const playback = await webAPI.getCurrentPlayback();
           if (playback && playback.item) {
             musicService.emitTrackChange(req.userId, {
-              current: {
+              track: {
                 name: playback.item.name,
-                artists: playback.item.artists.map((a: any) => a.name).join(', ')
+                artist: playback.item.artists.map((a: any) => a.name).join(', '),
+                album: playback.item.album?.name,
+                albumArt: playback.item.album?.images?.[0]?.url,
+                id: playback.item.id,
+                uri: playback.item.uri
               },
-              source: req.body?.source || 'control_endpoint'
+              source: req.body?.source || 'control_endpoint',
+              endpoint: req.url === '/next' ? '/next' : '/previous'
             });
           }
         } catch (err) {
@@ -942,11 +949,16 @@ controlRouter.post('/previous', requireValidTokens, async (req: any, res) => {
           const playback = await webAPI.getCurrentPlayback();
           if (playback && playback.item) {
             musicService.emitTrackChange(req.userId, {
-              current: {
+              track: {
                 name: playback.item.name,
-                artists: playback.item.artists.map((a: any) => a.name).join(', ')
+                artist: playback.item.artists.map((a: any) => a.name).join(', '),
+                album: playback.item.album?.name,
+                albumArt: playback.item.album?.images?.[0]?.url,
+                id: playback.item.id,
+                uri: playback.item.uri
               },
-              source: req.body?.source || 'control_endpoint'
+              source: req.body?.source || 'control_endpoint',
+              endpoint: req.url === '/next' ? '/next' : '/previous'
             });
           }
         } catch (err) {
@@ -980,7 +992,8 @@ controlRouter.post('/volume', requireValidTokens, async (req: any, res) => {
       musicService.emitVolumeChanged(req.userId, {
         volume,
         device: deviceId || 'default',
-        source: req.body?.source || 'control_endpoint'
+        source: req.body?.source || 'control_endpoint',
+        endpoint: '/volume'
       });
     }
     
@@ -1052,7 +1065,8 @@ controlRouter.post('/shuffle', requireValidTokens, async (req: any, res) => {
         intent: 'set_shuffle',
         success: true,
         metadata: { enabled },
-        source: req.body?.source || 'control_endpoint'
+        source: req.body?.source || 'control_endpoint',
+        endpoint: '/shuffle'
       });
     }
     
