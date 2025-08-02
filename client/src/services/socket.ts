@@ -8,9 +8,14 @@ const getWebSocketURL = (): string => {
     return import.meta.env.VITE_WEBSOCKET_URL;
   }
   
-  // In production, use the same origin
+  // Check for API URL and use that (since WebSocket runs on the same server as API)
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  
+  // In production, use the djforge-server URL
   if (import.meta.env.PROD) {
-    return window.location.origin;
+    return 'https://djforge-server.fly.dev';
   }
   
   // In development, default to localhost
