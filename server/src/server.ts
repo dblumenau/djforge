@@ -29,6 +29,7 @@ import { RedisUtils } from './utils/redis-utils';
 import weatherRouter from './routes/weather';
 import userDataRouter from './routes/user-data';
 import { webPlayerRouter } from './routes/web-player';
+import { websocketRouter } from './routes/websocket';
 import { overrideConsole, logger } from './utils/logger';
 import { setSentryUserContext } from './middleware/sentry-auth';
 import { initializeWebSocket, getWebSocketService } from './services/websocket.service';
@@ -164,7 +165,7 @@ async function initializeAndStart() {
       cookie: {
         secure: process.env.NODE_ENV === 'production', // true in production for HTTPS
         httpOnly: true,
-        maxAge: 7200000, // 2 hours (reduced from 30 days to save Redis memory)
+        maxAge: 2592000000, // 30 days (same as Redis TTL)
         sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // 'none' for cross-site in production
         path: '/',
         domain: process.env.NODE_ENV === 'production' ? '.fly.dev' : undefined // Share across subdomains
@@ -216,6 +217,8 @@ async function initializeAndStart() {
     app.use('/api/songs', songVerificationRouter);
     // Debug token endpoint
     app.use('/api/debug', debugTokenRouter);
+    // WebSocket health and stats endpoints
+    app.use('/api/websocket', websocketRouter);
 
 
     // IMPORTANT: The Sentry error handler must be registered before any other error middleware and after all controllers
