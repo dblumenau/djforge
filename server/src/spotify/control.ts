@@ -4,6 +4,7 @@ import { SpotifyAuthTokens, SpotifyTrack } from '../types';
 import { requireValidTokens } from '../middleware/session-auth';
 import { logDebugError } from '../utils/error-logger';
 import { logger } from '../config/logger';
+import { getWebSocketService } from '../services/websocket.service';
 
 export const controlRouter = Router();
 
@@ -831,35 +832,94 @@ export class SpotifyControl {
 // All endpoints now use requireValidTokens from middleware/temp-auth.ts
 
 // Basic playback controls using Web API
-controlRouter.post('/play', requireValidTokens, async (req, res) => {
+controlRouter.post('/play', requireValidTokens, async (req: any, res) => {
   try {
     const webAPI = getWebAPI(req);
     await webAPI.play(req.body.deviceId);
     
+    // Emit WebSocket event for UI update
+    const wsService = getWebSocketService();
+    const musicService = wsService?.getMusicService();
+    if (musicService && req.userId) {
+      musicService.emitPlaybackStateChange(req.userId, {
+        isPlaying: true,
+        source: req.body?.source || 'control_endpoint'
+      });
+    }
     
     res.json({ success: true });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    // Handle specific error cases
+    if (error.message.includes('No active device')) {
+      res.status(404).json({ 
+        error: 'No active Spotify device found', 
+        message: 'Please open Spotify on a device first'
+      });
+    } else {
+      res.status(500).json({ error: error.message });
+    }
   }
 });
 
-controlRouter.post('/pause', requireValidTokens, async (req, res) => {
+controlRouter.post('/pause', requireValidTokens, async (req: any, res) => {
   try {
     const webAPI = getWebAPI(req);
-    await webAPI.pause();
+    await webAPI.pause(req.body.deviceId);
     
+    // Emit WebSocket event for UI update
+    const wsService = getWebSocketService();
+    const musicService = wsService?.getMusicService();
+    if (musicService && req.userId) {
+      musicService.emitPlaybackStateChange(req.userId, {
+        isPlaying: false,
+        source: req.body?.source || 'control_endpoint'
+      });
+    }
     
     res.json({ success: true });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    // Handle specific error cases
+    if (error.message.includes('already be paused')) {
+      // Device is already paused, treat as success
+      res.json({ success: true, message: 'Already paused' });
+    } else if (error.message.includes('No active device')) {
+      res.status(404).json({ 
+        error: 'No active Spotify device found', 
+        message: 'Please ensure Spotify is open and playing on a device'
+      });
+    } else {
+      res.status(500).json({ error: error.message });
+    }
   }
 });
 
-controlRouter.post('/next', requireValidTokens, async (req, res) => {
+controlRouter.post('/next', requireValidTokens, async (req: any, res) => {
   try {
     const webAPI = getWebAPI(req);
     await webAPI.nextTrack();
     
+    // Emit WebSocket event for UI update
+    const wsService = getWebSocketService();
+    const musicService = wsService?.getMusicService();
+    if (musicService && req.userId) {
+      // Get current track info for the event
+      setTimeout(async () => {
+        try {
+          const playback = await webAPI.getCurrentPlayback();
+          if (playback && playback.item) {
+            musicService.emitTrackChange(req.userId, {
+              current: {
+                name: playback.item.name,
+                artists: playback.item.artists.map((a: any) => a.name).join(', ')
+              },
+              source: req.body?.source || 'control_endpoint'
+            });
+          }
+        } catch (err) {
+          console.error('Failed to emit track change:', err);
+        }
+      }, 500); // Small delay to ensure Spotify has updated
+    }
     
     res.json({ success: true });
   } catch (error: any) {
@@ -867,11 +927,33 @@ controlRouter.post('/next', requireValidTokens, async (req, res) => {
   }
 });
 
-controlRouter.post('/previous', requireValidTokens, async (req, res) => {
+controlRouter.post('/previous', requireValidTokens, async (req: any, res) => {
   try {
     const webAPI = getWebAPI(req);
     await webAPI.previousTrack();
     
+    // Emit WebSocket event for UI update
+    const wsService = getWebSocketService();
+    const musicService = wsService?.getMusicService();
+    if (musicService && req.userId) {
+      // Get current track info for the event
+      setTimeout(async () => {
+        try {
+          const playback = await webAPI.getCurrentPlayback();
+          if (playback && playback.item) {
+            musicService.emitTrackChange(req.userId, {
+              current: {
+                name: playback.item.name,
+                artists: playback.item.artists.map((a: any) => a.name).join(', ')
+              },
+              source: req.body?.source || 'control_endpoint'
+            });
+          }
+        } catch (err) {
+          console.error('Failed to emit track change:', err);
+        }
+      }, 500); // Small delay to ensure Spotify has updated
+    }
     
     res.json({ success: true });
   } catch (error: any) {
@@ -880,7 +962,7 @@ controlRouter.post('/previous', requireValidTokens, async (req, res) => {
 });
 
 // Volume control
-controlRouter.post('/volume', requireValidTokens, async (req, res) => {
+controlRouter.post('/volume', requireValidTokens, async (req: any, res) => {
   const { volume, deviceId } = req.body;
   
   if (typeof volume !== 'number' || volume < 0 || volume > 100) {
@@ -891,6 +973,16 @@ controlRouter.post('/volume', requireValidTokens, async (req, res) => {
     const webAPI = getWebAPI(req);
     await webAPI.setVolume(volume, deviceId);
     
+    // Emit WebSocket event for UI update
+    const wsService = getWebSocketService();
+    const musicService = wsService?.getMusicService();
+    if (musicService && req.userId) {
+      musicService.emitVolumeChanged(req.userId, {
+        volume,
+        device: deviceId || 'default',
+        source: req.body?.source || 'control_endpoint'
+      });
+    }
     
     res.json({ success: true, volume });
   } catch (error: any) {
@@ -944,12 +1036,26 @@ controlRouter.get('/current', requireValidTokens, async (req, res) => {
 });
 
 // Shuffle and repeat controls
-controlRouter.post('/shuffle', requireValidTokens, async (req, res) => {
+controlRouter.post('/shuffle', requireValidTokens, async (req: any, res) => {
   const { enabled } = req.body;
   
   try {
     const webAPI = getWebAPI(req);
     await webAPI.setShuffle(enabled);
+    
+    // Emit WebSocket event for UI update
+    const wsService = getWebSocketService();
+    const musicService = wsService?.getMusicService();
+    if (musicService && req.userId) {
+      musicService.emitCommandExecuted(req.userId, {
+        command: 'shuffle',
+        intent: 'set_shuffle',
+        success: true,
+        metadata: { enabled },
+        source: req.body?.source || 'control_endpoint'
+      });
+    }
+    
     res.json({ success: true, shuffling: enabled });
   } catch (error: any) {
     res.status(500).json({ error: error.message });

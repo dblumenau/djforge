@@ -64,7 +64,6 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue, isMobi
   const [apiCallCount, setApiCallCount] = useState<number[]>([]);
   const [isTrackChanging, setIsTrackChanging] = useState(false);
   const [viewMode, setViewMode] = useState<'minimized' | 'normal' | 'fullscreen'>('normal');
-  const [showDeviceSelector, setShowDeviceSelector] = useState(false);
   const previousTrackNameRef = useRef<string | null>(null);
   
   // Vinyl rotation state
@@ -366,7 +365,7 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue, isMobi
     };
   }, [playbackState.isPlaying, playbackState.track?.name, isVinylPaused, vinylRotation]);
 
-  // Handle escape key for fullscreen mode and click outside for device selector
+  // Handle escape key for fullscreen mode
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && viewMode === 'fullscreen') {
@@ -374,27 +373,14 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue, isMobi
       }
     };
 
-    const handleClickOutside = (e: MouseEvent) => {
-      // Close device selector when clicking outside
-      const target = e.target as HTMLElement;
-      if (!target.closest('.device-selector-container')) {
-        setShowDeviceSelector(false);
-      }
-    };
-
     if (viewMode === 'fullscreen') {
       document.addEventListener('keydown', handleEscape);
-    }
-    
-    if (showDeviceSelector) {
-      document.addEventListener('click', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('keydown', handleEscape);
-      document.removeEventListener('click', handleClickOutside);
     };
-  }, [viewMode, showDeviceSelector]);
+  }, [viewMode]);
 
   // Control functions
   const handlePlayPause = async () => {
@@ -403,10 +389,20 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue, isMobi
     try {
       const endpoint = playbackState.isPlaying ? '/api/control/pause' : '/api/control/play';
       const response = await api.post(endpoint, {});
+      
       if (response.ok) {
         setPlaybackState(prev => ({ ...prev, isPlaying: !prev.isPlaying }));
         // Fetch new state immediately after action
         setTimeout(() => fetchPlaybackState(true), 500);
+      } else if (response.status === 404) {
+        // No active device error
+        console.error('No active Spotify device found');
+        // Optionally show a toast or alert to the user
+        alert('No active Spotify device found. Please open Spotify on a device first.');
+      } else {
+        // Other errors
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Play/pause failed:', errorData.error || 'Unknown error');
       }
     } catch (error) {
       console.error('Play/pause failed:', error);
@@ -867,31 +863,26 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue, isMobi
             )}
           </div>
           <div className="flex items-center gap-2">
-            {/* Device Selector Button */}
+            {/* Device Selector Button - Integrated dropdown */}
             {viewMode !== 'minimized' && (
-              <div className="relative device-selector-container">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowDeviceSelector(!showDeviceSelector);
-                  }}
-                  className="p-1.5 hover:bg-white/10 rounded transition-colors"
-                  title="Change playback device"
-                >
-                  <Monitor className="w-4 h-4 text-gray-400" />
-                </button>
-                {showDeviceSelector && (
-                  <div className="absolute top-full right-0 mt-1 z-50">
-                    <DeviceSelector 
-                      compact={true}
-                      onDeviceChange={() => {
-                        setShowDeviceSelector(false);
-                        // Device change is handled by DeviceSelector
-                      }}
-                    />
-                  </div>
+              <DeviceSelector 
+                compact={true}
+                onDeviceChange={() => {
+                  // Device change is handled by DeviceSelector
+                }}
+                customTrigger={(onClick: () => void, isOpen: boolean) => (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onClick();
+                    }}
+                    className="p-1.5 hover:bg-white/10 rounded transition-colors"
+                    title="Change playback device"
+                  >
+                    <Monitor className={`w-4 h-4 ${isOpen ? 'text-green-400' : 'text-gray-400'} transition-colors`} />
+                  </button>
                 )}
-              </div>
+              />
             )}
             
             {/* Fullscreen Button */}

@@ -287,12 +287,18 @@ export class SpotifyWebAPI {
     }
   }
 
-  async pause(): Promise<void> {
+  async pause(deviceId?: string): Promise<void> {
     try {
-      await this.api.put('/me/player/pause');
+      // If deviceId is provided, use it. Otherwise, let Spotify use the currently active device
+      const params = deviceId ? { device_id: deviceId } : undefined;
+      await this.api.put('/me/player/pause', {}, { params });
     } catch (error: any) {
       if (error.response?.status === 404) {
-        throw new Error('No active device found.');
+        throw new Error('No active device found. Please ensure Spotify is playing on a device.');
+      }
+      if (error.response?.status === 403) {
+        // This can happen when user pauses with keyboard and device state is out of sync
+        throw new Error('Player command failed. The device may already be paused or in an invalid state.');
       }
       throw error;
     }
