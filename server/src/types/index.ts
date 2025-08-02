@@ -12,10 +12,15 @@ export interface SpotifyTrack {
   artists: Array<{
     id: string;
     name: string;
+    uri?: string;
+    external_urls?: {
+      spotify: string;
+    };
   }>;
   album: {
     id: string;
     name: string;
+    uri?: string;
     release_date?: string;
     images: Array<{
       url: string;
@@ -25,7 +30,13 @@ export interface SpotifyTrack {
   };
   duration_ms: number;
   uri: string;
+  external_urls?: {
+    spotify: string;
+  };
   popularity?: number;
+  preview_url?: string;
+  track_number?: number;
+  disc_number?: number;
 }
 
 export interface CurrentPlayback {

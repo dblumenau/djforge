@@ -95,10 +95,26 @@ export class SpotifyControl {
         track: {
           name: track.name,
           artist: track.artists.map((a: any) => a.name).join(', '),
+          artists: track.artists.map((a: any) => ({
+            name: a.name,
+            id: a.id,
+            uri: a.uri,
+            external_urls: a.external_urls
+          })),
           album: track.album.name,
+          albumId: track.album.id,
+          albumUri: track.album.uri,
+          albumArt: track.album.images?.[0]?.url || null,
+          releaseDate: track.album.release_date,
           duration: Math.floor(track.duration_ms / 1000),
           position: Math.floor(playback.progress_ms / 1000),
-          id: track.id
+          id: track.id,
+          uri: track.uri,
+          external_urls: track.external_urls,
+          popularity: track.popularity,
+          preview_url: track.preview_url,
+          track_number: track.track_number,
+          disc_number: track.disc_number
         }
       };
     } catch (error: any) {
@@ -874,6 +890,7 @@ controlRouter.get('/current', requireValidTokens, async (req, res) => {
         name: playback.item.name,
         artist: playback.item.artists.map((a: any) => a.name).join(', '),
         album: playback.item.album.name,
+        albumArt: playback.item.album.images?.[0]?.url || null,
         duration: Math.floor(playback.item.duration_ms / 1000),
         position: Math.floor(playback.progress_ms / 1000),
         id: playback.item.id
@@ -1136,11 +1153,26 @@ controlRouter.get('/current-track', requireValidTokens, async (req, res) => {
         track: {
           name: track.name,
           artist: track.artists.map((a: any) => a.name).join(', '),
+          artists: track.artists.map((a: any) => ({
+            name: a.name,
+            id: a.id,
+            uri: a.uri,
+            external_urls: a.external_urls
+          })),
           album: track.album.name,
+          albumId: track.album.id,
+          albumUri: track.album.uri,
+          albumArt: track.album.images?.[0]?.url || null,
+          releaseDate: track.album.release_date,
           duration: track.duration_ms,
           position: playback.progress_ms || 0,
           id: track.id,
-          uri: track.uri
+          uri: track.uri,
+          external_urls: track.external_urls,
+          popularity: track.popularity,
+          preview_url: track.preview_url,
+          track_number: track.track_number,
+          disc_number: track.disc_number
         },
         isPlaying: playback.is_playing,
         shuffleState: playback.shuffle_state,
