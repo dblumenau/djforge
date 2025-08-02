@@ -166,6 +166,13 @@ export class SpotifyWebAPI {
     return response.data.items || [];
   }
 
+  async getAlbumTracks(albumId: string) {
+    const response = await this.api.get(`/albums/${albumId}/tracks`, {
+      params: { limit: 50 }
+    });
+    return response.data.items || [];
+  }
+
   async getRecentlyPlayed() {
     const response = await this.api.get('/me/player/recently-played', {
       params: { limit: 50 }

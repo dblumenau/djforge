@@ -428,30 +428,38 @@ CRITICAL DISTINCTIONS:
    - "add several upbeat songs to queue" → queue_multiple_songs with 5-10 upbeat songs
    - "queue multiple taylor swift deep cuts" → queue_multiple_songs with multiple lesser-known Taylor Swift songs
 
-2. PLAYLIST REQUESTS (use play_playlist or queue_playlist):
+2. ALBUM REQUESTS (use play_playlist or queue_playlist with the album name as query):
+   - "play the album lover by taylor swift" → play_playlist with query: "lover taylor swift album"
+   - "play folklore album" → play_playlist with query: "folklore album"
+   - "queue the entire dark side of the moon album" → queue_playlist with query: "dark side of the moon album"
+   - "play taylor swift's 1989" → play_playlist with query: "1989 taylor swift album"
+   
+3. PLAYLIST REQUESTS (use play_playlist or queue_playlist):
    - "play my workout playlist" → play_playlist with query: "workout"
    - "queue up a jazz playlist" → queue_playlist with query: "jazz"
    - "play taylor swift playlist" → play_playlist with query: "taylor swift"
    - "play my discover weekly" → play_playlist with query: "discover weekly"
 
-3. CONVERSATIONAL vs ACTION DISTINCTION:
+4. CONVERSATIONAL vs ACTION DISTINCTION:
    - Questions starting with "did", "does", "has", "tell me about", "what do you think" → conversational intents
    - Commands requesting action "play", "queue", "skip" → action intents
    - "did he ever collaborate with X" → ask_question (return text, don't play music)
    - "tell me about this song" → ask_question (return info, don't play music)
    - "what do you think of this artist" → chat (return opinion, don't play music)
 
-4. CRITICAL INTENT DISTINCTIONS:
+5. CRITICAL INTENT DISTINCTIONS:
    - If asking for A SONG (even by name) → use play_specific_song/queue_specific_song
    - If asking for MULTIPLE SONGS → use queue_multiple_songs
+   - If asking for AN ALBUM → use play_playlist/queue_playlist with album name as query
    - If asking for A PLAYLIST → use play_playlist/queue_playlist
    - If asking QUESTIONS → use conversational intents (chat/ask_question)
    - If asking "what's playing" or "current song" → use get_playback_info
    - If asking about MODEL REASONING/DECISIONS → use explain_reasoning
+   - The word "album" in the command is a strong indicator to use playlist intents with album query
    - The word "playlist" in the command is a strong indicator for playlist intents
    - Words like "multiple", "many", "several", "more songs", "a few songs" indicate queue_multiple_songs
 
-5. REJECTION vs CLEAR QUEUE DISTINCTION:
+6. REJECTION vs CLEAR QUEUE DISTINCTION:
    - Expressions of dislike or wanting alternatives → clarification_mode (offer alternatives)
    - Explicit queue management commands → clear_queue (actual queue clearing)
 
@@ -495,6 +503,14 @@ For multiple song requests:
   "confidence": 0.8-1.0,
   "reasoning": "Why these songs match the request theme/mood/similarity",
   "theme": "Brief description of the common theme (e.g., 'obscure Beyoncé tracks', 'upbeat indie songs')"
+}
+
+For album requests:
+{
+  "intent": "play_playlist" or "queue_playlist",
+  "query": "[album name] [artist] album" (e.g., "lover taylor swift album", "dark side of the moon album"),
+  "confidence": 0.7-1.0,
+  "reasoning": "brief explanation"
 }
 
 For playlist requests:
@@ -594,7 +610,7 @@ CRITICAL ACCURACY REQUIREMENTS:
 • If you're unsure about a song title, choose a different artist or song you're certain about
 • Double-check your music knowledge before recommending specific tracks
 
-CRITICAL: You must use the discriminated union pattern - when intent is "play_specific_song" or "queue_specific_song", you MUST include artist, track, and alternatives fields. ${ALTERNATIVES_APPROACH} When intent is "play_playlist" or "queue_playlist", use query field. Never use generic search queries for specific song requests - always recommend exact songs using your music knowledge. Distinguish between playing (immediate) and queuing (add to queue) for both songs and playlists. For conversational intents (chat, ask_question), include the actual answer in the responseMessage field. Set isAIDiscovery: true for ALL songs you queue/play EXCEPT when the user explicitly names BOTH artist AND track. Always include aiReasoning explaining your choice when isAIDiscovery is true. ${RESPONSE_VARIATION}` },
+CRITICAL: You must use the discriminated union pattern - when intent is "play_specific_song" or "queue_specific_song", you MUST include artist, track, and alternatives fields. ${ALTERNATIVES_APPROACH} When intent is "play_playlist" or "queue_playlist", use query field. For ALBUM requests (when user mentions "album"), use play_playlist/queue_playlist with query containing the album name, artist, and the word "album" (e.g., "lover taylor swift album"). Never use generic search queries for specific song requests - always recommend exact songs using your music knowledge. Distinguish between playing (immediate) and queuing (add to queue) for both songs, albums, and playlists. For conversational intents (chat, ask_question), include the actual answer in the responseMessage field. Set isAIDiscovery: true for ALL songs you queue/play EXCEPT when the user explicitly names BOTH artist AND track. Always include aiReasoning explaining your choice when isAIDiscovery is true. ${RESPONSE_VARIATION}` },
       { role: 'user' as const, content: `Command: "${command}"` }
     ];
     

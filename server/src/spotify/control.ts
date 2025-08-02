@@ -303,35 +303,36 @@ export class SpotifyControl {
     }
   }
 
-  async playPlaylistWithTracks(playlistId: string) {
+  async playPlaylistWithTracks(playlistId: string, isAlbum: boolean = false) {
     try {
-      console.log(`[DEBUG] Playing playlist with tracks method for ID: ${playlistId}`);
+      console.log(`[DEBUG] Playing ${isAlbum ? 'album' : 'playlist'} with tracks method for ID: ${playlistId}`);
       
-      // Get all tracks from the playlist
-      const tracksResponse = await this.getPlaylistTracks(playlistId);
-      if (!tracksResponse.success || !tracksResponse.tracks) {
-        return { success: false, message: "Couldn't get playlist tracks" };
+      // Get all tracks directly from the API
+      const tracks = isAlbum ? 
+        await this.webAPI.getAlbumTracks(playlistId) :
+        await this.webAPI.getPlaylistTracks(playlistId);
+      
+      if (!tracks || tracks.length === 0) {
+        return { success: false, message: `${isAlbum ? 'Album' : 'Playlist'} is empty` };
       }
 
-      const tracks = tracksResponse.tracks;
-      if (tracks.length === 0) {
-        return { success: false, message: "Playlist is empty" };
-      }
+      console.log(`[DEBUG] Found ${tracks.length} tracks in ${isAlbum ? 'album' : 'playlist'}`);
 
-      console.log(`[DEBUG] Found ${tracks.length} tracks in playlist`);
-
-      // Play the first track
-      const firstTrack = tracks[0];
+      // Play the first track (handle both playlist and album track structures)
+      const firstTrack = tracks[0].track || tracks[0];
       await this.webAPI.playTrack(firstTrack.uri);
 
       // Queue the rest of the tracks
       for (let i = 1; i < tracks.length; i++) {
-        await this.webAPI.addToQueue(tracks[i].uri);
+        const track = tracks[i].track || tracks[i];
+        if (track && track.uri) {
+          await this.webAPI.addToQueue(track.uri);
+        }
       }
 
       return { 
         success: true, 
-        message: `Playing playlist with ${tracks.length} tracks`,
+        message: `Playing ${isAlbum ? 'album' : 'playlist'} with ${tracks.length} tracks`,
         tracksQueued: tracks.length - 1,
         playlistInfo: {
           totalTracks: tracks.length,
@@ -465,8 +466,11 @@ export class SpotifyControl {
     try {
       let playlists;
       
+      // Check if this is an album request
+      const isAlbumRequest = query.toLowerCase().includes('album');
+      
       // Special case for "random" - get user's playlists and pick one randomly
-      if (query.toLowerCase().includes('random')) {
+      if (!isAlbumRequest && query.toLowerCase().includes('random')) {
         const playlistsResponse = await this.getPlaylists();
         if (!playlistsResponse.success) {
           return { success: false, message: "Couldn't get your playlists" };
@@ -478,6 +482,22 @@ export class SpotifyControl {
         // Pick a random playlist
         const randomIndex = Math.floor(Math.random() * playlists.length);
         playlists = [playlists[randomIndex]];
+      } else if (isAlbumRequest) {
+        // Search for albums when query contains "album"
+        console.log(`[DEBUG] Searching for album: ${query}`);
+        const rawAlbums = await this.webAPI.search(query, ['album']);
+        
+        // Albums have the same structure as playlists in terms of playback
+        playlists = rawAlbums.filter(a => a && a.id && a.uri && (a.name || a.title));
+        
+        console.log(`[DEBUG] Raw albums found: ${rawAlbums.length}, Valid albums: ${playlists.length}`);
+        
+        if (playlists.length === 0) {
+          return { 
+            success: false, 
+            message: `No albums found for: "${query}". Try searching for an album by name and artist.`
+          };
+        }
       } else {
         // Search for playlists by name
         const rawPlaylists = await this.webAPI.search(query, ['playlist']);
@@ -509,14 +529,15 @@ export class SpotifyControl {
         return { success: false, message: "Found invalid playlist data" };
       }
       
-      console.log(`[DEBUG] Found playlist: ${playlistName} (ID: ${playlistId})`);
+      const itemType = isAlbumRequest ? 'album' : 'playlist';
+      console.log(`[DEBUG] Found ${itemType}: ${playlistName} (ID: ${playlistId})`);
       
       // Try the robust method first (manually queue all tracks)
-      const result = await this.playPlaylistWithTracks(playlistId);
+      const result = await this.playPlaylistWithTracks(playlistId, isAlbumRequest);
       if (result.success) {
         return {
           ...result,
-          message: `Playing playlist: ${playlistName} (${(result.tracksQueued || 0) + 1} tracks)`,
+          message: `Playing ${itemType}: ${playlistName} (${(result.tracksQueued || 0) + 1} tracks)`,
           playlist: {
             name: playlistName,
             id: playlistId,
@@ -536,7 +557,7 @@ export class SpotifyControl {
       
       return { 
         success: true, 
-        message: `Playing playlist: ${playlistName} (via context)`,
+        message: `Playing ${itemType}: ${playlistName} (via context)`,
         playlist: {
           name: playlistName,
           id: playlistId,
@@ -677,6 +698,24 @@ export class SpotifyControl {
           name: t.name,
           artists: t.artists.map((a: { name: string }) => a.name).join(', '),
           album: t.album.name,
+          uri: t.uri
+        }))
+      };
+    } catch (error: any) {
+      return { success: false, message: error.message };
+    }
+  }
+
+  async getAlbumTracks(albumId: string) {
+    try {
+      const tracks = await this.webAPI.getAlbumTracks(albumId);
+      return { 
+        success: true, 
+        message: `Found ${tracks.length} tracks in album`,
+        tracks: tracks.map((t: any) => ({
+          name: t.name,
+          artists: t.artists.map((a: { name: string }) => a.name).join(', '),
+          album: t.album?.name || 'Album',
           uri: t.uri
         }))
       };
