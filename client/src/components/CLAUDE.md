@@ -72,24 +72,19 @@ This directory contains reusable React components for the Spotify Claude Control
 - Used during command processing and API calls
 
 ### PlaybackControls.tsx
-- Horizontal playback control component with minimizable design
-- Collapsible header showing current track with minimize toggle
-- Smart polling with dynamic intervals to avoid rate limiting
-- Local progress tracking using requestAnimationFrame
-- Features:
-  - Play/pause, skip, previous controls
-  - Shuffle and repeat toggles
-  - Volume control with slider
-  - Progress bar with seek functionality
-  - Clear queue button
-  - Track save/unsave integration
-  - Rate limit monitoring (dev mode only)
-- Polling strategy:
-  - 60s intervals when nothing playing
-  - 30s intervals during normal playback
-  - 10s intervals in last 30s of track
-  - 2s before track end for seamless transitions
-  - Immediate fetch after user actions
+- Main orchestrator component for playback functionality
+- Integrates multiple subcomponents from `playback/` directory
+- State management for playback, volume, and view modes
+- WebSocket integration for real-time updates
+- View modes: minimized, normal, fullscreen
+- Custom hooks integration:
+  - `useTrackLibrary` - Save/unsave track functionality
+  - `useMusicWebSocket` - Real-time WebSocket events
+  - `useVinylAnimation` - Vinyl rotation animations
+  - `useProgressTracking` - Local progress state
+  - `usePlaybackPolling` - Smart polling intervals
+- Renders different layouts based on view mode
+- Device selector integration for Spotify Connect
 
 ### WeatherDisplay.tsx
 - Fetches and displays weather information
@@ -111,6 +106,29 @@ This directory contains reusable React components for the Spotify Claude Control
 - 404 page component
 - Displayed for invalid routes
 - Provides link back to main app
+
+### playback/ (Directory)
+- Refactored subcomponents from PlaybackControls
+- Modular playback interface components
+- Components include:
+  - `ControlButtons.tsx` - Play/pause, skip, previous, shuffle, repeat controls
+  - `SecondaryControls.tsx` - Save/unsave, queue, clear queue buttons
+  - `ProgressBar.tsx` - Seek bar with time display and progress tracking
+  - `TrackInfo.tsx` - Track name, artist, album display
+  - `VinylDisplay.tsx` - Animated vinyl record visualization
+  - `MinimizedView.tsx` - Compact playback controls layout
+  - `FullscreenView.tsx` - Immersive fullscreen playback experience
+- See `playback/CLAUDE.md` for implementation details
+
+### playlist-search/ (Directory)
+- Components for playlist search functionality
+- Modular UI components for search results and details
+- Components include:
+  - `PlaylistCard.tsx` - Individual playlist result card
+  - `PlaylistDetailsModal.tsx` - Full playlist details modal with tabs
+  - `SearchGuide.tsx` - Comprehensive search syntax guide
+  - `PlaylistModalTabs/` - Tab components for playlist details
+- See `playlist-search/CLAUDE.md` for details
 
 ### dashboard/ (Directory)
 - Contains specialized components for Dashboard page

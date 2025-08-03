@@ -53,6 +53,29 @@ This directory contains the main page components for the Spotify Claude Controll
 - Accessible via dropdown menu (... button) in navigation bar
 - Located at route `/websocket-demo` within AppLayout (authenticated)
 
+### PlaylistSearch.tsx
+- Comprehensive playlist search interface
+- Features:
+  - Real-time search with 500ms debouncing
+  - Grid layout for search results
+  - Detailed playlist exploration modal
+  - Multi-tab interface for playlist details
+  - Search syntax guide with examples
+  - Error handling with user feedback
+- State Management:
+  - Search query and results
+  - Modal visibility and selected playlist
+  - Loading states for async operations
+  - Tab navigation within modal
+- Components Used:
+  - `SearchGuide` - Search tips and examples
+  - `PlaylistCard` - Individual result cards
+  - `PlaylistDetailsModal` - Full playlist viewer
+- API Integration:
+  - `GET /api/playlist-search` - Search endpoint
+  - `GET /api/playlist-search/:id` - Details endpoint
+- Located at route `/playlist-search` within AppLayout (authenticated)
+
 ## Spotify Dashboard Feature
 
 The dashboard provides comprehensive visualization of user's Spotify data with real-time playback controls.
