@@ -1,5 +1,7 @@
-import { Music, User, Globe, Lock, Hash, BarChart } from 'lucide-react';
+import { Music, User, Globe, Lock, Hash, BarChart, Play } from 'lucide-react';
+import { useState } from 'react';
 import type { Playlist } from '../../@types/playlist-search';
+import { authenticatedFetch } from '../../utils/api';
 
 interface PlaylistCardProps {
   playlist: Playlist;
@@ -9,11 +11,38 @@ interface PlaylistCardProps {
 }
 
 export default function PlaylistCard({ playlist, index, onViewDetails, truncateDescription }: PlaylistCardProps) {
+  const [isPlaying, setIsPlaying] = useState(false);
+  
   // Add safety check for each playlist item
   if (!playlist || typeof playlist !== 'object') {
     console.warn(`Invalid playlist at index ${index}:`, playlist);
     return null;
   }
+
+  const handlePlay = async () => {
+    setIsPlaying(true);
+    try {
+      const response = await authenticatedFetch('/api/direct/playlist', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          playlistId: playlist.id,
+          action: 'play'
+        })
+      });
+      
+      const data = await response.json();
+      if (!data.success) {
+        console.error('Failed to play playlist:', data.error);
+      }
+    } catch (error) {
+      console.error('Error playing playlist:', error);
+    } finally {
+      setIsPlaying(false);
+    }
+  };
   
   return (
     <div 
@@ -92,20 +121,32 @@ export default function PlaylistCard({ playlist, index, onViewDetails, truncateD
         {/* Action Buttons */}
         <div className="flex gap-2 pt-2">
           <button
+            onClick={handlePlay}
+            disabled={isPlaying}
+            className="flex-1 px-3 py-2 bg-spotify-green hover:bg-green-600 disabled:bg-green-800 disabled:cursor-not-allowed text-black font-medium rounded text-sm text-center transition-colors flex items-center justify-center gap-1"
+          >
+            {isPlaying ? (
+              <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Play className="w-4 h-4 fill-current" />
+            )}
+            Play
+          </button>
+          <button
             onClick={() => onViewDetails(playlist.id)}
             className="flex-1 px-3 py-2 bg-zinc-700 hover:bg-zinc-600 text-white font-medium rounded text-sm text-center transition-colors flex items-center justify-center gap-1"
           >
             <BarChart className="w-4 h-4" />
-            View Details
+            Details
           </button>
           {playlist.external_urls?.spotify && (
             <a
               href={playlist.external_urls.spotify}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex-1 px-3 py-2 bg-spotify-green hover:bg-green-600 text-black font-medium rounded text-sm text-center transition-colors"
+              className="flex-1 px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-white font-medium rounded text-sm text-center transition-colors border border-zinc-700"
             >
-              Open in Spotify
+              Spotify
             </a>
           )}
         </div>

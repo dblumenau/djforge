@@ -196,6 +196,166 @@ directActionRouter.post('/song', requireValidTokens, async (req: any, res) => {
   }
 });
 
+// Direct play endpoint for playlists with known playlist IDs
+directActionRouter.post('/playlist', requireValidTokens, async (req: any, res) => {
+  const { playlistId, action = 'play' } = req.body;
+  
+  if (!playlistId) {
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid request. Required: playlistId'
+    });
+  }
+
+  try {
+    const userId = req.userId;
+    const uri = `spotify:playlist:${playlistId}`;
+    
+    console.log(`Processing direct ${action} for playlist: ${playlistId}`);
+    console.log(`User ID: ${userId}`);
+    console.log(`Spotify URI: ${uri}`);
+
+    const tokens = req.tokens;
+    if (!tokens) {
+      return res.status(401).json({
+        success: false,
+        error: 'Not authenticated with Spotify'
+      });
+    }
+
+    const spotifyControl = new SpotifyControl(
+      tokens,
+      (newTokens) => { req.tokens = newTokens; }
+    );
+    
+    let response: string = 'Invalid action';
+    let success = false;
+
+    if (action === 'play') {
+      const result = await spotifyControl.playPlaylist(uri);
+      success = result.success;
+      response = result.success 
+        ? `Playing playlist`
+        : result.message || 'Failed to play playlist';
+    }
+
+    res.json({
+      success,
+      response,
+      action,
+      playlistId
+    });
+
+    if (userId) {
+      emitDirectActionWebSocketEvents(
+        userId, 
+        action, 
+        success, 
+        { playlistId, message: response }, 
+        spotifyControl
+      ).catch(error => {
+        console.error('WebSocket emission failed for playlist action:', error);
+      });
+    }
+
+  } catch (error) {
+    console.error('Playlist direct action error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error'
+    });
+  }
+});
+
+// Direct play endpoint for playlists with known URIs (legacy endpoint)
+directActionRouter.post('/playlist-uri', requireValidTokens, async (req: any, res) => {
+  const { uri, action = 'play', name } = req.body;
+  
+  // Validate input
+  if (!uri || !action || !['play'].includes(action)) {
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid request. Required: uri, action (currently only "play" supported)'
+    });
+  }
+
+  try {
+    const userId = req.userId; // Provided by requireValidTokens middleware
+    console.log(`Processing direct ${action} for playlist: ${name || 'Unknown'}`);
+    console.log(`User ID: ${userId}`);
+    console.log(`Spotify URI: ${uri}`);
+
+    // Get tokens from request (requireValidTokens middleware adds this)
+    const tokens = req.tokens;
+    if (!tokens) {
+      return res.status(401).json({
+        success: false,
+        error: 'Not authenticated with Spotify'
+      });
+    }
+
+    const spotifyControl = new SpotifyControl(
+      tokens,
+      (newTokens) => { req.tokens = newTokens; }
+    );
+    
+    let response: string = 'Invalid action';
+    let success = false;
+
+    try {
+      if (action === 'play') {
+        // Play the playlist directly using the URI
+        const playResult = await spotifyControl.playPlaylist(uri);
+        success = playResult.success;
+        response = playResult.success 
+          ? `Playing playlist: ${name || 'Unknown playlist'}` 
+          : playResult.message || 'Failed to play playlist';
+      }
+    } catch (error: any) {
+      success = false;
+      response = error.message || `Failed to ${action} playlist`;
+    }
+
+    // Update dialog state in Redis if successful
+    if (success && conversationManager && userId) {
+      const dialogState: any = {
+        mode: 'music',
+        last_action: `${action}_playlist_direct`,
+        last_playlist: name || 'Unknown playlist',
+        timestamp: Date.now()
+      };
+      await conversationManager.updateDialogState(userId, dialogState);
+    }
+
+    res.json({
+      success,
+      response,
+      action,
+      playlist: { name: name || 'Unknown playlist', uri }
+    });
+
+    // Emit WebSocket events for direct actions
+    if (userId) {
+      emitDirectActionWebSocketEvents(
+        userId, 
+        action, 
+        success, 
+        { playlist: { name: name || 'Unknown playlist', uri }, message: response }, 
+        spotifyControl
+      ).catch(error => {
+        console.error('WebSocket emission failed for playlist direct action:', error);
+      });
+    }
+
+  } catch (error) {
+    console.error('Direct playlist action error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error'
+    });
+  }
+});
+
 // Start playback with user's content (for empty player state)
 directActionRouter.post('/start-playback', requireValidTokens, async (req: any, res) => {
   try {
