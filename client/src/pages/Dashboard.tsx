@@ -9,6 +9,7 @@ import GenreDistribution from '../components/dashboard/GenreDistribution';
 import ListeningTrends from '../components/dashboard/ListeningTrends';
 import PlaylistGrid from '../components/dashboard/PlaylistGrid';
 import PlaylistDiscovery from '../components/dashboard/PlaylistDiscovery';
+import PlaylistSearchHistory from '../components/dashboard/PlaylistSearchHistory';
 import { useSpotifyPlayback } from '../hooks/useSpotifyPlayback';
 
 // Skeleton components
@@ -47,7 +48,7 @@ interface DashboardData {
   playlists: any[];
 }
 
-type Section = 'overview' | 'discover' | 'top' | 'saved' | 'recent' | 'playlists' | 'insights';
+type Section = 'overview' | 'discover' | 'searchHistory' | 'top' | 'saved' | 'recent' | 'playlists' | 'insights';
 
 interface DashboardLoadingState {
   profile: boolean;
@@ -242,6 +243,7 @@ export default function Dashboard() {
   const sections = [
     { id: 'overview' as Section, label: 'Overview', icon: '🏠' },
     { id: 'discover' as Section, label: 'Discover', icon: '✨' },
+    { id: 'searchHistory' as Section, label: 'Search History', icon: '🔍' },
     { id: 'top' as Section, label: 'Top Items', icon: '🔥' },
     { id: 'saved' as Section, label: 'Library', icon: '💚' },
     { id: 'recent' as Section, label: 'Recent', icon: '🕐' },
@@ -542,6 +544,13 @@ export default function Dashboard() {
         {activeSection === 'discover' && (
           <section>
             <PlaylistDiscovery />
+          </section>
+        )}
+
+        {/* Search History Section */}
+        {activeSection === 'searchHistory' && (
+          <section>
+            <PlaylistSearchHistory />
           </section>
         )}
 

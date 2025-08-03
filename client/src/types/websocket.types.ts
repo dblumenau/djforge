@@ -27,6 +27,21 @@ export interface ServerToClientEvents {
     message: string;
     code?: string;
   }) => void;
+  playlistDiscoveryProgress: (data: {
+    sessionId: string;
+    step: string;
+    phase: 'searching' | 'analyzing' | 'fetching' | 'summarizing' | 'complete';
+    timestamp: number;
+    itemNumber?: number;
+    totalItems?: number;
+    metadata?: {
+      searchTime?: number;
+      playlistCount?: number;
+      model?: string;
+      latency?: number;
+      tokensUsed?: number;
+    };
+  }) => void;
 }
 
 export interface ClientToServerEvents {

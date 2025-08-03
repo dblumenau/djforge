@@ -8,6 +8,8 @@ import {
 } from '../types/websocket.types';
 
 export class MusicWebSocketService {
+  private static instance: MusicWebSocketService | null = null;
+  
   private namespace: Namespace<ClientToServerEvents, ServerToClientEvents, {}, SocketData>;
   private wsAuth: WebSocketAuth | null;
   private logger: winston.Logger;
@@ -17,6 +19,8 @@ export class MusicWebSocketService {
   private maxConnectionsPerIP: number = 10;
   
   constructor(io: SocketIOServer<ClientToServerEvents, ServerToClientEvents, {}, SocketData>, redisClient?: any) {
+    // Set singleton instance
+    MusicWebSocketService.instance = this;
     this.namespace = io.of('/music');
     this.userSubscriptions = new Map();
     this.connectionsByIP = new Map();
@@ -360,10 +364,44 @@ export class MusicWebSocketService {
            this.userSubscriptions.get(userId)!.size > 0;
   }
   
+  // Generic method to emit events to a specific user
+  public emitToUser(userId: string, event: keyof ServerToClientEvents, data: any): void {
+    const socketIds = this.getUserSockets(userId);
+    if (socketIds.length > 0) {
+      socketIds.forEach(socketId => {
+        this.namespace.to(socketId).emit(event, data);
+      });
+      
+      this.logger.info('Emitted event to user', {
+        userId,
+        event,
+        socketCount: socketIds.length,
+        data: event === 'playlistDiscoveryProgress' ? data : undefined
+      });
+    } else {
+      this.logger.warn('No active connections for user', {
+        userId,
+        event,
+        userSubscriptions: Array.from(this.userSubscriptions.keys())
+      });
+    }
+  }
+  
+  private getUserSockets(userId: string): string[] {
+    const socketSet = this.userSubscriptions.get(userId);
+    return socketSet ? Array.from(socketSet) : [];
+  }
+  
   public shutdown(): void {
     this.namespace.disconnectSockets();
     this.userSubscriptions.clear();
     this.connectionsByIP.clear();
     this.logger.info('Music WebSocket service shut down');
+    MusicWebSocketService.instance = null;
+  }
+  
+  // Singleton getInstance method
+  public static getInstance(): MusicWebSocketService | null {
+    return MusicWebSocketService.instance;
   }
 }

@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Search, Music, Sparkles, Loader2, AlertCircle } from 'lucide-react';
+import { Search, Music, Sparkles, Loader2, AlertCircle, Brain, Download, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiEndpoint } from '../../config/api';
 import { authenticatedFetch } from '../../utils/api';
@@ -7,6 +7,7 @@ import { useSpotifyPlayback } from '../../hooks/useSpotifyPlayback';
 import PlaylistDiscoveryCard from './PlaylistDiscoveryCard';
 import PlaylistDetailsModal from './PlaylistDetailsModal';
 import ModelSelector from '../ModelSelector';
+import usePlaylistDiscoveryProgress from '../../hooks/usePlaylistDiscoveryProgress';
 
 interface DiscoveredPlaylist {
   id: string;
@@ -44,12 +45,6 @@ interface PlaylistDiscoveryResponse {
   };
 }
 
-const LOADING_STEPS = [
-  'Searching Spotify...',
-  'Analyzing playlists...',
-  'Getting details...',
-  'Finalizing results...'
-];
 
 export default function PlaylistDiscovery() {
   const { playPlaylist, playTrack, queueTrack, isLoading: isPlaybackLoading } = useSpotifyPlayback();
@@ -57,13 +52,15 @@ export default function PlaylistDiscovery() {
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<DiscoveredPlaylist[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [loadingStep, setLoadingStep] = useState('');
   const [lastQuery, setLastQuery] = useState('');
   const [selectedPlaylist, setSelectedPlaylist] = useState<DiscoveredPlaylist | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedModel, setSelectedModel] = useState<string>(() => {
     return localStorage.getItem('llmModel') || 'google/gemini-2.5-flash';
   });
+
+  const sessionId = localStorage.getItem('spotify_session_id') || '';
+  const currentProgress = usePlaylistDiscoveryProgress(sessionId);
 
   const handleModelChange = (model: string) => {
     setSelectedModel(model);
@@ -78,14 +75,6 @@ export default function PlaylistDiscovery() {
     setResults([]);
     setLastQuery(searchQuery.trim());
 
-    // Simulate loading steps for better UX
-    let stepIndex = 0;
-    setLoadingStep(LOADING_STEPS[0]);
-
-    const stepInterval = setInterval(() => {
-      stepIndex = (stepIndex + 1) % LOADING_STEPS.length;
-      setLoadingStep(LOADING_STEPS[stepIndex]);
-    }, 1500);
 
     try {
       console.log(`🔍 Playlist Discovery: "${searchQuery}" with model: ${selectedModel}`);
@@ -106,9 +95,6 @@ export default function PlaylistDiscovery() {
 
       const data: PlaylistDiscoveryResponse = await response.json();
       
-      // Clear loading steps
-      clearInterval(stepInterval);
-      setLoadingStep('');
 
       // Check if fallback was used and show notification
       if (data.fallbackUsed) {
@@ -127,8 +113,6 @@ export default function PlaylistDiscovery() {
 
     } catch (err: any) {
       console.error('❌ Playlist discovery error:', err);
-      clearInterval(stepInterval);
-      setLoadingStep('');
       
       if (err.message?.includes('401')) {
         setError('Authentication failed. Please log in again.');
@@ -305,15 +289,38 @@ export default function PlaylistDiscovery() {
       {isLoading && (
         <div className="text-center py-12">
           <div className="flex flex-col items-center space-y-4">
-            <div className="relative">
-              <Music className="w-12 h-12 text-green-500 animate-pulse" />
-              <Loader2 className="absolute -top-1 -right-1 w-6 h-6 text-green-400 animate-spin" />
+            {/* Progress bar */}
+            <div className="w-full max-w-md">
+              <div className="bg-zinc-800 rounded-full h-2 overflow-hidden">
+                <div 
+                  className="bg-green-500 h-full transition-all duration-300"
+                  style={{ width: `${currentProgress.progress}%` }}
+                />
+              </div>
+              <p className="text-xs text-zinc-500 mt-1 text-center">
+                {currentProgress.progress}% complete
+              </p>
             </div>
+            
+            {/* Current step */}
             <div className="space-y-2">
-              <p className="text-lg text-white font-medium">Finding perfect playlists...</p>
-              {loadingStep && (
-                <p className="text-sm text-zinc-400">{loadingStep}</p>
-              )}
+              <p className="text-lg text-white font-medium">
+                {currentProgress.step || 'Starting search...'}
+              </p>
+              
+              {/* Phase indicator with icons */}
+              <div className="flex items-center gap-2 text-sm text-zinc-400">
+                {currentProgress.phase === 'searching' && <Search className="w-4 h-4 animate-pulse" />}
+                {currentProgress.phase === 'analyzing' && <Brain className="w-4 h-4 animate-pulse" />}
+                {currentProgress.phase === 'fetching' && <Download className="w-4 h-4 animate-pulse" />}
+                {currentProgress.phase === 'summarizing' && <FileText className="w-4 h-4 animate-pulse" />}
+                <span className="capitalize">{currentProgress.phase}</span>
+                {currentProgress.itemNumber && currentProgress.totalItems && (
+                  <span className="text-zinc-500">
+                    ({currentProgress.itemNumber} of {currentProgress.totalItems})
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>

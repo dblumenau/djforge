@@ -7,6 +7,10 @@ import { z } from 'zod';
 import crypto from 'crypto';
 import { LLMLoggingService } from '../services/llm-logging.service';
 import { createHash } from 'crypto';
+import { MusicWebSocketService } from '../services/musicWebSocket.service';
+
+// Get the music websocket service instance
+const getMusicWebSocketService = () => MusicWebSocketService.getInstance();
 
 const router = Router();
 
@@ -59,9 +63,10 @@ const PlaylistSummarizationSchema = z.object({
  * Accepts natural language query, performs Spotify search,
  * uses LLM to select top 5 candidates, returns playlist metadata
  */
-router.post('/search', async (req: Request & { tokens?: any }, res: Response<PlaylistDiscoveryResponse>) => {
+router.post('/search', async (req: Request & { tokens?: any; userId?: string }, res: Response<PlaylistDiscoveryResponse>) => {
   try {
     const { query, model }: PlaylistDiscoveryRequest & { model?: string } = req.body;
+    const sessionId = req.headers['x-session-id'] as string;
 
     // Validate query
     if (!query || typeof query !== 'string' || !query.trim()) {
@@ -122,7 +127,8 @@ router.post('/search', async (req: Request & { tokens?: any }, res: Response<Pla
 Here are ${playlistsForAnalysis.length} playlists from Spotify search results:
 
 ${playlistsForAnalysis.map((p: any, i: number) => 
-  `${i + 1}. ID: ${p.id}
+  `[${i + 1}]
+   ID: ${p.id}
    Name: "${p.name}"
    Description: "${p.description || 'No description'}"
    Owner: ${p.owner}
@@ -145,7 +151,7 @@ Include more playlists to provide variety and fallback options.
 Focus on quality but aim for at least 8-10 good matches when available.
 
 Respond with a JSON object containing:
-- selectedPlaylistIds: array of the selected playlist IDs (strings)
+- selectedPlaylistIds: array of ONLY the playlist ID strings (e.g., ["035OfvPcp5PUAAogsLxsbM", "7M65Xoo7Mr0XOrF5Dpd4CX"]) without any numbers or prefixes
 - reasoning: brief explanation of why these were chosen (optional)`;
 
     const llmRequest: LLMRequest = {
@@ -162,7 +168,7 @@ Respond with a JSON object containing:
       ],
       response_format: { type: 'json_object' },
       schema: PlaylistSelectionSchema,
-      temperature: 0.6, // Lower temperature for more consistent selections
+      temperature: 0.4, // Lower temperature for more consistent selections
       max_tokens: 5000,
       skipValidation: true // Skip intent validation for playlist selection response
     };
@@ -276,12 +282,12 @@ Respond with a JSON object containing:
     }
 
     // Log the LLM interaction
-    if (loggingService && (req as any).userId) {
+    if (loggingService && req.userId) {
       try {
         await loggingService.logInteraction({
           timestamp: Date.now(),
-          userId: hashUserId((req as any).userId),
-          sessionId: req.sessionID || 'unknown',
+          userId: hashUserId(req.userId),
+          sessionId: sessionId || 'unknown',
           command: `Playlist Discovery Search: "${query}"`,
           interpretation: {
             selectedPlaylistIds: selectionData.selectedPlaylistIds,
@@ -432,7 +438,7 @@ interface PlaylistSummarizationResponse {
  * Accepts array of playlist IDs (up to 5), fetches full details for each,
  * extracts unique artists, implements caching and rate limiting
  */
-router.post('/batch-details', async (req: Request & { tokens?: any }, res: Response<BatchDetailsResponse>) => {
+router.post('/batch-details', async (req: Request & { tokens?: any; userId?: string }, res: Response<BatchDetailsResponse>) => {
   try {
     const { playlistIds }: BatchDetailsRequest = req.body;
 
@@ -641,9 +647,10 @@ router.post('/batch-details', async (req: Request & { tokens?: any }, res: Respo
  * Accepts playlist ID and optional original query, uses LLM to analyze
  * playlist tracks and generate 2-3 sentence description with characteristics
  */
-router.post('/summarize', async (req: Request & { tokens?: any }, res: Response<PlaylistSummarizationResponse>) => {
+router.post('/summarize', async (req: Request & { tokens?: any; userId?: string }, res: Response<PlaylistSummarizationResponse>) => {
   try {
     const { playlistId, originalQuery, model }: PlaylistSummarizationRequest & { model?: string } = req.body;
+    const sessionId = req.headers['x-session-id'] as string;
 
     // Validate request body
     if (!playlistId || typeof playlistId !== 'string') {
@@ -809,7 +816,7 @@ Respond with a JSON object containing:
       response_format: { type: 'json_object' },
       schema: PlaylistSummarizationSchema,
       temperature: 0.4, // Slightly creative but consistent
-      max_tokens: 1500,
+      max_tokens: 5000,
       skipValidation: true // Skip intent validation for playlist summarization response
     };
 
@@ -944,12 +951,12 @@ Respond with a JSON object containing:
     }
 
     // Log the LLM interaction
-    if (loggingService && (req as any).userId) {
+    if (loggingService && req.userId) {
       try {
         await loggingService.logInteraction({
           timestamp: Date.now(),
-          userId: hashUserId((req as any).userId),
-          sessionId: req.sessionID || 'unknown',
+          userId: hashUserId(req.userId),
+          sessionId: sessionId || 'unknown',
           command: `Playlist Summarization: "${playlistDetails.name}" (${playlistId})`,
           interpretation: {
             summary: summaryData.summary,
@@ -1039,7 +1046,7 @@ Respond with a JSON object containing:
  * Takes user query → search → batch details → summarize → return complete results
  * Provides the complete end-to-end playlist discovery experience in one API call
  */
-router.post('/full-search', async (req: Request & { tokens?: any }, res: Response) => {
+router.post('/full-search', async (req: Request & { tokens?: any; userId?: string }, res: Response) => {
   try {
     const { query, model }: PlaylistDiscoveryRequest & { model?: string } = req.body;
 
@@ -1064,10 +1071,43 @@ router.post('/full-search', async (req: Request & { tokens?: any }, res: Respons
       req.tokens = newTokens;
     });
 
+    // Initialize WebSocket service for progress emissions
+    const musicWS = getMusicWebSocketService();
+    const sessionId = req.headers['x-session-id'] as string;
+    
+    console.log('🔌 WebSocket Progress - SessionId:', sessionId, 'UserId:', req.userId);
+
     // Phase 1: Search and LLM Selection
     console.log('📍 Phase 1: Performing search and LLM selection...');
+    
+    // Progress: Before Spotify search
+    if (musicWS && req.userId) {
+      musicWS.emitToUser(req.userId, 'playlistDiscoveryProgress', {
+        sessionId: sessionId || 'unknown',
+        step: `Searching Spotify for '${query}'...`,
+        phase: 'searching',
+        timestamp: Date.now()
+      });
+    }
+    
+    const searchStart = Date.now();
     const searchResults = await spotifyApi.searchPlaylists(query.trim(), 40, 0);
     const playlists = searchResults.playlists?.items || [];
+    const searchTime = Date.now() - searchStart;
+    
+    // Progress: After search results
+    if (musicWS && req.userId) {
+      musicWS.emitToUser(req.userId, 'playlistDiscoveryProgress', {
+        sessionId: sessionId || 'unknown',
+        step: `Found ${playlists.length} playlists, sending to AI for analysis...`,
+        phase: 'searching',
+        timestamp: Date.now(),
+        metadata: {
+          searchTime: searchTime,
+          playlistCount: playlists.length
+        }
+      });
+    }
     
     if (playlists.length === 0) {
       return res.json({
@@ -1091,13 +1131,24 @@ router.post('/full-search', async (req: Request & { tokens?: any }, res: Respons
         images: playlist.images || []
       }));
 
+    // Progress: Before LLM analysis
+    if (musicWS && req.userId) {
+      musicWS.emitToUser(req.userId, 'playlistDiscoveryProgress', {
+        sessionId: sessionId || 'unknown',
+        step: `AI (${model || 'google/gemini-2.5-flash'}) analyzing ${playlistsForAnalysis.length} playlists...`,
+        phase: 'analyzing',
+        timestamp: Date.now()
+      });
+    }
+
     // LLM Selection
     const llmPrompt = `User is looking for playlists matching: "${query}"
 
 Here are ${playlistsForAnalysis.length} playlists from Spotify search results:
 
 ${playlistsForAnalysis.map((p: any, i: number) => 
-  `${i + 1}. ID: ${p.id}
+  `[${i + 1}]
+   ID: ${p.id}
    Name: "${p.name}"
    Description: "${p.description || 'No description'}"
    Owner: ${p.owner}
@@ -1120,7 +1171,7 @@ Include more playlists to provide variety and fallback options.
 Focus on quality but aim for at least 8-10 good matches when available.
 
 Respond with a JSON object containing:
-- selectedPlaylistIds: array of the selected playlist IDs (strings)
+- selectedPlaylistIds: array of ONLY the playlist ID strings (e.g., ["035OfvPcp5PUAAogsLxsbM", "7M65Xoo7Mr0XOrF5Dpd4CX"]) without any numbers or prefixes
 - reasoning: brief explanation of why these were chosen (optional)`;
 
     const llmRequest: LLMRequest = {
@@ -1153,6 +1204,21 @@ Respond with a JSON object containing:
       llmResponse = await llmOrchestrator.complete(llmRequest);
       selectionLatency = Date.now() - startTime;
       const selectionData = JSON.parse(llmResponse.content);
+      
+      // Progress: After LLM selection
+      if (musicWS && req.userId) {
+        musicWS.emitToUser(req.userId, 'playlistDiscoveryProgress', {
+          sessionId: sessionId || 'unknown',
+          step: `AI selected ${selectionData.selectedPlaylistIds?.length || 0} best matches in ${selectionLatency}ms`,
+          phase: 'analyzing',
+          timestamp: Date.now(),
+          metadata: {
+            model: llmResponse.model || model || 'google/gemini-2.5-flash',
+            latency: selectionLatency,
+            tokensUsed: llmResponse.usage?.total_tokens || 0
+          }
+        });
+      }
       // Try schema parsing, but be lenient
       const parsed = PlaylistSelectionSchema.safeParse(selectionData);
       if (parsed.success) {
@@ -1198,12 +1264,12 @@ Respond with a JSON object containing:
     }
 
     // Log the selection LLM interaction
-    if (loggingService && (req as any).userId && llmResponse) {
+    if (loggingService && req.userId && llmResponse) {
       try {
         await loggingService.logInteraction({
           timestamp: Date.now(),
-          userId: hashUserId((req as any).userId),
-          sessionId: req.sessionID || 'unknown',
+          userId: hashUserId(req.userId),
+          sessionId: sessionId || 'unknown',
           command: `Full Search - Playlist Selection: "${query}"`,
           interpretation: {
             selectedPlaylistIds,
@@ -1266,6 +1332,7 @@ Respond with a JSON object containing:
       const cacheKey = `playlist:details:${playlistId}`;
       
       let details: any = null;
+      let fromCache = false;
 
       // Try cache first
       if (redisClient) {
@@ -1273,10 +1340,27 @@ Respond with a JSON object containing:
           const cachedData = await redisClient.get(cacheKey);
           if (cachedData) {
             details = JSON.parse(cachedData);
+            fromCache = true;
           }
         } catch (error) {
           console.warn('⚠️ Redis cache read failed:', error);
         }
+      }
+
+      // Progress: For each playlist details fetch
+      if (musicWS && req.userId) {
+        const message = fromCache 
+          ? `Loading cached data for playlist ${i + 1} of ${selectedPlaylistIds.length}...`
+          : `Getting tracks and artists for playlist ${i + 1} of ${selectedPlaylistIds.length}...`;
+        
+        musicWS.emitToUser(req.userId, 'playlistDiscoveryProgress', {
+          sessionId: sessionId || 'unknown',
+          step: message,
+          phase: 'fetching',
+          timestamp: Date.now(),
+          itemNumber: i + 1,
+          totalItems: selectedPlaylistIds.length
+        });
       }
 
       // If not in cache, fetch from API
@@ -1347,7 +1431,8 @@ Respond with a JSON object containing:
     // Phase 3: LLM Summarization for each playlist
     const finalResults: any[] = [];
 
-    for (const playlist of playlistDetails) {
+    for (let playlistIndex = 0; playlistIndex < playlistDetails.length; playlistIndex++) {
+      const playlist = playlistDetails[playlistIndex];
       const cacheKey = `playlist:summary:${playlist.id}:${crypto.createHash('md5').update(query.trim().toLowerCase()).digest('hex').substring(0, 8)}`;
       
       let summary: any = null;
@@ -1366,6 +1451,18 @@ Respond with a JSON object containing:
 
       // If not cached, generate summary
       if (!summary) {
+        // Progress: Before playlist summary
+        if (musicWS && req.userId) {
+          musicWS.emitToUser(req.userId, 'playlistDiscoveryProgress', {
+            sessionId: sessionId || 'unknown',
+            step: `AI analyzing music style of '${playlist.name}'...`,
+            phase: 'summarizing',
+            timestamp: Date.now(),
+            itemNumber: playlistIndex + 1,
+            totalItems: playlistDetails.length
+          });
+        }
+        
         try {
           const first30Tracks = playlist.tracks.slice(0, 30);
           const trackList = first30Tracks.map((track: any, index: number) => 
@@ -1457,14 +1554,31 @@ Respond with a JSON object containing:
             matchScore: typeof summaryData.matchScore === 'number' ? summaryData.matchScore : 0.7,
             reasoning: summaryData.reasoning || 'Analysis completed'
           };
+          
+          // Progress: After playlist summary
+          if (musicWS && req.userId) {
+            const scorePercent = Math.round((summary.matchScore || 0) * 100);
+            musicWS.emitToUser(req.userId, 'playlistDiscoveryProgress', {
+              sessionId: sessionId || 'unknown',
+              step: `'${playlist.name}' scored ${scorePercent}% match!`,
+              phase: 'summarizing',
+              timestamp: Date.now(),
+              itemNumber: playlistIndex + 1,
+              totalItems: playlistDetails.length,
+              metadata: {
+                latency: summaryLatency,
+                tokensUsed: summaryLLMResponse.usage?.total_tokens || 0
+              }
+            });
+          }
 
           // Log the LLM interaction for summarization
-          if (loggingService && (req as any).userId) {
+          if (loggingService && req.userId) {
             try {
               await loggingService.logInteraction({
                 timestamp: Date.now(),
-                userId: hashUserId((req as any).userId),
-                sessionId: req.sessionID || 'unknown',
+                userId: hashUserId(req.userId),
+                sessionId: sessionId || 'unknown',
                 command: `Full Search - Playlist Summarization: "${playlist.name}" (${playlist.id})`,
                 interpretation: {
                   summary: summary.summary,
@@ -1555,6 +1669,16 @@ Respond with a JSON object containing:
     finalResults.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));
 
     console.log(`✅ Full workflow complete: ${finalResults.length} enhanced playlists returned`);
+    
+    // Progress: Final complete
+    if (musicWS && req.userId) {
+      musicWS.emitToUser(req.userId, 'playlistDiscoveryProgress', {
+        sessionId: sessionId || 'unknown',
+        step: `Complete! Found ${finalResults.length} perfect playlists for you`,
+        phase: 'complete',
+        timestamp: Date.now()
+      });
+    }
 
     const response: any = {
       query: query.trim(),
@@ -1573,6 +1697,35 @@ Respond with a JSON object containing:
     if (selectionFallbackUsed) {
       response.fallbackUsed = true;
       response.originalError = selectionOriginalError;
+    }
+    
+    // Cache the search results in Redis
+    if (redisClient && req.userId) {
+      try {
+        const userId = req.userId;
+        const searchHash = createHash('md5').update(`${userId}:${query.trim().toLowerCase()}:${model || 'google/gemini-2.5-flash'}`).digest('hex');
+        
+        // Store the complete response in Redis with 30-day TTL
+        const cacheKey = `playlist:search:result:${userId}:${searchHash}`;
+        await redisClient.setEx(cacheKey, 2592000, JSON.stringify(response)); // 30 days = 2592000 seconds
+        
+        // Add to search history sorted set
+        const historyKey = `playlist:search:history:${userId}`;
+        const historyMetadata = {
+          searchHash,
+          query: query.trim(),
+          model: model || 'google/gemini-2.5-flash',
+          timestamp: Date.now(),
+          resultCount: finalResults.length
+        };
+        
+        await redisClient.zAdd(historyKey, { score: Date.now(), value: JSON.stringify(historyMetadata) });
+        
+        console.log(`💾 Cached search results for user ${userId}, hash: ${searchHash}`);
+      } catch (cacheError) {
+        console.warn('⚠️ Failed to cache search results:', cacheError);
+        // Don't fail the request if caching fails
+      }
     }
     
     res.json(response);
@@ -1597,6 +1750,127 @@ Respond with a JSON object containing:
     res.status(500).json({
       success: false,
       error: error.message || 'Failed to complete playlist discovery workflow'
+    });
+  }
+});
+
+/**
+ * GET /api/playlist-discovery/history
+ * Retrieve user's search history from Redis sorted set
+ */
+router.get('/history', async (req: Request & { userId?: string }, res: Response) => {
+  try {
+    const userId = req.userId;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+    }
+
+    if (!redisClient) {
+      return res.status(503).json({
+        success: false,
+        error: 'Search history not available'
+      });
+    }
+
+    // Get last 100 searches, newest first (ZREVRANGE)
+    const historyKey = `playlist:search:history:${userId}`;
+    const historyEntries = await redisClient.zRange(historyKey, 0, 99, { REV: true });
+    
+    const searchHistory = [];
+    
+    for (const entry of historyEntries) {
+      try {
+        const metadata = JSON.parse(entry);
+        
+        // Check if the cached result still exists
+        const resultKey = `playlist:search:result:${userId}:${metadata.searchHash}`;
+        const exists = await redisClient.exists(resultKey);
+        
+        searchHistory.push({
+          ...metadata,
+          cached: exists === 1
+        });
+      } catch (parseError) {
+        console.warn('Failed to parse history entry:', parseError);
+        // Skip malformed entries
+      }
+    }
+
+    res.json({
+      success: true,
+      history: searchHistory
+    });
+
+  } catch (error: any) {
+    console.error('❌ Error retrieving search history:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve search history'
+    });
+  }
+});
+
+/**
+ * GET /api/playlist-discovery/cached-result/:searchHash
+ * Retrieve cached search result by hash
+ */
+router.get('/cached-result/:searchHash', async (req: Request & { userId?: string }, res: Response) => {
+  try {
+    const userId = req.userId;
+    const { searchHash } = req.params;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+    }
+
+    if (!redisClient) {
+      return res.status(503).json({
+        success: false,
+        error: 'Cache not available'
+      });
+    }
+
+    if (!searchHash || typeof searchHash !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid search hash'
+      });
+    }
+
+    // Retrieve cached result
+    const resultKey = `playlist:search:result:${userId}:${searchHash}`;
+    const cachedResult = await redisClient.get(resultKey);
+    
+    if (!cachedResult) {
+      return res.status(404).json({
+        success: false,
+        error: 'Search result has expired'
+      });
+    }
+
+    try {
+      const result = JSON.parse(cachedResult);
+      res.json(result);
+    } catch (parseError) {
+      console.error('Failed to parse cached result:', parseError);
+      return res.status(500).json({
+        success: false,
+        error: 'Corrupted cache data'
+      });
+    }
+
+  } catch (error: any) {
+    console.error('❌ Error retrieving cached result:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve cached result'
     });
   }
 });
