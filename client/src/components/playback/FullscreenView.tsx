@@ -11,6 +11,7 @@ import HeartIcon from '../HeartIcon';
 interface FullscreenViewProps {
   playbackState: PlaybackState;
   vinylRotation: number;
+  vinylRef?: React.RefObject<HTMLElement>;
   volume: number;
   savedStatus: Map<string, boolean>;
   libraryLoading: Map<string, boolean>;
@@ -31,6 +32,7 @@ interface FullscreenViewProps {
 const FullscreenView: React.FC<FullscreenViewProps> = ({
   playbackState,
   vinylRotation,
+  vinylRef,
   volume,
   savedStatus,
   libraryLoading,
@@ -89,6 +91,7 @@ const FullscreenView: React.FC<FullscreenViewProps> = ({
                   albumArt={playbackState.track.albumArt}
                   albumName={playbackState.track.album}
                   rotation={vinylRotation}
+                  vinylRef={vinylRef}
                   size="xl"
                   className="w-full h-full"
                   style={{

@@ -4,7 +4,8 @@ import { Music } from 'lucide-react';
 interface VinylDisplayProps {
   albumArt?: string | null;
   albumName?: string;
-  rotation: number;
+  rotation?: number; // Made optional since ref-based animation is preferred
+  vinylRef?: React.RefObject<HTMLElement>; // Ref for direct DOM manipulation - using HTMLElement for flexibility
   size: 'sm' | 'md' | 'lg' | 'xl';
   showGlow?: boolean;
   className?: string;
@@ -14,7 +15,8 @@ interface VinylDisplayProps {
 const VinylDisplay: React.FC<VinylDisplayProps> = ({ 
   albumArt, 
   albumName = 'Album', 
-  rotation, 
+  rotation = 0, 
+  vinylRef,
   size = 'md',
   showGlow = false,
   className,
@@ -44,7 +46,8 @@ const VinylDisplay: React.FC<VinylDisplayProps> = ({
           style={{ 
             backgroundImage: `url(${albumArt})`,
             transform: `rotate(${rotation}deg) translateZ(0)`,
-            backfaceVisibility: 'hidden'
+            backfaceVisibility: 'hidden',
+            willChange: 'transform'
           }}
         />
       )}
@@ -54,20 +57,28 @@ const VinylDisplay: React.FC<VinylDisplayProps> = ({
         size === 'sm' ? (
           // Small size uses img tag for mini display
           <img 
+            ref={vinylRef as React.RefObject<HTMLImageElement>}
             src={albumArt} 
             alt={albumName}
             className={`${sizeClasses[size]} rounded-full shadow object-cover`}
-            style={{ transform: `rotate(${rotation}deg)` }}
+            style={{ 
+              transform: vinylRef ? undefined : `rotate(${rotation}deg) translateZ(0)`,
+              willChange: 'transform',
+              backfaceVisibility: 'hidden'
+            }}
           />
         ) : (
           // Larger sizes use div with background for better performance
           <div 
+            ref={vinylRef as React.RefObject<HTMLDivElement>}
             className={`${sizeClasses[size]} rounded-full shadow-2xl relative z-10 overflow-hidden`}
             style={{ 
               backgroundImage: `url(${albumArt})`,
               backgroundSize: '100% 100%',
               backgroundPosition: 'center',
-              transform: `rotate(${rotation}deg)`,
+              transform: vinylRef ? undefined : `rotate(${rotation}deg) translateZ(0)`,
+              willChange: 'transform',
+              backfaceVisibility: 'hidden',
               boxShadow: size === 'xl' 
                 ? '0 0 80px rgba(0, 0, 0, 0.8), 0 0 120px rgba(0, 0, 0, 0.5)'
                 : size === 'lg'
@@ -79,9 +90,12 @@ const VinylDisplay: React.FC<VinylDisplayProps> = ({
       ) : (
         // Fallback with Music icon
         <div 
+          ref={vinylRef as React.RefObject<HTMLDivElement>}
           className={`${sizeClasses[size]} rounded-full bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center ${size === 'sm' ? 'shadow' : 'shadow-2xl relative z-10'}`}
           style={{ 
-            transform: `rotate(${rotation}deg)`,
+            transform: vinylRef ? undefined : `rotate(${rotation}deg) translateZ(0)`,
+            willChange: 'transform',
+            backfaceVisibility: 'hidden',
             boxShadow: size === 'xl' 
               ? '0 0 80px rgba(0, 0, 0, 0.8)'
               : undefined

@@ -40,7 +40,7 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue, isMobi
   });
   
   // Get apiCallCount first
-  const { apiCallCount } = usePlaybackPolling(0); // Use 0 as default until localPosition is available
+  const { apiCallCount, trackApiCall } = usePlaybackPolling(0); // Use 0 as default until localPosition is available
 
   // Declare fetchPlaybackState function after apiCallCount is available
   const fetchPlaybackState = React.useCallback(async (immediate = false) => {
@@ -49,6 +49,9 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue, isMobi
       console.warn('[PlaybackControls] Rate limit protection: skipping poll');
       return;
     }
+    
+    // Track this API call for rate limiting
+    trackApiCall();
     
     try {
       const response = await api.get('/api/control/current-track');
@@ -93,11 +96,17 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue, isMobi
     } catch (error) {
       console.error('[PlaybackControls] Failed to fetch playback state:', error);
     }
-  }, [apiCallCount]);
+  }, [apiCallCount, trackApiCall]);
 
-  const { localPosition, isTrackChanging: progressTrackChanging, setIsTrackChanging: setProgressTrackChanging } = useProgressTracking(playbackState, fetchPlaybackState);
+  const { 
+    localPosition, 
+    isTrackChanging: progressTrackChanging, 
+    startProgressAnimation,
+    animationFrameId,
+    handleSeek: handleSeekFromHook
+  } = useProgressTracking(playbackState, fetchPlaybackState);
   
-  const { vinylRotation } = useVinylAnimation(playbackState, previousTrackNameRef);
+  const { vinylElementRef, vinylRotation } = useVinylAnimation(playbackState, previousTrackNameRef);
 
   // WebSocket handlers for real-time updates
   const handleWsPlaybackStateChange = useCallback((data: any) => {
@@ -153,8 +162,28 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue, isMobi
     handleWsCommandExecuted
   );
 
+  // Manage progress animation based on playback state
+  useEffect(() => {
+    if (playbackState.isPlaying && playbackState.track) {
+      const startPosition = playbackState.track.position || 0;
+      // Start the animation from the current track position
+      startProgressAnimation(startPosition);
+    } else if (!playbackState.isPlaying && animationFrameId) {
+      // Stop the animation when playback pauses
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+    }
+  }, [playbackState.isPlaying, playbackState.track?.id]); // React to play/pause and track changes
 
-
+  // Cleanup animation on unmount
+  useEffect(() => {
+    return () => {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+    };
+  }, [animationFrameId]);
 
   // Initial fetch and setup
   useEffect(() => {
@@ -322,36 +351,8 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue, isMobi
     }
   };
 
-  const handleSeek = async (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!playbackState.track) return;
-    
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const percentage = x / rect.width;
-    const newPosition = Math.floor(playbackState.track.duration * percentage);
-    
-    // Disable CSS transition for instant jump
-    setIsTrackChanging(true);
-    setProgressTrackChanging(true);
-    
-    try {
-      // Convert milliseconds to seconds for API
-      await api.post('/api/control/seek', { position: Math.floor(newPosition / 1000) });
-      
-      // Re-enable CSS transition after a brief moment
-      setTimeout(() => {
-        setIsTrackChanging(false);
-        setProgressTrackChanging(false);
-      }, 50);
-      
-      // Fetch new state after a short delay to confirm
-      setTimeout(() => fetchPlaybackState(true), 500);
-    } catch (error) {
-      console.error('Seek failed:', error);
-      setIsTrackChanging(false);
-      setProgressTrackChanging(false);
-    }
-  };
+  // Use handleSeek from the hook which properly manages animation
+  const handleSeek = handleSeekFromHook;
 
 
   // Props are now passed individually to components
@@ -362,6 +363,7 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue, isMobi
     isTrackChanging: isTrackChanging || progressTrackChanging,
     onSeek: handleSeek
   };
+  
 
   const trackInfoProps = {
     track: playbackState.track
@@ -371,6 +373,7 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue, isMobi
     albumArt: playbackState.track?.albumArt,
     albumName: playbackState.track?.album || '',
     rotation: vinylRotation,
+    vinylRef: vinylElementRef,
     size: 'md' as const,
     showGlow: true
   };
@@ -379,6 +382,7 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue, isMobi
     <FullscreenView
       playbackState={playbackState}
       vinylRotation={vinylRotation}
+      vinylRef={vinylElementRef}
       volume={volume}
       savedStatus={savedStatus}
       libraryLoading={libraryLoading}
@@ -429,6 +433,7 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue, isMobi
               <MinimizedView
                 track={playbackState.track}
                 vinylRotation={vinylRotation}
+                vinylRef={vinylElementRef}
                 wsConnected={wsConnected}
               />
             ) : (

@@ -6,12 +6,14 @@ interface MinimizedViewProps {
   track: PlaybackState['track'];
   wsConnected: boolean;
   vinylRotation: number;
+  vinylRef?: React.RefObject<HTMLElement>;
 }
 
 const MinimizedView: React.FC<MinimizedViewProps> = ({
   track,
   wsConnected,
-  vinylRotation
+  vinylRotation,
+  vinylRef
 }) => {
   return (
     <div className="flex items-center gap-3">
@@ -23,6 +25,7 @@ const MinimizedView: React.FC<MinimizedViewProps> = ({
               albumArt={track.albumArt}
               albumName={track.album}
               rotation={vinylRotation}
+              vinylRef={vinylRef}
               size="sm"
             />
           </div>
