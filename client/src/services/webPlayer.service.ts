@@ -144,20 +144,14 @@ class WebPlayerService {
       name: 'DJForge Web Player',
       getOAuthToken: async (cb: (token: string) => void) => {
         try {
-          // This will automatically refresh if needed
+          // This will automatically refresh if needed and has sophisticated retry logic
           const token = await authService.getAccessToken();
           cb(token);
         } catch (error) {
           console.error('[WebPlayerService] Failed to get access token:', error);
-          this.notifyError('Failed to authenticate with Spotify');
-          // Attempt to refresh token
-          try {
-            const refreshedToken = await authService.getAccessToken(); // This handles refresh internally
-            cb(refreshedToken);
-          } catch (refreshError) {
-            console.error('[WebPlayerService] Token refresh failed:', refreshError);
-            this.notifyError('Authentication failed. Please re-login.');
-          }
+          this.notifyError('Authentication failed. Please re-login.');
+          // Don't retry here - authService.getAccessToken() already handles all retry logic
+          // including thundering herd protection, exponential backoff, and automatic logout
         }
       },
       volume: 1.0,
