@@ -302,9 +302,9 @@ export default function PlaylistSearchHistory() {
 
           {/* History Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredHistory.map((search) => (
+            {filteredHistory.map((search, index) => (
               <PlaylistSearchHistoryCard
-                key={search.searchHash}
+                key={`${search.searchHash}-${search.timestamp}-${index}`}
                 search={search}
                 onClick={loadCachedResult}
                 isLoading={isLoadingResult && loadedSearchHash === search.searchHash}

@@ -8,7 +8,7 @@ import WebPlayerControls from './WebPlayerControls';
 import QueueDisplay from './QueueDisplay';
 import { webPlayerService } from '../services/webPlayer.service';
 import { isMobileDevice } from '../utils/deviceDetection';
-import { MessageSquare, BarChart3, Target, ClipboardList, LogOut, Search, Wifi } from 'lucide-react';
+import { MessageSquare, BarChart3, Target, ClipboardList, LogOut, Search, Wifi, Music2 } from 'lucide-react';
 
 interface MobileMenuProps {
   isOpen: boolean;
@@ -242,6 +242,20 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
                 >
                   <BarChart3 className="w-4 h-4 text-green-500" />
                   <span>Dashboard</span>
+                </button>
+                <button
+                  onClick={() => {
+                    navigate('/playlist-tools');
+                    onClose();
+                  }}
+                  className={`w-full px-4 py-2 text-left rounded-lg transition-colors flex items-center gap-2 ${
+                    location.pathname === '/playlist-tools' 
+                      ? 'bg-green-900/30 text-green-300 border border-green-700/50' 
+                      : 'bg-zinc-800 hover:bg-zinc-700'
+                  }`}
+                >
+                  <Music2 className="w-4 h-4 text-green-500" />
+                  <span>Playlist Tools</span>
                 </button>
                 <button
                   onClick={() => {

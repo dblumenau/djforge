@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import ModelSelector from './ModelSelector';
 import DeviceSelector from './DeviceSelector';
 import WeatherDisplay from './WeatherDisplay';
-import { MessageSquare, BarChart3, Target, ClipboardList, RefreshCw, LogOut, MoreVertical, Wifi, Search } from 'lucide-react';
+import { MessageSquare, BarChart3, Target, ClipboardList, RefreshCw, LogOut, MoreVertical, Wifi, Search, Music2 } from 'lucide-react';
 
 interface HeaderNavProps {
   onModelChange: (model: string) => void;
@@ -103,6 +103,17 @@ const HeaderNav: React.FC<HeaderNavProps> = ({
                 >
                   <BarChart3 className={`w-4 h-4 ${location.pathname === '/dashboard' ? 'text-green-500' : ''}`} />
                   Dashboard
+                </button>
+                <button
+                  onClick={() => navigate('/playlist-tools')}
+                  className={`flex items-center gap-2 text-sm font-medium transition-all ${
+                    location.pathname === '/playlist-tools' 
+                      ? 'text-white' 
+                      : 'text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  <Music2 className={`w-4 h-4 ${location.pathname === '/playlist-tools' ? 'text-green-500' : ''}`} />
+                  Playlist Tools
                 </button>
                 <button
                   onClick={() => navigate('/feedback-dashboard')}

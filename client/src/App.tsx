@@ -10,6 +10,7 @@ import LogsPage from './pages/LogsPage';
 import WebSocketDemo from './pages/WebSocketDemo';
 import PlaylistSearch from './pages/PlaylistSearch';
 import PastPlaylistSearches from './pages/PastPlaylistSearches';
+import PlaylistTools from './pages/PlaylistTools';
 import AppLayout from './components/AppLayout';
 import ErrorFallback from './components/ErrorFallback';
 import AuthSuccess from './components/AuthSuccess';
@@ -54,6 +55,10 @@ export const router = createBrowserRouter([
       {
         path: "feedback-dashboard",
         element: <FeedbackDashboard />
+      },
+      {
+        path: "playlist-tools",
+        element: <PlaylistTools />
       },
       {
         path: "logs",

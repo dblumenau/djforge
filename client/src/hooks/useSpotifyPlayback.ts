@@ -75,13 +75,18 @@ export function useSpotifyPlayback() {
     }
   }, [loadingItems]);
 
-  const playPlaylist = useCallback(async (uri: string, name?: string) => {
-    if (loadingItems.has(uri)) return;
+  const playPlaylist = useCallback(async (uriOrId: string, name?: string) => {
+    if (loadingItems.has(uriOrId)) return;
     
-    setLoadingItems(prev => new Set(prev).add(uri));
+    // Convert ID to full Spotify URI if needed
+    const uri = uriOrId.startsWith('spotify:') 
+      ? uriOrId 
+      : `spotify:playlist:${uriOrId}`;
+    
+    setLoadingItems(prev => new Set(prev).add(uriOrId));
     
     try {
-      const response = await authenticatedFetch(apiEndpoint('/api/direct/playlist'), {
+      const response = await authenticatedFetch(apiEndpoint('/api/direct/playlist-uri'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -103,7 +108,7 @@ export function useSpotifyPlayback() {
     } finally {
       setLoadingItems(prev => {
         const next = new Set(prev);
-        next.delete(uri);
+        next.delete(uriOrId);
         return next;
       });
     }
