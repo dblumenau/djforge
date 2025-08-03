@@ -1,30 +1,27 @@
 import React from 'react';
-import { Music } from 'lucide-react';
 import { PlaybackState } from '../../types/playback.types';
 import VinylDisplay from './VinylDisplay';
 
 interface MinimizedViewProps {
-  playbackState: PlaybackState;
+  track: PlaybackState['track'];
   wsConnected: boolean;
   vinylRotation: number;
-  onToggleView: () => void;
 }
 
 const MinimizedView: React.FC<MinimizedViewProps> = ({
-  playbackState,
+  track,
   wsConnected,
-  vinylRotation,
-  onToggleView
+  vinylRotation
 }) => {
   return (
     <div className="flex items-center gap-3">
-      {playbackState.track ? (
+      {track ? (
         <>
           {/* Mini Vinyl Display */}
           <div className="relative flex-shrink-0">
             <VinylDisplay
-              albumArt={playbackState.track.albumArt}
-              albumName={playbackState.track.album}
+              albumArt={track.albumArt}
+              albumName={track.album}
               rotation={vinylRotation}
               size="sm"
             />
@@ -35,18 +32,16 @@ const MinimizedView: React.FC<MinimizedViewProps> = ({
             className={`w-2 h-2 rounded-full ${
               wsConnected 
                 ? 'bg-green-500 animate-pulse' 
-                : playbackState.isPlaying 
-                  ? 'bg-yellow-500 animate-pulse' 
-                  : 'bg-gray-500'
+                : 'bg-gray-500'
             }`} 
             title={wsConnected ? 'Live updates connected' : 'Live updates disconnected'}
           />
           
           {/* Track Info */}
           <div className="text-sm">
-            <span className="text-white font-medium">{playbackState.track.name}</span>
+            <span className="text-white font-medium">{track.name}</span>
             <span className="text-gray-400"> • </span>
-            <span className="text-gray-400">{playbackState.track.artist}</span>
+            <span className="text-gray-400">{track.artist}</span>
           </div>
         </>
       ) : (

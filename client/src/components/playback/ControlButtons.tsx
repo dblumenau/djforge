@@ -7,6 +7,16 @@ interface ControlButtonsProps {
   onSkip: () => void;
   onPrevious: () => void;
   variant?: 'mobile' | 'desktop';
+  isMobile?: boolean;
+  shuffleState?: boolean;
+  repeatState?: 'off' | 'track' | 'context';
+  onShuffle?: () => void;
+  onRepeat?: () => void;
+  size?: string;
+  playButtonClassName?: string;
+  otherButtonClassName?: string;
+  activeClassName?: string;
+  inactiveClassName?: string;
 }
 
 const ControlButtons: React.FC<ControlButtonsProps> = ({
@@ -15,9 +25,10 @@ const ControlButtons: React.FC<ControlButtonsProps> = ({
   onPlayPause,
   onSkip,
   onPrevious,
-  variant = 'desktop'
+  variant = 'desktop',
+  isMobile: isMobileProp
 }) => {
-  const isMobile = variant === 'mobile';
+  const isMobile = isMobileProp ?? variant === 'mobile';
 
   if (isMobile) {
     return (

@@ -26,7 +26,6 @@ interface FullscreenViewProps {
   onSeek: (e: React.MouseEvent<HTMLDivElement>) => void;
   onShowQueue?: () => void;
   onToggleSave: (trackId: string) => void;
-  formatTime: (milliseconds: number) => string;
 }
 
 const FullscreenView: React.FC<FullscreenViewProps> = ({
@@ -47,7 +46,6 @@ const FullscreenView: React.FC<FullscreenViewProps> = ({
   onSeek,
   onShowQueue,
   onToggleSave,
-  formatTime
 }) => {
   // Handle escape key
   useEffect(() => {
@@ -118,7 +116,6 @@ const FullscreenView: React.FC<FullscreenViewProps> = ({
                     duration={playbackState.track.duration}
                     isTrackChanging={isTrackChanging}
                     onSeek={onSeek}
-                    formatTime={formatTime}
                     className="h-1.5 bg-gray-700/80"
                     progressClassName="bg-gradient-to-r from-red-500 to-red-400"
                     timeClassName="text-xs text-gray-400"
@@ -129,11 +126,12 @@ const FullscreenView: React.FC<FullscreenViewProps> = ({
                 <div className="flex items-center justify-center gap-2 mb-3">
                   <ControlButtons
                     isPlaying={playbackState.isPlaying}
-                    shuffleState={playbackState.shuffleState}
-                    repeatState={playbackState.repeatState}
+                    loading={false}
                     onPlayPause={onPlayPause}
                     onSkip={onSkip}
                     onPrevious={onPrevious}
+                    shuffleState={playbackState.shuffleState}
+                    repeatState={playbackState.repeatState}
                     onShuffle={onShuffle}
                     onRepeat={onRepeat}
                     size="sm"
@@ -163,7 +161,6 @@ const FullscreenView: React.FC<FullscreenViewProps> = ({
                     onShowQueue={onShowQueue}
                     compact={true}
                     volumeClassName="w-16 h-1 accent-red-500"
-                    volumeIconClassName="w-3 h-3 text-gray-400"
                     queueIconClassName="w-4 h-4"
                     buttonClassName="p-1 text-gray-400 hover:text-white transition-colors"
                   />

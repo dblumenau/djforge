@@ -7,6 +7,8 @@ interface VinylDisplayProps {
   rotation: number;
   size: 'sm' | 'md' | 'lg' | 'xl';
   showGlow?: boolean;
+  className?: string;
+  style?: React.CSSProperties;
 }
 
 const VinylDisplay: React.FC<VinylDisplayProps> = ({ 
@@ -14,7 +16,9 @@ const VinylDisplay: React.FC<VinylDisplayProps> = ({
   albumName = 'Album', 
   rotation, 
   size = 'md',
-  showGlow = false 
+  showGlow = false,
+  className,
+  style
 }) => {
   // Size configurations
   const sizeClasses = {
@@ -32,7 +36,7 @@ const VinylDisplay: React.FC<VinylDisplayProps> = ({
   };
 
   return (
-    <div className="relative flex-shrink-0">
+    <div className={`relative flex-shrink-0 ${className || ''}`} style={style}>
       {/* Localized glow effect */}
       {showGlow && albumArt && (
         <div 

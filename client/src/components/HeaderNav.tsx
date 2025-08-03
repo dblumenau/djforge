@@ -116,15 +116,15 @@ const HeaderNav: React.FC<HeaderNavProps> = ({
                   Feedback
                 </button>
                 <button 
-                  onClick={() => navigate('/logs')}
+                  onClick={() => navigate('/playlist-search')}
                   className={`hidden lg:flex items-center gap-2 text-sm font-medium transition-all ${
-                    location.pathname === '/logs' 
+                    location.pathname === '/playlist-search' 
                       ? 'text-white' 
                       : 'text-zinc-400 hover:text-white'
                   }`}
                 >
-                  <ClipboardList className={`w-4 h-4 ${location.pathname === '/logs' ? 'text-green-500' : ''}`} />
-                  Logs
+                  <Search className={`w-4 h-4 ${location.pathname === '/playlist-search' ? 'text-green-500' : ''}`} />
+                  Playlist Search
                 </button>
               </nav>
             </div>
@@ -150,18 +150,6 @@ const HeaderNav: React.FC<HeaderNavProps> = ({
                       <div className="px-3 py-2 text-xs font-medium text-zinc-500 uppercase tracking-wider">More</div>
                       <div className="space-y-1 mb-2">
                         <button 
-                          className={`lg:hidden w-full px-3 py-2 text-left text-sm hover:bg-zinc-800 rounded transition-all flex items-center gap-3 ${
-                            location.pathname === '/logs' ? 'text-white bg-zinc-800' : 'text-zinc-300 hover:text-white'
-                          }`}
-                          onClick={() => {
-                            navigate('/logs');
-                            setShowSettings(false);
-                          }}
-                        >
-                          <ClipboardList className={`w-4 h-4 ${location.pathname === '/logs' ? 'text-green-500' : ''}`} />
-                          Logs
-                        </button>
-                        <button 
                           className={`w-full px-3 py-2 text-left text-sm hover:bg-zinc-800 rounded transition-all flex items-center gap-3 ${
                             location.pathname === '/websocket-demo' ? 'text-white bg-zinc-800' : 'text-zinc-300 hover:text-white'
                           }`}
@@ -175,15 +163,15 @@ const HeaderNav: React.FC<HeaderNavProps> = ({
                         </button>
                         <button 
                           className={`w-full px-3 py-2 text-left text-sm hover:bg-zinc-800 rounded transition-all flex items-center gap-3 ${
-                            location.pathname === '/playlist-search' ? 'text-white bg-zinc-800' : 'text-zinc-300 hover:text-white'
+                            location.pathname === '/logs' ? 'text-white bg-zinc-800' : 'text-zinc-300 hover:text-white'
                           }`}
                           onClick={() => {
-                            navigate('/playlist-search');
+                            navigate('/logs');
                             setShowSettings(false);
                           }}
                         >
-                          <Search className={`w-4 h-4 ${location.pathname === '/playlist-search' ? 'text-green-500' : ''}`} />
-                          Playlist Search
+                          <ClipboardList className={`w-4 h-4 ${location.pathname === '/logs' ? 'text-green-500' : ''}`} />
+                          Logs
                         </button>
                       </div>
                       <div className="border-t border-zinc-800 my-2"></div>

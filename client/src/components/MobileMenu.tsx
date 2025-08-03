@@ -8,7 +8,7 @@ import WebPlayerControls from './WebPlayerControls';
 import QueueDisplay from './QueueDisplay';
 import { webPlayerService } from '../services/webPlayer.service';
 import { isMobileDevice } from '../utils/deviceDetection';
-import { MessageSquare, BarChart3, Target, ClipboardList, LogOut } from 'lucide-react';
+import { MessageSquare, BarChart3, Target, ClipboardList, LogOut, Search, Wifi } from 'lucide-react';
 
 interface MobileMenuProps {
   isOpen: boolean;
@@ -259,17 +259,17 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
                 </button>
                 <button
                   onClick={() => {
-                    navigate('/logs');
+                    navigate('/playlist-search');
                     onClose();
                   }}
                   className={`w-full px-4 py-2 text-left rounded-lg transition-colors flex items-center gap-2 ${
-                    location.pathname === '/logs' 
+                    location.pathname === '/playlist-search' 
                       ? 'bg-green-900/30 text-green-300 border border-green-700/50' 
                       : 'bg-zinc-800 hover:bg-zinc-700'
                   }`}
                 >
-                  <ClipboardList className="w-4 h-4 text-green-500" />
-                  <span>Logs</span>
+                  <Search className="w-4 h-4 text-green-500" />
+                  <span>Playlist Search</span>
                 </button>
                 <button
                   onClick={() => {
@@ -282,8 +282,22 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
                       : 'bg-zinc-800 hover:bg-zinc-700'
                   }`}
                 >
-                  <span>🔌</span>
+                  <Wifi className="w-4 h-4 text-green-500" />
                   <span>WebSocket Demo</span>
+                </button>
+                <button
+                  onClick={() => {
+                    navigate('/logs');
+                    onClose();
+                  }}
+                  className={`w-full px-4 py-2 text-left rounded-lg transition-colors flex items-center gap-2 ${
+                    location.pathname === '/logs' 
+                      ? 'bg-green-900/30 text-green-300 border border-green-700/50' 
+                      : 'bg-zinc-800 hover:bg-zinc-700'
+                  }`}
+                >
+                  <ClipboardList className="w-4 h-4 text-green-500" />
+                  <span>Logs</span>
                 </button>
                 <button
                   onClick={() => {
