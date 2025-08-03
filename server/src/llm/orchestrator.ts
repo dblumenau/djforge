@@ -28,6 +28,7 @@ export interface LLMRequest {
   response_format?: { type: 'json_object' } | undefined;
   schema?: z.ZodSchema;
   conversationContext?: string; // Added for conversation history integration
+  skipValidation?: boolean; // Skip intent validation for non-command responses (e.g., playlist discovery)
 }
 
 export interface LLMResponse {
@@ -302,13 +303,21 @@ export class LLMOrchestrator {
             after: response.content
           });
           
-          // Validate structured output
-          this.validateAndLogResponse(response, 'gemini-direct', model);
-          processingSteps.push({
-            step: 'validateStructuredOutput',
-            before: response.content,
-            after: { status: 'validated', flow: 'gemini-direct' }
-          });
+          // Validate structured output (unless skipValidation is set)
+          if (!request.skipValidation) {
+            this.validateAndLogResponse(response, 'gemini-direct', model);
+            processingSteps.push({
+              step: 'validateStructuredOutput',
+              before: response.content,
+              after: { status: 'validated', flow: 'gemini-direct' }
+            });
+          } else {
+            processingSteps.push({
+              step: 'skipValidation',
+              before: response.content,
+              after: { status: 'skipped', reason: 'skipValidation flag set' }
+            });
+          }
         } else {
           processingSteps.push({
             step: 'plainTextResponse',
@@ -467,8 +476,8 @@ export class LLMOrchestrator {
         processingSteps
       };
 
-      // Validate structured output if JSON format was requested
-      if (request.response_format?.type === 'json_object') {
+      // Validate structured output if JSON format was requested (unless skipValidation is set)
+      if (request.response_format?.type === 'json_object' && !request.skipValidation) {
         this.validateAndLogResponse(llmResponse, 'openrouter', model);
       }
 

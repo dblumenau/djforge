@@ -170,9 +170,12 @@ Respond with a JSON object containing:
     let llmResponse;
     let fallbackUsed = false;
     let originalError = '';
+    let latency = 0;
     
     try {
+      const startTime = Date.now();
       llmResponse = await llmOrchestrator.complete(llmRequest);
+      latency = Date.now() - startTime;
     } catch (error: any) {
       console.error('❌ Primary model failed, attempting fallback:', error);
       originalError = error.message;
@@ -180,7 +183,9 @@ Respond with a JSON object containing:
       // Try with fallback model
       llmRequest.model = 'anthropic/claude-3.5-sonnet';
       try {
+        const fallbackStartTime = Date.now();
         llmResponse = await llmOrchestrator.complete(llmRequest);
+        latency = Date.now() - fallbackStartTime;
         fallbackUsed = true;
       } catch (fallbackError: any) {
         console.error('❌ Both primary and fallback models failed:', fallbackError);
@@ -268,6 +273,58 @@ Respond with a JSON object containing:
     console.log(`✅ LLM selected ${selectedPlaylists.length} playlists`);
     if (selectionData.reasoning) {
       console.log(`💭 LLM reasoning: ${selectionData.reasoning}`);
+    }
+
+    // Log the LLM interaction
+    if (loggingService && (req as any).userId) {
+      try {
+        await loggingService.logInteraction({
+          timestamp: Date.now(),
+          userId: hashUserId((req as any).userId),
+          sessionId: req.sessionID || 'unknown',
+          command: `Playlist Discovery Search: "${query}"`,
+          interpretation: {
+            selectedPlaylistIds: selectionData.selectedPlaylistIds,
+            reasoning: selectionData.reasoning,
+            playlistCount: selectedPlaylists.length,
+            fallbackUsed,
+            playlistsAnalyzed: playlistsForAnalysis.map((p: any) => ({
+              id: p.id,
+              name: p.name,
+              owner: p.owner,
+              trackCount: p.trackCount,
+              followers: p.followers
+            }))
+          },
+          llmRequest: {
+            model: llmRequest.model || 'unknown',
+            provider: llmResponse.provider || 'unknown',
+            flow: llmResponse.flow || 'unknown',
+            messages: llmRequest.messages,
+            temperature: llmRequest.temperature || 0,
+            jsonMode: llmRequest.response_format?.type === 'json_object',
+            fullRequest: llmResponse.fullRequest
+          },
+          llmResponse: {
+            content: llmResponse.content,
+            usage: llmResponse.usage,
+            latency: latency,
+            fallbackUsed,
+            actualModel: llmResponse.actualModel,
+            rawResponse: llmResponse.rawResponse,
+            processingSteps: llmResponse.processingSteps
+          },
+          result: {
+            success: selectedPlaylists.length > 0,
+            message: selectedPlaylists.length > 0 ? 
+              `Successfully selected ${selectedPlaylists.length} playlists` : 
+              'No playlists selected'
+          }
+        });
+      } catch (error) {
+        console.error('Failed to log LLM interaction:', error);
+        // Don't throw - logging failure shouldn't break the request
+      }
     }
 
     // Return the curated results
@@ -759,9 +816,12 @@ Respond with a JSON object containing:
     let llmResponse;
     let fallbackUsed = false;
     let originalError = '';
+    let latency = 0;
     
     try {
+      const startTime = Date.now();
       llmResponse = await llmOrchestrator.complete(llmRequest);
+      latency = Date.now() - startTime;
     } catch (error: any) {
       console.error('❌ Primary model failed for summarization, attempting fallback:', error);
       originalError = error.message;
@@ -769,7 +829,9 @@ Respond with a JSON object containing:
       // Try with fallback model
       llmRequest.model = 'anthropic/claude-3.5-sonnet';
       try {
+        const fallbackStartTime = Date.now();
         llmResponse = await llmOrchestrator.complete(llmRequest);
+        latency = Date.now() - fallbackStartTime;
         fallbackUsed = true;
       } catch (fallbackError: any) {
         console.error('❌ Both primary and fallback models failed for summarization:', fallbackError);
@@ -879,6 +941,59 @@ Respond with a JSON object containing:
     console.log(`📝 Summary: ${summaryData.summary}`);
     if (summaryData.matchScore) {
       console.log(`📊 Match score: ${summaryData.matchScore}`);
+    }
+
+    // Log the LLM interaction
+    if (loggingService && (req as any).userId) {
+      try {
+        await loggingService.logInteraction({
+          timestamp: Date.now(),
+          userId: hashUserId((req as any).userId),
+          sessionId: req.sessionID || 'unknown',
+          command: `Playlist Summarization: "${playlistDetails.name}" (${playlistId})`,
+          interpretation: {
+            summary: summaryData.summary,
+            characteristics: summaryData.characteristics,
+            matchScore: summaryData.matchScore,
+            reasoning: summaryData.reasoning,
+            fallbackUsed,
+            playlistDetails: {
+              name: playlistDetails.name,
+              trackCount: playlistDetails.trackCount,
+              uniqueArtistsCount: uniqueArtists.length,
+              first30Tracks: first30Tracks.map((track: any) => ({
+                name: track.name,
+                artists: track.artists.map((a: any) => a.name).join(', ')
+              }))
+            }
+          },
+          llmRequest: {
+            model: llmRequest.model || 'unknown',
+            provider: llmResponse.provider || 'unknown',
+            flow: llmResponse.flow || 'unknown',
+            messages: llmRequest.messages,
+            temperature: llmRequest.temperature || 0,
+            jsonMode: llmRequest.response_format?.type === 'json_object',
+            fullRequest: llmResponse.fullRequest
+          },
+          llmResponse: {
+            content: llmResponse.content,
+            usage: llmResponse.usage,
+            latency: latency,
+            fallbackUsed,
+            actualModel: llmResponse.actualModel,
+            rawResponse: llmResponse.rawResponse,
+            processingSteps: llmResponse.processingSteps
+          },
+          result: {
+            success: true,
+            message: `Successfully generated summary for playlist ${playlistId}`
+          }
+        });
+      } catch (error) {
+        console.error('Failed to log LLM interaction:', error);
+        // Don't throw - logging failure shouldn't break the request
+      }
     }
 
     res.json(response);
@@ -1031,9 +1146,12 @@ Respond with a JSON object containing:
     let selectedPlaylistIds: string[] = [];
     let selectionFallbackUsed = false;
     let selectionOriginalError = '';
+    let selectionLatency = 0;
     
     try {
+      const startTime = Date.now();
       llmResponse = await llmOrchestrator.complete(llmRequest);
+      selectionLatency = Date.now() - startTime;
       const selectionData = JSON.parse(llmResponse.content);
       // Try schema parsing, but be lenient
       const parsed = PlaylistSelectionSchema.safeParse(selectionData);
@@ -1054,7 +1172,9 @@ Respond with a JSON object containing:
       // Try with fallback model
       llmRequest.model = 'anthropic/claude-3.5-sonnet';
       try {
+        const fallbackStartTime = Date.now();
         llmResponse = await llmOrchestrator.complete(llmRequest);
+        selectionLatency = Date.now() - fallbackStartTime;
         const selectionData = JSON.parse(llmResponse.content);
         const parsed = PlaylistSelectionSchema.safeParse(selectionData);
         if (parsed.success) {
@@ -1074,6 +1194,57 @@ Respond with a JSON object containing:
           .map((p: any) => p.id);
         selectionFallbackUsed = true;
         selectionOriginalError = `Primary: ${selectionOriginalError}. Fallback: ${fallbackError.message}`;
+      }
+    }
+
+    // Log the selection LLM interaction
+    if (loggingService && (req as any).userId && llmResponse) {
+      try {
+        await loggingService.logInteraction({
+          timestamp: Date.now(),
+          userId: hashUserId((req as any).userId),
+          sessionId: req.sessionID || 'unknown',
+          command: `Full Search - Playlist Selection: "${query}"`,
+          interpretation: {
+            selectedPlaylistIds,
+            playlistCount: selectedPlaylistIds.length,
+            fallbackUsed: selectionFallbackUsed,
+            playlistsAnalyzed: playlistsForAnalysis.map((p: any) => ({
+              id: p.id,
+              name: p.name,
+              owner: p.owner,
+              trackCount: p.trackCount,
+              followers: p.followers
+            }))
+          },
+          llmRequest: {
+            model: llmRequest.model || 'unknown',
+            provider: llmResponse.provider || 'unknown',
+            flow: llmResponse.flow || 'unknown',
+            messages: llmRequest.messages,
+            temperature: llmRequest.temperature || 0,
+            jsonMode: llmRequest.response_format?.type === 'json_object',
+            fullRequest: llmResponse.fullRequest
+          },
+          llmResponse: {
+            content: llmResponse.content,
+            usage: llmResponse.usage,
+            latency: selectionLatency,
+            fallbackUsed: selectionFallbackUsed,
+            actualModel: llmResponse.actualModel,
+            rawResponse: llmResponse.rawResponse,
+            processingSteps: llmResponse.processingSteps
+          },
+          result: {
+            success: selectedPlaylistIds.length > 0,
+            message: selectedPlaylistIds.length > 0 ? 
+              `Successfully selected ${selectedPlaylistIds.length} playlists for full analysis` : 
+              'No playlists selected'
+          }
+        });
+      } catch (error) {
+        console.error('Failed to log LLM interaction:', error);
+        // Don't throw - logging failure shouldn't break the request
       }
     }
 
@@ -1250,14 +1421,19 @@ Respond with a JSON object containing:
           };
 
           let summaryLLMResponse;
+          let summaryLatency = 0;
           try {
+            const summaryStartTime = Date.now();
             summaryLLMResponse = await llmOrchestrator.complete(summaryLLMRequest);
+            summaryLatency = Date.now() - summaryStartTime;
           } catch (summaryError: any) {
             console.error('❌ Primary model failed for summary, attempting fallback:', summaryError.message);
             // Try with fallback model
             summaryLLMRequest.model = 'anthropic/claude-3.5-sonnet';
             try {
+              const fallbackSummaryStartTime = Date.now();
               summaryLLMResponse = await llmOrchestrator.complete(summaryLLMRequest);
+              summaryLatency = Date.now() - fallbackSummaryStartTime;
             } catch (summaryFallbackError: any) {
               console.error('❌ Both models failed for summary, using basic fallback');
               throw summaryFallbackError; // Let it fall through to the catch block
@@ -1281,6 +1457,58 @@ Respond with a JSON object containing:
             matchScore: typeof summaryData.matchScore === 'number' ? summaryData.matchScore : 0.7,
             reasoning: summaryData.reasoning || 'Analysis completed'
           };
+
+          // Log the LLM interaction for summarization
+          if (loggingService && (req as any).userId) {
+            try {
+              await loggingService.logInteraction({
+                timestamp: Date.now(),
+                userId: hashUserId((req as any).userId),
+                sessionId: req.sessionID || 'unknown',
+                command: `Full Search - Playlist Summarization: "${playlist.name}" (${playlist.id})`,
+                interpretation: {
+                  summary: summary.summary,
+                  characteristics: summary.characteristics,
+                  matchScore: summary.matchScore,
+                  reasoning: summary.reasoning,
+                  playlistDetails: {
+                    name: playlist.name,
+                    trackCount: playlist.trackCount,
+                    uniqueArtistsCount: uniqueArtists.length,
+                    first30Tracks: first30Tracks.map((track: any) => ({
+                      name: track.name,
+                      artists: track.artists.map((a: any) => a.name).join(', ')
+                    }))
+                  }
+                },
+                llmRequest: {
+                  model: summaryLLMRequest.model || 'unknown',
+                  provider: summaryLLMResponse.provider || 'unknown',
+                  flow: summaryLLMResponse.flow || 'unknown',
+                  messages: summaryLLMRequest.messages,
+                  temperature: summaryLLMRequest.temperature || 0,
+                  jsonMode: summaryLLMRequest.response_format?.type === 'json_object',
+                  fullRequest: summaryLLMResponse.fullRequest
+                },
+                llmResponse: {
+                  content: summaryLLMResponse.content,
+                  usage: summaryLLMResponse.usage,
+                  latency: summaryLatency,
+                  fallbackUsed: summaryLLMRequest.model !== (model || 'google/gemini-2.5-flash'),
+                  actualModel: summaryLLMResponse.actualModel,
+                  rawResponse: summaryLLMResponse.rawResponse,
+                  processingSteps: summaryLLMResponse.processingSteps
+                },
+                result: {
+                  success: true,
+                  message: `Successfully generated summary for playlist ${playlist.id} in full search`
+                }
+              });
+            } catch (error) {
+              console.error('Failed to log LLM interaction:', error);
+              // Don't throw - logging failure shouldn't break the request
+            }
+          }
 
           // Cache for 7 days
           if (redisClient) {

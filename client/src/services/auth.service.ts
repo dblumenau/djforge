@@ -149,7 +149,7 @@ export class AuthService {
     
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
-        const result = await this.performRefresh(attempt);
+        const result = await this.performRefresh();
         console.log(`✅ Token refresh succeeded on attempt ${attempt + 1}`);
         return result;
       } catch (error) {
@@ -192,7 +192,7 @@ export class AuthService {
     throw lastError || new Error('Token refresh failed after all retries');
   }
 
-  private async performRefresh(retryCount: number = 0): Promise<string> {
+  private async performRefresh(): Promise<string> {
     if (!this.sessionId) throw new Error('No session ID to perform refresh');
     
     const response = await fetch(apiEndpoint('/api/auth/refresh'), {

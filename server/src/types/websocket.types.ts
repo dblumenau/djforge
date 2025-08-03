@@ -67,6 +67,23 @@ export interface ServerToClientEvents {
     currentDevice: string;
     timestamp: number;
   }) => void;
+  
+  // Playlist discovery progress updates
+  playlistDiscoveryProgress: (data: {
+    sessionId: string;                    // Ensures user only sees their own progress
+    step: string;                         // Current step description
+    phase: 'searching' | 'analyzing' | 'fetching' | 'summarizing' | 'complete'; // Current phase
+    currentItem?: string;                 // Optional current playlist being processed
+    itemNumber?: number;                  // Optional X of Y counter
+    totalItems?: number;                  // Optional total items count
+    metadata?: {                          // Optional metadata object
+      model?: string;                     // Which AI model is being used
+      cacheHit?: boolean;                 // Was this data cached
+      processingTime?: number;            // How long this step took in ms
+      tokensUsed?: number;                // Tokens for this specific call
+    };
+    timestamp: number;                    // Unix timestamp
+  }) => void;
 }
 
 // Define the events that client can send to server

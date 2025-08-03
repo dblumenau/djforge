@@ -31,9 +31,11 @@ import userDataRouter from './routes/user-data';
 import { webPlayerRouter } from './routes/web-player';
 import { websocketRouter } from './routes/websocket';
 import playlistSearchRouter from './routes/playlist-search';
+import playlistDiscoveryRouter, { setRedisClient as setPlaylistDiscoveryRedisClient, setLoggingService as setPlaylistDiscoveryLoggingService } from './routes/playlist-discovery';
 import { overrideConsole, logger } from './utils/logger';
 import { setSentryUserContext } from './middleware/sentry-auth';
 import { initializeWebSocket, getWebSocketService } from './services/websocket.service';
+import { LLMLoggingService } from './services/llm-logging.service';
 
 // Override console methods to use Winston logger
 overrideConsole();
@@ -99,6 +101,13 @@ async function initializeSessionStore() {
       // Initialize Redis client for new auth system
       setAuthRedisClient(redisClient);
       setSessionAuthRedisClient(redisClient);
+      
+      // Initialize Redis client for playlist discovery
+      setPlaylistDiscoveryRedisClient(redisClient);
+      
+      // Initialize logging service for playlist discovery
+      const playlistDiscoveryLoggingService = new LLMLoggingService(redisClient);
+      setPlaylistDiscoveryLoggingService(playlistDiscoveryLoggingService);
     } else {
       throw new Error('Redis health check failed');
     }
@@ -222,6 +231,8 @@ async function initializeAndStart() {
     app.use('/api/websocket', websocketRouter);
     // Playlist search endpoints
     app.use('/api/playlist-search', playlistSearchRouter);
+    // LLM-powered playlist discovery endpoints
+    app.use('/api/playlist-discovery', playlistDiscoveryRouter);
 
 
     // IMPORTANT: The Sentry error handler must be registered before any other error middleware and after all controllers

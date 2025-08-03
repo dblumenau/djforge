@@ -159,11 +159,15 @@ export class SpotifyWebAPI {
     return response.data.items || [];
   }
 
-  async getPlaylistTracks(playlistId: string) {
+  async getPlaylistTracks(playlistId: string, limit: number = 100, offset: number = 0) {
     const response = await this.api.get(`/playlists/${playlistId}/tracks`, {
-      params: { limit: 100 }
+      params: { 
+        limit: Math.min(limit, 100), // Spotify API max is 100
+        offset,
+        market: 'from_token'
+      }
     });
-    return response.data.items || [];
+    return response.data;
   }
 
   async getAlbumTracks(albumId: string) {
