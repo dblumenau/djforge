@@ -75,7 +75,7 @@ export function useSpotifyPlayback() {
     }
   }, [loadingItems]);
 
-  const playPlaylist = useCallback(async (uri: string) => {
+  const playPlaylist = useCallback(async (uri: string, name?: string) => {
     if (loadingItems.has(uri)) return;
     
     setLoadingItems(prev => new Set(prev).add(uri));
@@ -86,7 +86,8 @@ export function useSpotifyPlayback() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           uri,
-          action: 'play'
+          action: 'play',
+          name
         })
       });
 

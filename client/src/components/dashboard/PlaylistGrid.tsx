@@ -17,7 +17,7 @@ interface Playlist {
 
 interface PlaylistGridProps {
   playlists: Playlist[];
-  onPlay?: (playlistUri: string) => void;
+  onPlay?: (playlistUri: string, playlistName?: string) => void;
   isLoading?: (uri: string) => boolean;
 }
 
@@ -28,7 +28,7 @@ export default function PlaylistGrid({ playlists, onPlay, isLoading }: PlaylistG
         <div 
           key={playlist.id} 
           className={`group relative bg-zinc-900 rounded-lg p-4 hover:bg-zinc-800 transition-all duration-200 hover:shadow-xl cursor-pointer ${isLoading?.(playlist.uri) ? 'pointer-events-none opacity-75' : ''}`}
-          onClick={() => !isLoading?.(playlist.uri) && onPlay?.(playlist.uri)}
+          onClick={() => !isLoading?.(playlist.uri) && onPlay?.(playlist.uri, playlist.name)}
         >
           {/* Playlist Cover */}
           <div className="relative aspect-square mb-3 overflow-hidden rounded-md bg-zinc-800">
