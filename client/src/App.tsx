@@ -8,6 +8,7 @@ import TasteProfile from './pages/TasteProfile';
 import FeedbackDashboard from './pages/FeedbackDashboard';
 import LogsPage from './pages/LogsPage';
 import WebSocketDemo from './pages/WebSocketDemo';
+import PlaylistSearch from './pages/PlaylistSearch';
 import AppLayout from './components/AppLayout';
 import ErrorFallback from './components/ErrorFallback';
 import AuthSuccess from './components/AuthSuccess';
@@ -60,6 +61,10 @@ export const router = createBrowserRouter([
       {
         path: "websocket-demo",
         element: <WebSocketDemo />
+      },
+      {
+        path: "playlist-search",
+        element: <PlaylistSearch />
       }
     ]
   },

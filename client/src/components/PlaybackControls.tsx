@@ -4,7 +4,7 @@ import { api } from '../utils/api';
 import { useTrackLibrary } from '../hooks/useTrackLibrary';
 import { useMusicWebSocket } from '../hooks/useMusicWebSocket';
 import HeartIcon from './HeartIcon';
-import { Calendar, Star, Hash, ExternalLink, Music, Monitor, Maximize, X } from 'lucide-react';
+import { Calendar, Star, Hash, ExternalLink, Music, Monitor, Maximize, X, RefreshCw } from 'lucide-react';
 import DeviceSelector from './DeviceSelector';
 interface PlaybackState {
   isPlaying: boolean;
@@ -64,6 +64,7 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue, isMobi
   const [apiCallCount, setApiCallCount] = useState<number[]>([]);
   const [isTrackChanging, setIsTrackChanging] = useState(false);
   const [viewMode, setViewMode] = useState<'minimized' | 'normal' | 'fullscreen'>('normal');
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const previousTrackNameRef = useRef<string | null>(null);
   
   // Vinyl rotation state
@@ -365,6 +366,21 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue, isMobi
     };
   }, [playbackState.isPlaying, playbackState.track?.name, isVinylPaused, vinylRotation]);
 
+  // Manual refresh function
+  const handleManualRefresh = async () => {
+    if (isRefreshing) return;
+    
+    setIsRefreshing(true);
+    try {
+      await fetchPlaybackState(true);
+    } finally {
+      // Keep the spinning animation for at least 500ms for visual feedback
+      setTimeout(() => {
+        setIsRefreshing(false);
+      }, 500);
+    }
+  };
+
   // Handle escape key for fullscreen mode
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -574,39 +590,27 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue, isMobi
   // Fullscreen modal rendered via portal
   const fullscreenModal = viewMode === 'fullscreen' && ReactDOM.createPortal(
     <div className="fixed inset-0 z-[90]">
-      {/* Main backdrop - exactly like player controls */}
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-md" />
+      {/* Main backdrop - no blur for performance */}
+      <div className="absolute inset-0 bg-black/80" />
       
       {/* Content container */}
       <div className="relative h-full w-full flex items-center justify-center">
         {/* Close button */}
         <button
           onClick={() => setViewMode('normal')}
-          className="absolute top-6 right-6 p-2 bg-white/10 backdrop-blur-sm rounded-full hover:bg-white/20 transition-all z-20"
+          className="absolute top-6 right-6 p-2 bg-white/10 rounded-full hover:bg-white/20 transition-all z-20"
         >
           <X className="w-5 h-5 text-white" />
         </button>
         
         {playbackState.track ? (
           <>
-            {/* Frosted backdrop behind everything */}
-            <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
+            {/* Dark backdrop behind everything - no blur */}
+            <div className="absolute inset-0 bg-black/40" />
             
             {/* Center: Large Vinyl as the star */}
             <div className="relative">
-              {/* Ambient glow effect around vinyl - circular */}
-              {playbackState.track.albumArt && (
-                <div 
-                  className="absolute -inset-32 opacity-50 animate-pulse rounded-full"
-                  style={{ 
-                    backgroundImage: `url(${playbackState.track.albumArt})`,
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                    filter: 'blur(120px) saturate(2)',
-                    transform: `rotate(${vinylRotation}deg)`,
-                  }}
-                />
-              )}
+              {/* Ambient glow effect removed for performance */}
               
               {/* Main Vinyl - Even larger and centered */}
               <div className="relative w-[650px] h-[650px] md:w-[750px] md:h-[750px] lg:w-[850px] lg:h-[850px]">
@@ -642,22 +646,9 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue, isMobi
               <p className="text-lg text-gray-300 drop-shadow-lg">{playbackState.track.album}</p>
             </div>
             
-            {/* Compact controls - Bottom right corner with glow effect */}
-            <div className="absolute bottom-6 right-6 bg-black/60 backdrop-blur-md rounded-2xl p-4 shadow-2xl border border-white/10 max-w-sm overflow-hidden">
-              {/* Glow effect from vinyl casting light onto controls */}
-              {playbackState.track.albumArt && (
-                <div 
-                  className="absolute -inset-10 opacity-30"
-                  style={{ 
-                    backgroundImage: `url(${playbackState.track.albumArt})`,
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                    filter: 'blur(60px) saturate(1.5)',
-                    transform: `rotate(${-vinylRotation}deg) translateY(-20%)`,
-                    pointerEvents: 'none'
-                  }}
-                />
-              )}
+            {/* Compact controls - Bottom right corner */}
+            <div className="absolute bottom-6 right-6 bg-black/70 rounded-2xl p-4 shadow-2xl border border-white/10 max-w-sm overflow-hidden">
+              {/* Glow effect removed for performance */}
               
               {/* Content wrapper to ensure everything stays clickable */}
               <div className="relative z-10">
@@ -863,6 +854,21 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue, isMobi
             )}
           </div>
           <div className="flex items-center gap-2">
+            {/* Refresh Button */}
+            {viewMode !== 'minimized' && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleManualRefresh();
+                }}
+                disabled={isRefreshing}
+                className="p-1.5 hover:bg-white/10 rounded transition-colors disabled:opacity-50"
+                title="Refresh playback state"
+              >
+                <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''} text-gray-400 hover:text-white transition-colors`} />
+              </button>
+            )}
+            
             {/* Device Selector Button - Integrated dropdown */}
             {viewMode !== 'minimized' && (
               <DeviceSelector 

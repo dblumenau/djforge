@@ -49,6 +49,22 @@
   width: 8px;
 }
 
+/* Animation for error notifications */
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s ease-out;
+}
+
 .model-selector-dropdown::-webkit-scrollbar-thumb {
   background: #2a2a2a;
   border: 1px solid #191414;

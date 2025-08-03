@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import ModelSelector from './ModelSelector';
 import DeviceSelector from './DeviceSelector';
 import WeatherDisplay from './WeatherDisplay';
-import { MessageSquare, BarChart3, Target, ClipboardList, RefreshCw, LogOut, MoreVertical, Wifi } from 'lucide-react';
+import { MessageSquare, BarChart3, Target, ClipboardList, RefreshCw, LogOut, MoreVertical, Wifi, Search } from 'lucide-react';
 
 interface HeaderNavProps {
   onModelChange: (model: string) => void;
@@ -172,6 +172,18 @@ const HeaderNav: React.FC<HeaderNavProps> = ({
                         >
                           <Wifi className={`w-4 h-4 ${location.pathname === '/websocket-demo' ? 'text-green-500' : ''}`} />
                           WebSocket Demo
+                        </button>
+                        <button 
+                          className={`w-full px-3 py-2 text-left text-sm hover:bg-zinc-800 rounded transition-all flex items-center gap-3 ${
+                            location.pathname === '/playlist-search' ? 'text-white bg-zinc-800' : 'text-zinc-300 hover:text-white'
+                          }`}
+                          onClick={() => {
+                            navigate('/playlist-search');
+                            setShowSettings(false);
+                          }}
+                        >
+                          <Search className={`w-4 h-4 ${location.pathname === '/playlist-search' ? 'text-green-500' : ''}`} />
+                          Playlist Search
                         </button>
                       </div>
                       <div className="border-t border-zinc-800 my-2"></div>

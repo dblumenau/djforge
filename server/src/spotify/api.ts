@@ -649,4 +649,36 @@ export class SpotifyWebAPI {
       throw new Error('Failed to check saved status');
     }
   }
+
+  async searchPlaylists(query: string, limit: number = 20, offset: number = 0): Promise<any> {
+    try {
+      const response = await this.api.get('/search', {
+        params: {
+          q: query,
+          type: 'playlist',
+          limit,
+          offset,
+          market: 'from_token'
+        }
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to search playlists:', error.response?.data || error.message);
+      throw new Error('Failed to search playlists');
+    }
+  }
+
+  async getPlaylist(playlistId: string): Promise<any> {
+    try {
+      const response = await this.api.get(`/playlists/${playlistId}`, {
+        params: {
+          market: 'from_token'
+        }
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to get playlist:', error.response?.data || error.message);
+      throw new Error('Failed to get playlist');
+    }
+  }
 }

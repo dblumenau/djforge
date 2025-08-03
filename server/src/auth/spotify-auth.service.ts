@@ -109,7 +109,7 @@ export class SpotifyAuthService {
   }
   
   // Refresh access token
-  async refreshAccessToken(sessionId: string): Promise<{
+  async refreshAccessToken(sessionId: string, retryCount: number = 0): Promise<{
     accessToken: string;
     expiresIn: number;
   }> {
@@ -136,11 +136,12 @@ export class SpotifyAuthService {
       }
       
       // Otherwise, try again
-      return this.refreshAccessToken(sessionId);
+      return this.refreshAccessToken(sessionId, retryCount);
     }
     
+    let tokens: any;
     try {
-      const tokens = await this.sessionManager.getTokens(sessionId);
+      tokens = await this.sessionManager.getTokens(sessionId);
       if (!tokens) {
         throw new Error('Session not found');
       }
@@ -158,7 +159,11 @@ export class SpotifyAuthService {
       }
       
       // Refresh the token
-      console.log('🔄 Token needs refresh, calling Spotify...');
+      if (retryCount > 0) {
+        console.log(`🔄 Token refresh retry attempt ${retryCount + 1}/6, calling Spotify...`);
+      } else {
+        console.log('🔄 Token needs refresh, calling Spotify...');
+      }
       
       // Create Basic Auth header with client credentials
       const clientId = process.env.SPOTIFY_CLIENT_ID!;
@@ -217,29 +222,93 @@ export class SpotifyAuthService {
         expiresIn: newTokens.expires_in
       };
     } catch (error: any) {
+      // Enhanced logging for debugging token refresh failures
+      const errorData = error.response?.data;
+      const errorStatus = error.response?.status;
+      const errorDescription = errorData?.error_description;
+      
       console.error('❌ Token refresh failed:', {
+        sessionId,
+        timestamp: new Date().toISOString(),
+        error: {
+          type: errorData?.error || 'unknown',
+          description: errorDescription,
+          status: errorStatus,
+          statusText: error.response?.statusText,
+        },
         request: {
           url: error.config?.url,
           method: error.config?.method,
-          headers: error.config?.headers,
-          data: error.config?.data
+          refreshTokenLength: tokens?.refresh_token?.length,
+          refreshTokenPreview: tokens?.refresh_token ? 
+            `${tokens.refresh_token.substring(0, 10)}...${tokens.refresh_token.slice(-10)}` : 
+            'missing',
         },
         response: {
-          status: error.response?.status,
+          status: errorStatus,
           statusText: error.response?.statusText,
-          headers: error.response?.headers,
-          data: error.response?.data
+          headers: {
+            'request-id': error.response?.headers?.['request-id'],
+            'sp-trace-id': error.response?.headers?.['sp-trace-id'],
+            'x-envoy-upstream-service-time': error.response?.headers?.['x-envoy-upstream-service-time'],
+          },
+          data: errorData
         },
         message: error.message
       });
       
-      if (error.response?.data?.error === 'invalid_grant') {
-        // Don't immediately destroy session - Spotify can return invalid_grant for temporary issues
-        // Log the error and let the caller decide what to do
-        console.error(`⚠️ Token refresh failed with invalid_grant for session ${sessionId}:`, error.response?.data);
+      // Handle Spotify 500 errors specifically with retry logic
+      if (errorStatus === 500 && errorData?.error === 'server_error') {
+        console.error('🔥 Spotify API returned 500 Internal Server Error');
         
-        // Only destroy session after multiple consecutive failures or specific error descriptions
-        const errorDescription = error.response?.data?.error_description;
+        // Check if it's the specific "Failed to remove token" error
+        if (errorDescription === 'Failed to remove token') {
+          console.error('⚠️ Spotify failed to remove token during refresh. This is a Spotify-side issue.');
+          console.error('💡 Possible causes:');
+          console.error('  1. Spotify internal service issue');
+          console.error('  2. Token already removed/invalidated on Spotify side');
+          console.error('  3. Race condition in Spotify\'s token management');
+          console.error('  4. Database consistency issue on Spotify\'s end');
+          
+          // Implement retry with exponential backoff
+          const maxRetries = 6;
+          if (retryCount < maxRetries) {
+            const delayMs = Math.min(1000 * Math.pow(2, retryCount), 16000); // 1s, 2s, 4s, 8s, 16s, 16s
+            console.log(`🔁 Retrying token refresh in ${delayMs}ms (attempt ${retryCount + 1}/${maxRetries})...`);
+            
+            // Release the lock before retrying
+            await this.redis.del(lockKey);
+            
+            // Wait with exponential backoff
+            await new Promise(resolve => setTimeout(resolve, delayMs));
+            
+            // Retry the refresh
+            return this.refreshAccessToken(sessionId, retryCount + 1);
+          }
+          
+          // Max retries reached
+          console.error(`❌ Token refresh failed after ${maxRetries} attempts`);
+          throw new Error('Spotify service error during token refresh. Maximum retries exceeded.');
+        }
+        
+        // Generic 500 error - also retry
+        if (retryCount < 6) {
+          const delayMs = Math.min(1000 * Math.pow(2, retryCount), 16000);
+          console.log(`🔁 Retrying after Spotify 500 error in ${delayMs}ms (attempt ${retryCount + 1}/6)...`);
+          await this.redis.del(lockKey);
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+          return this.refreshAccessToken(sessionId, retryCount + 1);
+        }
+        
+        throw new Error('Spotify service temporarily unavailable. Please try again later.');
+      }
+      
+      // Handle invalid_grant errors
+      if (errorData?.error === 'invalid_grant') {
+        console.error(`⚠️ Token refresh failed with invalid_grant for session ${sessionId}`);
+        console.error(`  Error description: ${errorDescription}`);
+        
+        // Only destroy session for clearly permanent issues
         if (errorDescription && (
           errorDescription.includes('revoked') || 
           errorDescription.includes('expired') ||
@@ -250,9 +319,17 @@ export class SpotifyAuthService {
           throw new Error('Authentication expired. Please log in again.');
         }
         
-        // For temporary invalid_grant errors, don't destroy session - just throw error
+        // For temporary invalid_grant errors, don't destroy session
         throw new Error('Token refresh temporarily failed. Please try again.');
       }
+      
+      // Log any other unexpected errors
+      console.error('🔍 Unexpected error during token refresh:', {
+        errorCode: errorData?.error,
+        errorDescription: errorDescription,
+        httpStatus: errorStatus
+      });
+      
       throw error;
     } finally {
       await this.redis.del(lockKey);

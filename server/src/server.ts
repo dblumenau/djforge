@@ -30,6 +30,7 @@ import weatherRouter from './routes/weather';
 import userDataRouter from './routes/user-data';
 import { webPlayerRouter } from './routes/web-player';
 import { websocketRouter } from './routes/websocket';
+import playlistSearchRouter from './routes/playlist-search';
 import { overrideConsole, logger } from './utils/logger';
 import { setSentryUserContext } from './middleware/sentry-auth';
 import { initializeWebSocket, getWebSocketService } from './services/websocket.service';
@@ -219,6 +220,8 @@ async function initializeAndStart() {
     app.use('/api/debug', debugTokenRouter);
     // WebSocket health and stats endpoints
     app.use('/api/websocket', websocketRouter);
+    // Playlist search endpoints
+    app.use('/api/playlist-search', playlistSearchRouter);
 
 
     // IMPORTANT: The Sentry error handler must be registered before any other error middleware and after all controllers

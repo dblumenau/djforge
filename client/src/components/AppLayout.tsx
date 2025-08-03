@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Outlet, Navigate } from 'react-router-dom';
 import HeaderNav from './HeaderNav';
 import MobileMenu from './MobileMenu';
+import { ErrorNotifications } from './ErrorNotifications';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../utils/temp-auth';
 import { ModelProvider, useModel } from '../contexts/ModelContext';
@@ -97,6 +98,9 @@ const AppLayoutInner: React.FC<AppLayoutProps> = ({ children }) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 text-white">
+      {/* Error Notifications */}
+      <ErrorNotifications />
+      
       {/* Shared Header Navigation */}
       <HeaderNav
         onModelChange={handleModelSelect}

@@ -1,8 +1,8 @@
 // API configuration for different environments
 const getApiUrl = () => {
-  console.log(import.meta.env.VITE_API_URL);
-  // Check if we have a Vite environment variable
-  if (import.meta.env.VITE_API_URL) {
+  // Safely check for Vite environment variable
+  if (import.meta?.env?.VITE_API_URL) {
+    console.log('Using VITE_API_URL:', import.meta.env.VITE_API_URL);
     return import.meta.env.VITE_API_URL;
   }
   
