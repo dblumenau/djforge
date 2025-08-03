@@ -1,0 +1,1376 @@
+import { Router, Request, Response } from 'express';
+import { requireValidTokens } from '../middleware/session-auth';
+import { SpotifyWebAPI } from '../spotify/api';
+import { llmOrchestrator, LLMRequest } from '../llm/orchestrator';
+import { PlaylistDiscoveryRequest, PlaylistDiscoveryResponse, SelectedPlaylist } from '../types';
+import { z } from 'zod';
+import crypto from 'crypto';
+import { LLMLoggingService } from '../services/llm-logging.service';
+import { createHash } from 'crypto';
+
+const router = Router();
+
+// Redis client for caching (will be set by server.ts)
+let redisClient: any = null;
+
+export function setRedisClient(client: any) {
+  redisClient = client;
+}
+
+// LLM logging service (will be set by server.ts)
+let loggingService: LLMLoggingService | null = null;
+
+export function setLoggingService(service: LLMLoggingService) {
+  loggingService = service;
+}
+
+// Hash function for user IDs
+function hashUserId(userId: string): string {
+  return createHash('sha256').update(userId).digest('hex').substring(0, 16);
+}
+
+// Apply auth middleware to all routes
+router.use(requireValidTokens);
+
+// Simplified schema for playlist selection to avoid Gemini parsing issues
+const PlaylistSelectionSchema = z.object({
+  selectedPlaylistIds: z.array(z.string()).max(10),
+  reasoning: z.string().optional()
+});
+
+// Simplified schema for playlist summarization to avoid Gemini parsing issues
+const PlaylistSummarizationSchema = z.object({
+  summary: z.string(),
+  characteristics: z.object({
+    primaryGenre: z.string().optional(),
+    mood: z.string().optional(),
+    instrumentation: z.array(z.string()).optional(),
+    tempo: z.string().optional(),
+    decadeRange: z.string().optional() // e.g., "2010s-2020s", "1980s", "Various"
+  }).optional(),
+  matchScore: z.number().min(0).max(1).optional(),
+  reasoning: z.string().optional()
+});
+
+/**
+ * LLM-powered playlist discovery endpoint
+ * POST /api/playlist-discovery/search
+ * 
+ * Accepts natural language query, performs Spotify search,
+ * uses LLM to select top 5 candidates, returns playlist metadata
+ */
+router.post('/search', async (req: Request & { tokens?: any }, res: Response<PlaylistDiscoveryResponse>) => {
+  try {
+    const { query, model }: PlaylistDiscoveryRequest & { model?: string } = req.body;
+
+    // Validate query
+    if (!query || typeof query !== 'string' || !query.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: 'Search query is required'
+      });
+    }
+
+    console.log(`🤖 LLM Playlist Discovery: "${query}"`);
+
+    // Get tokens from requireValidTokens middleware
+    const tokens = req.tokens;
+    if (!tokens) {
+      throw new Error('No Spotify tokens available');
+    }
+
+    // Create Spotify API instance
+    const spotifyApi = new SpotifyWebAPI(tokens, (newTokens) => {
+      req.tokens = newTokens;
+    });
+
+    // Step 1: Perform initial Spotify search for playlists
+    console.log('🔍 Step 1: Performing initial Spotify search...');
+    const searchResults = await spotifyApi.searchPlaylists(query.trim(), 40, 0);
+    
+    const playlists = searchResults.playlists?.items || [];
+    
+    if (playlists.length === 0) {
+      return res.json({
+        query: query.trim(),
+        selectedPlaylists: [],
+        message: 'No playlists found for this query'
+      });
+    }
+
+    console.log(`📦 Found ${playlists.length} playlists from Spotify search`);
+
+    // Step 2: Prepare playlist data for LLM analysis
+    const playlistsForAnalysis = playlists
+      .filter((playlist: any) => playlist != null)
+      .map((playlist: any) => ({
+        id: playlist.id,
+        name: playlist.name || 'Untitled',
+        description: playlist.description || '',
+        owner: playlist.owner?.display_name || 'Unknown',
+        trackCount: playlist.tracks?.total || 0,
+        followers: playlist.followers?.total || 0,
+        isPublic: playlist.public !== false,
+        images: playlist.images || []
+      }));
+
+    // Step 3: Send to LLM for analysis and selection
+    console.log('🧠 Step 2: Analyzing playlists with LLM...');
+
+    const llmPrompt = `User is looking for playlists matching: "${query}"
+
+Here are ${playlistsForAnalysis.length} playlists from Spotify search results:
+
+${playlistsForAnalysis.map((p: any, i: number) => 
+  `${i + 1}. ID: ${p.id}
+   Name: "${p.name}"
+   Description: "${p.description || 'No description'}"
+   Owner: ${p.owner}
+   Tracks: ${p.trackCount}
+   Followers: ${p.followers}
+   Public: ${p.isPublic}
+`).join('\n')}
+
+Analyze these playlists and select up to 10 that best match the user's intent: "${query}"
+
+Consider:
+- Name relevance to the query
+- Description content and how it matches the intent
+- Track count (prefer playlists with reasonable number of tracks, avoid very small ones)
+- Follower count as a quality/popularity signal
+- Owner credibility (verified accounts or high follower counts often indicate quality)
+
+Return between 5-10 playlist IDs that best match the query.
+Include more playlists to provide variety and fallback options.
+Focus on quality but aim for at least 8-10 good matches when available.
+
+Respond with a JSON object containing:
+- selectedPlaylistIds: array of the selected playlist IDs (strings)
+- reasoning: brief explanation of why these were chosen (optional)`;
+
+    const llmRequest: LLMRequest = {
+      model: model || 'google/gemini-2.5-flash',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a music curator AI that analyzes playlists and selects the best matches for user queries. Always respond with valid JSON.'
+        },
+        {
+          role: 'user',
+          content: llmPrompt
+        }
+      ],
+      response_format: { type: 'json_object' },
+      schema: PlaylistSelectionSchema,
+      temperature: 0.6, // Lower temperature for more consistent selections
+      max_tokens: 5000,
+      skipValidation: true // Skip intent validation for playlist selection response
+    };
+
+    let llmResponse;
+    let fallbackUsed = false;
+    let originalError = '';
+    
+    try {
+      llmResponse = await llmOrchestrator.complete(llmRequest);
+    } catch (error: any) {
+      console.error('❌ Primary model failed, attempting fallback:', error);
+      originalError = error.message;
+      
+      // Try with fallback model
+      llmRequest.model = 'anthropic/claude-3.5-sonnet';
+      try {
+        llmResponse = await llmOrchestrator.complete(llmRequest);
+        fallbackUsed = true;
+      } catch (fallbackError: any) {
+        console.error('❌ Both primary and fallback models failed:', fallbackError);
+        // Final fallback: Return first 10 playlists sorted by follower count
+        const fallbackPlaylists = playlistsForAnalysis
+          .sort((a: any, b: any) => (b.followers || 0) - (a.followers || 0))
+          .slice(0, 10);
+        
+        return res.json({
+          query: query.trim(),
+          selectedPlaylists: fallbackPlaylists.map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            owner: p.owner,
+            description: p.description || 'No description available',
+            trackCount: p.trackCount,
+            followers: p.followers,
+            images: p.images
+          })),
+          fallbackUsed: true,
+          originalError: `Primary: ${originalError}. Fallback: ${fallbackError.message}`,
+          message: 'Both LLM models failed, using popularity-based selection'
+        });
+      }
+    }
+
+    // Step 4: Parse and validate LLM response with lenient validation
+    let selectionData;
+    try {
+      selectionData = JSON.parse(llmResponse.content);
+      // Try to parse with schema, but be lenient with missing fields
+      const parsed = PlaylistSelectionSchema.safeParse(selectionData);
+      if (!parsed.success) {
+        console.warn('⚠️ Schema validation failed, attempting lenient parsing:', parsed.error);
+        // Extract what we can from the response
+        if (selectionData.selectedPlaylistIds && Array.isArray(selectionData.selectedPlaylistIds)) {
+          selectionData = {
+            selectedPlaylistIds: selectionData.selectedPlaylistIds.slice(0, 5),
+            reasoning: selectionData.reasoning || 'No reasoning provided'
+          };
+        } else {
+          throw new Error('No valid selectedPlaylistIds found in response');
+        }
+      }
+    } catch (error: any) {
+      console.error('❌ Invalid LLM response format:', error);
+      console.error('LLM response content:', llmResponse.content);
+      
+      // Fallback: Return first 5 playlists sorted by follower count
+      const fallbackPlaylists = playlistsForAnalysis
+        .sort((a: any, b: any) => (b.followers || 0) - (a.followers || 0))
+        .slice(0, 5);
+      
+      return res.json({
+        query: query.trim(),
+        selectedPlaylists: fallbackPlaylists.map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          owner: p.owner,
+          description: p.description || 'No description available',
+          trackCount: p.trackCount,
+          followers: p.followers,
+          images: p.images
+        })),
+        fallbackUsed: true,
+        originalError: originalError || error.message,
+        message: 'LLM response parsing failed, using popularity-based selection'
+      });
+    }
+
+    // Step 5: Map selected IDs back to full playlist data
+    const selectedPlaylists = selectionData.selectedPlaylistIds
+      .map((id: string) => playlistsForAnalysis.find((p: any) => p.id === id))
+      .filter((playlist: any) => playlist !== undefined)
+      .map((playlist: any) => ({
+        id: playlist.id,
+        name: playlist.name,
+        owner: playlist.owner,
+        description: playlist.description || 'No description available',
+        trackCount: playlist.trackCount,
+        followers: playlist.followers,
+        images: playlist.images
+      }));
+
+    console.log(`✅ LLM selected ${selectedPlaylists.length} playlists`);
+    if (selectionData.reasoning) {
+      console.log(`💭 LLM reasoning: ${selectionData.reasoning}`);
+    }
+
+    // Return the curated results
+    const response: any = {
+      query: query.trim(),
+      selectedPlaylists,
+      llmReasoning: selectionData.reasoning,
+      totalSearchResults: playlists.length,
+      model: llmResponse.model,
+      provider: llmResponse.provider
+    };
+    
+    if (fallbackUsed) {
+      response.fallbackUsed = true;
+      response.originalError = originalError;
+    }
+    
+    res.json(response);
+
+  } catch (error: any) {
+    console.error('❌ Error in playlist discovery:', error);
+    
+    // Handle specific Spotify API errors
+    if (error.response?.status === 401) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication failed. Please log in again.'
+      });
+    }
+
+    if (error.response?.status === 429) {
+      return res.status(429).json({
+        success: false,
+        error: 'Rate limit exceeded. Please try again later.'
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to discover playlists'
+    });
+  }
+});
+
+// Zod schema for batch details request validation
+const BatchDetailsRequestSchema = z.object({
+  playlistIds: z.array(z.string()).min(1).max(10)
+});
+
+interface BatchDetailsRequest {
+  playlistIds: string[];
+}
+
+interface PlaylistDetails {
+  id: string;
+  name: string;
+  owner: string;
+  description: string;
+  followers: number;
+  trackCount: number;
+  tracks: any[];
+  uniqueArtists: string[];
+  images: Array<{
+    url: string;
+    width?: number;
+    height?: number;
+  }>;
+}
+
+interface BatchDetailsResponse {
+  playlists: PlaylistDetails[];
+  totalArtists: number;
+  fetchedFromCache: string[];
+  fetchedFromAPI: string[];
+}
+
+interface PlaylistSummarizationRequest {
+  playlistId: string;
+  originalQuery?: string;
+}
+
+interface PlaylistCharacteristics {
+  primaryGenre?: string;
+  mood?: string;
+  instrumentation?: string[];
+  tempo?: string;
+  decadeRange?: string;
+}
+
+interface PlaylistSummarizationResponse {
+  playlistId: string;
+  summary: string;
+  characteristics?: PlaylistCharacteristics;
+  matchScore?: number;
+  reasoning?: string;
+  model: string;
+  provider: string;
+  fromCache: boolean;
+}
+
+/**
+ * Batch playlist details fetcher endpoint
+ * POST /api/playlist-discovery/batch-details
+ * 
+ * Accepts array of playlist IDs (up to 5), fetches full details for each,
+ * extracts unique artists, implements caching and rate limiting
+ */
+router.post('/batch-details', async (req: Request & { tokens?: any }, res: Response<BatchDetailsResponse>) => {
+  try {
+    const { playlistIds }: BatchDetailsRequest = req.body;
+
+    // Validate request body
+    try {
+      BatchDetailsRequestSchema.parse({ playlistIds });
+    } catch (error: any) {
+      return res.status(400).json({
+        playlists: [],
+        totalArtists: 0,
+        fetchedFromCache: [],
+        fetchedFromAPI: []
+      } as any);
+    }
+
+    console.log(`📋 Batch Playlist Details: ${playlistIds.length} playlists requested`);
+
+    // Get tokens from requireValidTokens middleware
+    const tokens = req.tokens;
+    if (!tokens) {
+      throw new Error('No Spotify tokens available');
+    }
+
+    // Create Spotify API instance
+    const spotifyApi = new SpotifyWebAPI(tokens, (newTokens) => {
+      req.tokens = newTokens;
+    });
+
+    const fetchedFromCache: string[] = [];
+    const fetchedFromAPI: string[] = [];
+    const playlists: PlaylistDetails[] = [];
+    const allUniqueArtists = new Set<string>();
+
+    // Process each playlist sequentially with rate limiting
+    for (let i = 0; i < playlistIds.length; i++) {
+      const playlistId = playlistIds[i];
+      const cacheKey = `playlist:details:${playlistId}`;
+      
+      let playlistDetails: any = null;
+
+      // Try to get from cache first (if Redis is available)
+      if (redisClient) {
+        try {
+          const cachedData = await redisClient.get(cacheKey);
+          if (cachedData) {
+            playlistDetails = JSON.parse(cachedData);
+            fetchedFromCache.push(playlistId);
+            console.log(`💾 Cache hit for playlist ${playlistId}`);
+          }
+        } catch (error) {
+          console.warn('⚠️ Redis cache read failed:', error);
+        }
+      }
+
+      // If not in cache, fetch from Spotify API
+      if (!playlistDetails) {
+        try {
+          console.log(`🎵 Fetching playlist details from Spotify API: ${playlistId}`);
+          
+          // Fetch basic playlist info
+          const playlist = await spotifyApi.getPlaylist(playlistId);
+          
+          // Fetch all tracks (handling pagination)
+          const tracks: any[] = [];
+          let offset = 0;
+          const limit = 50;
+          
+          do {
+            const tracksBatch = await spotifyApi.getPlaylistTracks(playlistId, limit, offset);
+            const items = tracksBatch.items || [];
+            tracks.push(...items);
+            offset += limit;
+            
+            // If we got fewer items than requested, we've reached the end
+            if (items.length < limit) break;
+            
+            // Add small delay between track fetches to be respectful
+            if (items.length === limit) {
+              await new Promise(resolve => setTimeout(resolve, 100));
+            }
+          } while (tracks.length < (playlist.tracks?.total || 0));
+
+          // Extract unique artists from all tracks
+          const artistsInPlaylist = new Set<string>();
+          tracks.forEach((item: any) => {
+            if (item.track?.artists) {
+              item.track.artists.forEach((artist: any) => {
+                if (artist.name) {
+                  artistsInPlaylist.add(artist.name);
+                  allUniqueArtists.add(artist.name);
+                }
+              });
+            }
+          });
+
+          playlistDetails = {
+            id: playlist.id,
+            name: playlist.name || 'Untitled',
+            owner: playlist.owner?.display_name || 'Unknown',
+            description: playlist.description || '',
+            followers: playlist.followers?.total || 0,
+            trackCount: tracks.length,
+            tracks: tracks.map((item: any) => ({
+              id: item.track?.id,
+              name: item.track?.name,
+              artists: item.track?.artists?.map((artist: any) => ({
+                id: artist.id,
+                name: artist.name
+              })) || [],
+              album: {
+                id: item.track?.album?.id,
+                name: item.track?.album?.name,
+                images: item.track?.album?.images || []
+              },
+              duration_ms: item.track?.duration_ms,
+              uri: item.track?.uri,
+              preview_url: item.track?.preview_url
+            })).filter(track => track.id), // Filter out null tracks
+            uniqueArtists: Array.from(artistsInPlaylist),
+            images: playlist.images || []
+          };
+
+          fetchedFromAPI.push(playlistId);
+
+          // Cache the result (if Redis is available)
+          if (redisClient) {
+            try {
+              await redisClient.setEx(cacheKey, 86400, JSON.stringify(playlistDetails)); // 24 hour TTL
+              console.log(`💾 Cached playlist details for ${playlistId}`);
+            } catch (error) {
+              console.warn('⚠️ Redis cache write failed:', error);
+            }
+          }
+
+        } catch (error: any) {
+          console.error(`❌ Failed to fetch playlist ${playlistId}:`, error.message);
+          // Continue with other playlists on error
+          continue;
+        }
+      } else {
+        // Add cached playlist's artists to the total set
+        if (playlistDetails.uniqueArtists) {
+          playlistDetails.uniqueArtists.forEach((artist: string) => {
+            allUniqueArtists.add(artist);
+          });
+        }
+      }
+
+      if (playlistDetails) {
+        playlists.push(playlistDetails);
+      }
+
+      // Add delay between API requests (300ms as specified)
+      if (i < playlistIds.length - 1 && fetchedFromAPI.includes(playlistId)) {
+        console.log('⏱️ Rate limiting: waiting 300ms before next API request...');
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
+    }
+
+    console.log(`✅ Batch fetch complete: ${playlists.length}/${playlistIds.length} playlists processed`);
+    console.log(`📊 Cache stats: ${fetchedFromCache.length} from cache, ${fetchedFromAPI.length} from API`);
+    console.log(`🎤 Total unique artists across all playlists: ${allUniqueArtists.size}`);
+
+    res.json({
+      playlists,
+      totalArtists: allUniqueArtists.size,
+      fetchedFromCache,
+      fetchedFromAPI
+    });
+
+  } catch (error: any) {
+    console.error('❌ Error in batch playlist details:', error);
+    
+    // Handle specific Spotify API errors
+    if (error.response?.status === 401) {
+      return res.status(401).json({
+        playlists: [],
+        totalArtists: 0,
+        fetchedFromCache: [],
+        fetchedFromAPI: []
+      } as any);
+    }
+
+    if (error.response?.status === 429) {
+      return res.status(429).json({
+        playlists: [],
+        totalArtists: 0,
+        fetchedFromCache: [],
+        fetchedFromAPI: []
+      } as any);
+    }
+
+    res.status(500).json({
+      playlists: [],
+      totalArtists: 0,
+      fetchedFromCache: [],
+      fetchedFromAPI: []
+    } as any);
+  }
+});
+
+/**
+ * LLM playlist summarization endpoint
+ * POST /api/playlist-discovery/summarize
+ * 
+ * Accepts playlist ID and optional original query, uses LLM to analyze
+ * playlist tracks and generate 2-3 sentence description with characteristics
+ */
+router.post('/summarize', async (req: Request & { tokens?: any }, res: Response<PlaylistSummarizationResponse>) => {
+  try {
+    const { playlistId, originalQuery, model }: PlaylistSummarizationRequest & { model?: string } = req.body;
+
+    // Validate request body
+    if (!playlistId || typeof playlistId !== 'string') {
+      return res.status(400).json({
+        playlistId: '',
+        summary: '',
+        model: '',
+        provider: '',
+        fromCache: false
+      } as any);
+    }
+
+    console.log(`🤖 LLM Playlist Summarization: ${playlistId}${originalQuery ? ` (query: "${originalQuery}")` : ''}`);
+
+    // Create cache key based on playlist ID and query hash
+    let cacheKey = `playlist:summary:${playlistId}`;
+    if (originalQuery) {
+      const queryHash = crypto.createHash('md5').update(originalQuery.trim().toLowerCase()).digest('hex').substring(0, 8);
+      cacheKey = `playlist:summary:${playlistId}:${queryHash}`;
+    }
+
+    // Try to get from cache first (if Redis is available)
+    if (redisClient) {
+      try {
+        const cachedSummary = await redisClient.get(cacheKey);
+        if (cachedSummary) {
+          const parsed = JSON.parse(cachedSummary);
+          console.log(`💾 Cache hit for playlist summary ${playlistId}`);
+          return res.json({
+            ...parsed,
+            fromCache: true
+          });
+        }
+      } catch (error) {
+        console.warn('⚠️ Redis cache read failed:', error);
+      }
+    }
+
+    // Get tokens from requireValidTokens middleware
+    const tokens = req.tokens;
+    if (!tokens) {
+      throw new Error('No Spotify tokens available');
+    }
+
+    // Create Spotify API instance
+    const spotifyApi = new SpotifyWebAPI(tokens, (newTokens) => {
+      req.tokens = newTokens;
+    });
+
+    // First, check if we have detailed playlist data in cache
+    const detailsCacheKey = `playlist:details:${playlistId}`;
+    let playlistDetails: any = null;
+
+    if (redisClient) {
+      try {
+        const cachedDetails = await redisClient.get(detailsCacheKey);
+        if (cachedDetails) {
+          playlistDetails = JSON.parse(cachedDetails);
+          console.log(`💾 Using cached playlist details for ${playlistId}`);
+        }
+      } catch (error) {
+        console.warn('⚠️ Redis cache read failed for playlist details:', error);
+      }
+    }
+
+    // If no cached details, fetch basic playlist info and tracks
+    if (!playlistDetails) {
+      console.log(`🎵 Fetching playlist details for summarization: ${playlistId}`);
+      
+      try {
+        // Fetch basic playlist info
+        const playlist = await spotifyApi.getPlaylist(playlistId);
+        
+        // Fetch first 30 tracks for analysis (as specified in the plan)
+        const tracksBatch = await spotifyApi.getPlaylistTracks(playlistId, 30, 0);
+        const tracks = tracksBatch.items || [];
+
+        // Extract unique artists from tracks
+        const artistsInPlaylist = new Set<string>();
+        tracks.forEach((item: any) => {
+          if (item.track?.artists) {
+            item.track.artists.forEach((artist: any) => {
+              if (artist.name) {
+                artistsInPlaylist.add(artist.name);
+              }
+            });
+          }
+        });
+
+        playlistDetails = {
+          id: playlist.id,
+          name: playlist.name || 'Untitled',
+          owner: playlist.owner?.display_name || 'Unknown',
+          description: playlist.description || '',
+          followers: playlist.followers?.total || 0,
+          trackCount: playlist.tracks?.total || 0,
+          tracks: tracks.map((item: any) => ({
+            id: item.track?.id,
+            name: item.track?.name,
+            artists: item.track?.artists?.map((artist: any) => ({
+              id: artist.id,
+              name: artist.name
+            })) || [],
+            duration_ms: item.track?.duration_ms,
+            uri: item.track?.uri
+          })).filter((track: any) => track.id), // Filter out null tracks
+          uniqueArtists: Array.from(artistsInPlaylist)
+        };
+      } catch (error: any) {
+        console.error(`❌ Failed to fetch playlist ${playlistId} for summarization:`, error.message);
+        throw new Error(`Failed to fetch playlist details: ${error.message}`);
+      }
+    }
+
+    // Prepare data for LLM analysis
+    const first30Tracks = playlistDetails.tracks.slice(0, 30);
+    const trackList = first30Tracks.map((track: any, index: number) => 
+      `${index + 1}. "${track.name}" by ${track.artists.map((a: any) => a.name).join(', ')}`
+    ).join('\n');
+
+    const uniqueArtists = playlistDetails.uniqueArtists.slice(0, 20); // Limit to first 20 artists for prompt length
+
+    // Create LLM prompt based on the plan specification
+    const llmPrompt = `Playlist: ${playlistDetails.name}
+Tracks: 
+${trackList}
+
+Artists featured: ${uniqueArtists.join(', ')}
+${originalQuery ? `User query: ${originalQuery}` : ''}
+
+Write a 2-3 sentence description explaining:
+1. How this playlist matches the user's request${originalQuery ? ` ("${originalQuery}")` : ' or general music preferences'}
+2. What makes it unique or interesting
+3. The general mood/style
+
+Also identify key characteristics including:
+- Primary genre (single word/phrase)
+- Mood (single word/phrase) 
+- Instrumentation (array of key instruments if identifiable)
+- Tempo (slow/medium/fast/varied)
+- Decade range (e.g., "2010s-2020s", "1980s", "Various")
+
+Provide a match score (0.0-1.0) indicating how well this playlist matches the user's intent${originalQuery ? '' : ' based on general appeal'}.
+
+Respond with a JSON object containing:
+- summary: your 2-3 sentence description
+- characteristics: object with primaryGenre, mood, instrumentation (array), tempo, decadeRange
+- matchScore: number between 0.0 and 1.0
+- reasoning: brief explanation of the match score`;
+
+    const llmRequest: LLMRequest = {
+      model: model || 'google/gemini-2.5-flash',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a music analysis AI that creates engaging summaries of Spotify playlists. Always respond with valid JSON. Focus on being informative yet concise.'
+        },
+        {
+          role: 'user',
+          content: llmPrompt
+        }
+      ],
+      response_format: { type: 'json_object' },
+      schema: PlaylistSummarizationSchema,
+      temperature: 0.4, // Slightly creative but consistent
+      max_tokens: 1500,
+      skipValidation: true // Skip intent validation for playlist summarization response
+    };
+
+    let llmResponse;
+    let fallbackUsed = false;
+    let originalError = '';
+    
+    try {
+      llmResponse = await llmOrchestrator.complete(llmRequest);
+    } catch (error: any) {
+      console.error('❌ Primary model failed for summarization, attempting fallback:', error);
+      originalError = error.message;
+      
+      // Try with fallback model
+      llmRequest.model = 'anthropic/claude-3.5-sonnet';
+      try {
+        llmResponse = await llmOrchestrator.complete(llmRequest);
+        fallbackUsed = true;
+      } catch (fallbackError: any) {
+        console.error('❌ Both primary and fallback models failed for summarization:', fallbackError);
+        // Final fallback: Create basic summary from playlist metadata
+        const fallbackSummary = `This playlist "${playlistDetails.name}" contains ${playlistDetails.trackCount} tracks featuring ${uniqueArtists.slice(0, 3).join(', ')}${uniqueArtists.length > 3 ? ' and others' : ''}. ${playlistDetails.description || 'A curated collection of music for your listening pleasure.'}`;
+        
+        return res.json({
+          playlistId,
+          summary: fallbackSummary,
+          characteristics: {
+            primaryGenre: 'Various',
+            mood: 'Mixed',
+            tempo: 'Varied'
+          },
+          matchScore: 0.7,
+          reasoning: 'Fallback analysis due to both models failing',
+          model: 'fallback',
+          provider: 'system',
+          fromCache: false,
+          fallbackUsed: true,
+          originalError: `Primary: ${originalError}. Fallback: ${fallbackError.message}`
+        } as any);
+      }
+    }
+
+    // Parse and validate LLM response with lenient validation
+    let summaryData;
+    try {
+      summaryData = JSON.parse(llmResponse.content);
+      // Try to parse with schema, but be lenient with missing fields
+      const parsed = PlaylistSummarizationSchema.safeParse(summaryData);
+      if (!parsed.success) {
+        console.warn('⚠️ Schema validation failed for summarization, attempting lenient parsing:', parsed.error);
+        // Extract what we can from the response
+        summaryData = {
+          summary: summaryData.summary || `This playlist "${playlistDetails.name}" contains ${playlistDetails.trackCount} tracks.`,
+          characteristics: summaryData.characteristics || {
+            primaryGenre: 'Various',
+            mood: 'Mixed',
+            tempo: 'Varied'
+          },
+          matchScore: typeof summaryData.matchScore === 'number' ? summaryData.matchScore : 0.7,
+          reasoning: summaryData.reasoning || 'Analysis completed with limited schema validation'
+        };
+      }
+    } catch (error: any) {
+      console.error('❌ Invalid LLM summarization response format:', error);
+      console.error('LLM response content:', llmResponse.content);
+      
+      // Fallback: Create basic summary
+      const fallbackSummary = `This playlist "${playlistDetails.name}" contains ${playlistDetails.trackCount} tracks featuring ${uniqueArtists.slice(0, 3).join(', ')}${uniqueArtists.length > 3 ? ' and others' : ''}. ${playlistDetails.description || 'A curated collection of music for your listening pleasure.'}`;
+      
+      return res.json({
+        playlistId,
+        summary: fallbackSummary,
+        characteristics: {
+          primaryGenre: 'Various',
+          mood: 'Mixed', 
+          tempo: 'Varied'
+        },
+        matchScore: 0.7,
+        reasoning: 'Fallback analysis due to invalid LLM response',
+        model: llmResponse.model,
+        provider: llmResponse.provider,
+        fromCache: false,
+        fallbackUsed: fallbackUsed,
+        originalError: originalError || error.message
+      } as any);
+    }
+
+    // Prepare response
+    const response: any = {
+      playlistId,
+      summary: summaryData.summary,
+      characteristics: summaryData.characteristics,
+      matchScore: summaryData.matchScore,
+      reasoning: summaryData.reasoning,
+      model: llmResponse.model,
+      provider: llmResponse.provider,
+      fromCache: false
+    };
+    
+    if (fallbackUsed) {
+      response.fallbackUsed = true;
+      response.originalError = originalError;
+    }
+
+    // Cache the result with 7-day TTL as specified in the plan
+    if (redisClient) {
+      try {
+        await redisClient.setEx(cacheKey, 604800, JSON.stringify({
+          playlistId,
+          summary: summaryData.summary,
+          characteristics: summaryData.characteristics,
+          matchScore: summaryData.matchScore,
+          reasoning: summaryData.reasoning,
+          model: llmResponse.model,
+          provider: llmResponse.provider
+        }));
+        console.log(`💾 Cached playlist summary for ${playlistId} (7 days TTL)`);
+      } catch (error) {
+        console.warn('⚠️ Redis cache write failed:', error);
+      }
+    }
+
+    console.log(`✅ Generated summary for playlist ${playlistId}`);
+    console.log(`📝 Summary: ${summaryData.summary}`);
+    if (summaryData.matchScore) {
+      console.log(`📊 Match score: ${summaryData.matchScore}`);
+    }
+
+    res.json(response);
+
+  } catch (error: any) {
+    console.error('❌ Error in playlist summarization:', error);
+    
+    // Handle specific Spotify API errors
+    if (error.response?.status === 401) {
+      return res.status(401).json({
+        playlistId: req.body.playlistId || '',
+        summary: '',
+        model: '',
+        provider: '',
+        fromCache: false
+      } as any);
+    }
+
+    if (error.response?.status === 429) {
+      return res.status(429).json({
+        playlistId: req.body.playlistId || '',
+        summary: '',
+        model: '',
+        provider: '', 
+        fromCache: false
+      } as any);
+    }
+
+    res.status(500).json({
+      playlistId: req.body.playlistId || '',
+      summary: '',
+      model: '',
+      provider: '',
+      fromCache: false
+    } as any);
+  }
+});
+
+/**
+ * Enhanced full workflow endpoint - combines all 3 phases
+ * POST /api/playlist-discovery/full-search
+ * 
+ * Takes user query → search → batch details → summarize → return complete results
+ * Provides the complete end-to-end playlist discovery experience in one API call
+ */
+router.post('/full-search', async (req: Request & { tokens?: any }, res: Response) => {
+  try {
+    const { query, model }: PlaylistDiscoveryRequest & { model?: string } = req.body;
+
+    // Validate query
+    if (!query || typeof query !== 'string' || !query.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: 'Search query is required'
+      });
+    }
+
+    console.log(`🚀 Full Playlist Discovery Workflow: "${query}"`);
+
+    // Get tokens from requireValidTokens middleware
+    const tokens = req.tokens;
+    if (!tokens) {
+      throw new Error('No Spotify tokens available');
+    }
+
+    // Create Spotify API instance
+    const spotifyApi = new SpotifyWebAPI(tokens, (newTokens) => {
+      req.tokens = newTokens;
+    });
+
+    // Phase 1: Search and LLM Selection
+    console.log('📍 Phase 1: Performing search and LLM selection...');
+    const searchResults = await spotifyApi.searchPlaylists(query.trim(), 40, 0);
+    const playlists = searchResults.playlists?.items || [];
+    
+    if (playlists.length === 0) {
+      return res.json({
+        query: query.trim(),
+        playlists: [],
+        message: 'No playlists found for this query'
+      });
+    }
+
+    // Prepare playlist data for LLM analysis
+    const playlistsForAnalysis = playlists
+      .filter((playlist: any) => playlist != null)
+      .map((playlist: any) => ({
+        id: playlist.id,
+        name: playlist.name || 'Untitled',
+        description: playlist.description || '',
+        owner: playlist.owner?.display_name || 'Unknown',
+        trackCount: playlist.tracks?.total || 0,
+        followers: playlist.followers?.total || 0,
+        isPublic: playlist.public !== false,
+        images: playlist.images || []
+      }));
+
+    // LLM Selection
+    const llmPrompt = `User is looking for playlists matching: "${query}"
+
+Here are ${playlistsForAnalysis.length} playlists from Spotify search results:
+
+${playlistsForAnalysis.map((p: any, i: number) => 
+  `${i + 1}. ID: ${p.id}
+   Name: "${p.name}"
+   Description: "${p.description || 'No description'}"
+   Owner: ${p.owner}
+   Tracks: ${p.trackCount}
+   Followers: ${p.followers}
+   Public: ${p.isPublic}
+`).join('\n')}
+
+Analyze these playlists and select up to 10 that best match the user's intent: "${query}"
+
+Consider:
+- Name relevance to the query
+- Description content and how it matches the intent
+- Track count (prefer playlists with reasonable number of tracks, avoid very small ones)
+- Follower count as a quality/popularity signal
+- Owner credibility (verified accounts or high follower counts often indicate quality)
+
+Return between 5-10 playlist IDs that best match the query.
+Include more playlists to provide variety and fallback options.
+Focus on quality but aim for at least 8-10 good matches when available.
+
+Respond with a JSON object containing:
+- selectedPlaylistIds: array of the selected playlist IDs (strings)
+- reasoning: brief explanation of why these were chosen (optional)`;
+
+    const llmRequest: LLMRequest = {
+      model: model || 'google/gemini-2.5-flash',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a music curator AI that analyzes playlists and selects the best matches for user queries. Always respond with valid JSON.'
+        },
+        {
+          role: 'user',
+          content: llmPrompt
+        }
+      ],
+      response_format: { type: 'json_object' },
+      schema: PlaylistSelectionSchema,
+      temperature: 0.3,
+      max_tokens: 1000,
+      skipValidation: true // Skip intent validation for playlist selection response
+    };
+
+    let llmResponse;
+    let selectedPlaylistIds: string[] = [];
+    let selectionFallbackUsed = false;
+    let selectionOriginalError = '';
+    
+    try {
+      llmResponse = await llmOrchestrator.complete(llmRequest);
+      const selectionData = JSON.parse(llmResponse.content);
+      // Try schema parsing, but be lenient
+      const parsed = PlaylistSelectionSchema.safeParse(selectionData);
+      if (parsed.success) {
+        selectedPlaylistIds = selectionData.selectedPlaylistIds;
+      } else {
+        console.warn('⚠️ Schema validation failed for selection, extracting IDs:', parsed.error);
+        if (selectionData.selectedPlaylistIds && Array.isArray(selectionData.selectedPlaylistIds)) {
+          selectedPlaylistIds = selectionData.selectedPlaylistIds.slice(0, 10);
+        } else {
+          throw new Error('No valid selectedPlaylistIds found in response');
+        }
+      }
+    } catch (error: any) {
+      console.error('❌ Primary model selection failed, attempting fallback:', error);
+      selectionOriginalError = error.message;
+      
+      // Try with fallback model
+      llmRequest.model = 'anthropic/claude-3.5-sonnet';
+      try {
+        llmResponse = await llmOrchestrator.complete(llmRequest);
+        const selectionData = JSON.parse(llmResponse.content);
+        const parsed = PlaylistSelectionSchema.safeParse(selectionData);
+        if (parsed.success) {
+          selectedPlaylistIds = selectionData.selectedPlaylistIds;
+        } else if (selectionData.selectedPlaylistIds && Array.isArray(selectionData.selectedPlaylistIds)) {
+          selectedPlaylistIds = selectionData.selectedPlaylistIds.slice(0, 10);
+        } else {
+          throw new Error('Fallback model also failed to provide valid playlist IDs');
+        }
+        selectionFallbackUsed = true;
+      } catch (fallbackError: any) {
+        console.error('❌ Both primary and fallback models failed for selection, using popularity fallback:', fallbackError);
+        // Final fallback: Use top 10 by follower count
+        selectedPlaylistIds = playlistsForAnalysis
+          .sort((a: any, b: any) => (b.followers || 0) - (a.followers || 0))
+          .slice(0, 10)
+          .map((p: any) => p.id);
+        selectionFallbackUsed = true;
+        selectionOriginalError = `Primary: ${selectionOriginalError}. Fallback: ${fallbackError.message}`;
+      }
+    }
+
+    if (selectedPlaylistIds.length === 0) {
+      return res.json({
+        query: query.trim(),
+        playlists: [],
+        message: 'No suitable playlists found'
+      });
+    }
+
+    console.log(`📍 Phase 2: Fetching details for ${selectedPlaylistIds.length} selected playlists (up to 10)...`);
+
+    // Phase 2: Batch Details Fetching
+    const playlistDetails: any[] = [];
+    
+    for (let i = 0; i < selectedPlaylistIds.length; i++) {
+      const playlistId = selectedPlaylistIds[i];
+      const cacheKey = `playlist:details:${playlistId}`;
+      
+      let details: any = null;
+
+      // Try cache first
+      if (redisClient) {
+        try {
+          const cachedData = await redisClient.get(cacheKey);
+          if (cachedData) {
+            details = JSON.parse(cachedData);
+          }
+        } catch (error) {
+          console.warn('⚠️ Redis cache read failed:', error);
+        }
+      }
+
+      // If not in cache, fetch from API
+      if (!details) {
+        try {
+          const playlist = await spotifyApi.getPlaylist(playlistId);
+          const tracksBatch = await spotifyApi.getPlaylistTracks(playlistId, 30, 0);
+          const tracks = tracksBatch.items || [];
+
+          const artistsInPlaylist = new Set<string>();
+          tracks.forEach((item: any) => {
+            if (item.track?.artists) {
+              item.track.artists.forEach((artist: any) => {
+                if (artist.name) {
+                  artistsInPlaylist.add(artist.name);
+                }
+              });
+            }
+          });
+
+          details = {
+            id: playlist.id,
+            name: playlist.name || 'Untitled',
+            owner: playlist.owner?.display_name || 'Unknown',
+            description: playlist.description || '',
+            followers: playlist.followers?.total || 0,
+            trackCount: playlist.tracks?.total || 0,
+            tracks: tracks.map((item: any) => ({
+              id: item.track?.id,
+              name: item.track?.name,
+              artists: item.track?.artists?.map((artist: any) => ({
+                id: artist.id,
+                name: artist.name
+              })) || [],
+              duration_ms: item.track?.duration_ms,
+              uri: item.track?.uri
+            })).filter((track: any) => track.id),
+            uniqueArtists: Array.from(artistsInPlaylist),
+            images: playlist.images || []
+          };
+
+          // Cache for 24 hours
+          if (redisClient) {
+            try {
+              await redisClient.setEx(cacheKey, 86400, JSON.stringify(details));
+            } catch (error) {
+              console.warn('⚠️ Redis cache write failed:', error);
+            }
+          }
+
+          // Rate limiting delay
+          if (i < selectedPlaylistIds.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 300));
+          }
+        } catch (error: any) {
+          console.error(`❌ Failed to fetch playlist ${playlistId}:`, error.message);
+          continue;
+        }
+      }
+
+      if (details) {
+        playlistDetails.push(details);
+      }
+    }
+
+    console.log(`📍 Phase 3: Generating summaries for ${playlistDetails.length} playlists...`);
+
+    // Phase 3: LLM Summarization for each playlist
+    const finalResults: any[] = [];
+
+    for (const playlist of playlistDetails) {
+      const cacheKey = `playlist:summary:${playlist.id}:${crypto.createHash('md5').update(query.trim().toLowerCase()).digest('hex').substring(0, 8)}`;
+      
+      let summary: any = null;
+
+      // Try cache first
+      if (redisClient) {
+        try {
+          const cachedSummary = await redisClient.get(cacheKey);
+          if (cachedSummary) {
+            summary = JSON.parse(cachedSummary);
+          }
+        } catch (error) {
+          console.warn('⚠️ Redis cache read failed:', error);
+        }
+      }
+
+      // If not cached, generate summary
+      if (!summary) {
+        try {
+          const first30Tracks = playlist.tracks.slice(0, 30);
+          const trackList = first30Tracks.map((track: any, index: number) => 
+            `${index + 1}. "${track.name}" by ${track.artists.map((a: any) => a.name).join(', ')}`
+          ).join('\n');
+
+          const uniqueArtists = playlist.uniqueArtists.slice(0, 20);
+
+          const summaryPrompt = `Playlist: ${playlist.name}
+Tracks: 
+${trackList}
+
+Artists featured: ${uniqueArtists.join(', ')}
+User query: ${query}
+
+Write a 2-3 sentence description explaining:
+1. How this playlist matches the user's request ("${query}")
+2. What makes it unique or interesting
+3. The general mood/style
+
+Also identify key characteristics including:
+- Primary genre (single word/phrase)
+- Mood (single word/phrase) 
+- Instrumentation (array of key instruments if identifiable)
+- Tempo (slow/medium/fast/varied)
+- Decade range (e.g., "2010s-2020s", "1980s", "Various")
+
+Provide a match score (0.0-1.0) indicating how well this playlist matches the user's intent.
+
+Respond with a JSON object containing:
+- summary: your 2-3 sentence description
+- characteristics: object with primaryGenre, mood, instrumentation (array), tempo, decadeRange
+- matchScore: number between 0.0 and 1.0
+- reasoning: brief explanation of the match score`;
+
+          const summaryLLMRequest: LLMRequest = {
+            model: model || 'google/gemini-2.5-flash',
+            messages: [
+              {
+                role: 'system',
+                content: 'You are a music analysis AI that creates engaging summaries of Spotify playlists. Always respond with valid JSON. Focus on being informative yet concise.'
+              },
+              {
+                role: 'user',
+                content: summaryPrompt
+              }
+            ],
+            response_format: { type: 'json_object' },
+            schema: PlaylistSummarizationSchema,
+            temperature: 0.7,
+            max_tokens: 2000,
+            skipValidation: true // Skip intent validation for playlist summarization response
+          };
+
+          let summaryLLMResponse;
+          try {
+            summaryLLMResponse = await llmOrchestrator.complete(summaryLLMRequest);
+          } catch (summaryError: any) {
+            console.error('❌ Primary model failed for summary, attempting fallback:', summaryError.message);
+            // Try with fallback model
+            summaryLLMRequest.model = 'anthropic/claude-3.5-sonnet';
+            try {
+              summaryLLMResponse = await llmOrchestrator.complete(summaryLLMRequest);
+            } catch (summaryFallbackError: any) {
+              console.error('❌ Both models failed for summary, using basic fallback');
+              throw summaryFallbackError; // Let it fall through to the catch block
+            }
+          }
+          
+          const summaryData = JSON.parse(summaryLLMResponse.content);
+          // Try schema parsing, but be lenient
+          const parsed = PlaylistSummarizationSchema.safeParse(summaryData);
+          if (!parsed.success) {
+            console.warn('⚠️ Schema validation failed for summary, using lenient parsing:', parsed.error);
+          }
+
+          summary = {
+            summary: summaryData.summary || `This playlist "${playlist.name}" contains ${playlist.trackCount} tracks.`,
+            characteristics: summaryData.characteristics || {
+              primaryGenre: 'Various',
+              mood: 'Mixed',
+              tempo: 'Varied'
+            },
+            matchScore: typeof summaryData.matchScore === 'number' ? summaryData.matchScore : 0.7,
+            reasoning: summaryData.reasoning || 'Analysis completed'
+          };
+
+          // Cache for 7 days
+          if (redisClient) {
+            try {
+              await redisClient.setEx(cacheKey, 604800, JSON.stringify(summary));
+            } catch (error) {
+              console.warn('⚠️ Redis cache write failed:', error);
+            }
+          }
+        } catch (error: any) {
+          console.error(`❌ Failed to generate summary for ${playlist.id}:`, error.message);
+          // Fallback summary
+          summary = {
+            summary: `This playlist "${playlist.name}" contains ${playlist.trackCount} tracks featuring ${playlist.uniqueArtists.slice(0, 3).join(', ')}${playlist.uniqueArtists.length > 3 ? ' and others' : ''}. ${playlist.description || 'A curated collection of music for your listening pleasure.'}`,
+            characteristics: {
+              primaryGenre: 'Various',
+              mood: 'Mixed',
+              tempo: 'Varied'
+            },
+            matchScore: 0.7,
+            reasoning: 'Fallback analysis'
+          };
+        }
+      }
+
+      // Combine playlist details with summary
+      finalResults.push({
+        id: playlist.id,
+        name: playlist.name,
+        owner: playlist.owner,
+        description: playlist.description,
+        followers: playlist.followers,
+        trackCount: playlist.trackCount,
+        images: playlist.images,
+        uniqueArtists: playlist.uniqueArtists,
+        summary: summary.summary,
+        characteristics: summary.characteristics,
+        matchScore: summary.matchScore,
+        reasoning: summary.reasoning
+      });
+    }
+
+    // Sort by match score (highest first)
+    finalResults.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));
+
+    console.log(`✅ Full workflow complete: ${finalResults.length} enhanced playlists returned`);
+
+    const response: any = {
+      query: query.trim(),
+      playlists: finalResults,
+      totalSearchResults: playlists.length,
+      selectedCount: selectedPlaylistIds.length,
+      finalCount: finalResults.length,
+      phases: {
+        search: '✅ Complete',
+        selection: llmResponse ? '✅ LLM' : '⚠️ Fallback',
+        details: '✅ Complete',
+        summarization: '✅ Complete'
+      }
+    };
+    
+    if (selectionFallbackUsed) {
+      response.fallbackUsed = true;
+      response.originalError = selectionOriginalError;
+    }
+    
+    res.json(response);
+
+  } catch (error: any) {
+    console.error('❌ Error in full playlist discovery workflow:', error);
+    
+    if (error.response?.status === 401) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication failed. Please log in again.'
+      });
+    }
+
+    if (error.response?.status === 429) {
+      return res.status(429).json({
+        success: false,
+        error: 'Rate limit exceeded. Please try again later.'
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to complete playlist discovery workflow'
+    });
+  }
+});
+
+export default router;

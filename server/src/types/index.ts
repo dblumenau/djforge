@@ -71,6 +71,64 @@ export interface AIDiscoveredTrack {
   previewUrl?: string;      // 30-second preview URL from Spotify API
 }
 
+export interface PlaylistDiscoveryRequest {
+  query: string;
+}
+
+export interface SelectedPlaylist {
+  id: string;
+  name: string;
+  owner: string;
+  description: string;
+  trackCount: number;
+  followers?: number;
+  images?: Array<{
+    url: string;
+    width?: number;
+    height?: number;
+  }>;
+}
+
+export interface PlaylistDiscoveryResponse {
+  query?: string;
+  selectedPlaylists?: SelectedPlaylist[];
+  llmReasoning?: string;
+  totalSearchResults?: number;
+  model?: string;
+  provider?: string;
+  fallbackUsed?: boolean;
+  originalError?: string;
+  message?: string;
+  success?: boolean;
+  error?: string;
+}
+
+export interface PlaylistSummarizationRequest {
+  playlistId: string;
+  originalQuery?: string;
+}
+
+export interface PlaylistCharacteristics {
+  primaryGenre?: string;
+  mood?: string;
+  instrumentation?: string[];
+  tempo?: string;
+  decadeRange?: string;
+}
+
+export interface PlaylistSummarizationResponse {
+  playlistId: string;
+  summary: string;
+  characteristics?: PlaylistCharacteristics;
+  matchScore?: number;
+  reasoning?: string;
+  model: string;
+  provider: string;
+  fromCache: boolean;
+  fallbackUsed?: boolean;
+  originalError?: string;
+}
+
 // WebSocket types
 export * from './websocket.types';
 
