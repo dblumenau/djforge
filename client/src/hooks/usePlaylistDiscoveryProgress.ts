@@ -35,29 +35,47 @@ export default function usePlaylistDiscoveryProgress(sessionId: string): Playlis
       }
 
       // Calculate progress percentage based on phase and item numbers
+      // New distribution that better reflects actual work time:
+      // - Searching: 0-5% (very fast, ~1-2 seconds)
+      // - Analyzing: 5-15% (fast LLM selection, ~1-2 seconds)
+      // - Fetching: 15-35% (moderate speed, ~3-5 seconds)
+      // - Summarizing: 35-90% (bulk of the work, 10-30+ seconds)
+      // - Complete: 100%
+      
       let calculatedProgress = 0;
       
       switch (data.phase) {
         case 'searching':
-          calculatedProgress = Math.min(20, data.progress || 0);
+          // Searching phase: 0-5%
+          calculatedProgress = Math.min(5, data.progress || 0);
           break;
         case 'analyzing':
-          calculatedProgress = 20 + Math.min(20, data.progress || 0);
+          // Analyzing phase: 5-15% (10% of progress)
+          calculatedProgress = 5 + Math.min(10, data.progress || 0);
           break;
         case 'fetching':
+          // Fetching phase: 15-35% (20% of progress)
           if (data.itemNumber && data.totalItems) {
-            const phaseProgress = (data.itemNumber / data.totalItems) * 30;
-            calculatedProgress = 40 + phaseProgress;
+            const phaseProgress = (data.itemNumber / data.totalItems) * 20;
+            calculatedProgress = 15 + phaseProgress;
           } else {
-            calculatedProgress = 40 + Math.min(30, data.progress || 0);
+            calculatedProgress = 15 + Math.min(20, data.progress || 0);
           }
           break;
         case 'summarizing':
+          // Summarizing phase: 35-90% (55% of progress - the bulk of the work)
           if (data.itemNumber && data.totalItems) {
-            const phaseProgress = (data.itemNumber / data.totalItems) * 25;
-            calculatedProgress = 70 + phaseProgress;
+            // Check if we're in the finalizing step
+            if (data.metadata?.finalizing) {
+              // Show 90-95% for finalizing
+              calculatedProgress = 90;
+            } else {
+              // Normal summarizing progress (35-90%)
+              const phaseProgress = (data.itemNumber / data.totalItems) * 55;
+              calculatedProgress = 35 + phaseProgress;
+            }
           } else {
-            calculatedProgress = 70 + Math.min(25, data.progress || 0);
+            calculatedProgress = 35 + Math.min(55, data.progress || 0);
           }
           break;
         case 'complete':

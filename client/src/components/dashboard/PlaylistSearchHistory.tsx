@@ -1,11 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, Loader2, AlertCircle, History, Filter } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiEndpoint } from '../../config/api';
 import { authenticatedFetch } from '../../utils/api';
 import PlaylistSearchHistoryCard from './PlaylistSearchHistoryCard';
-import PlaylistDiscoveryCard from './PlaylistDiscoveryCard';
-import { useSpotifyPlayback } from '../../hooks/useSpotifyPlayback';
+import PlaylistResultsGrid from './PlaylistResultsGrid';
 
 interface SearchHistoryMetadata {
   searchHash: string;
@@ -26,6 +25,7 @@ interface DiscoveredPlaylist {
   images: Array<{ url: string; height: number; width: number }>;
   uniqueArtists: number;
   summary?: string;
+  alignmentLevel?: 'strong' | 'moderate' | 'weak' | 'tangential';
   characteristics?: {
     primaryGenre?: string;
     mood?: string;
@@ -46,7 +46,6 @@ interface CachedSearchResult {
 }
 
 export default function PlaylistSearchHistory() {
-  const { playPlaylist, queuePlaylist, isLoading: isPlaybackLoading } = useSpotifyPlayback();
   const [searchHistory, setSearchHistory] = useState<SearchHistoryMetadata[]>([]);
   const [filteredHistory, setFilteredHistory] = useState<SearchHistoryMetadata[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
@@ -127,29 +126,6 @@ export default function PlaylistSearchHistory() {
     }
   };
 
-  const handlePlayPlaylist = useCallback(async (playlistId: string) => {
-    try {
-      await playPlaylist(playlistId);
-    } catch (error) {
-      console.error('Failed to play playlist:', error);
-      toast.error('Failed to play playlist');
-    }
-  }, [playPlaylist]);
-
-  const handleQueuePlaylist = useCallback(async () => {
-    // For queueing, we'll need to get the first track of the playlist
-    // This is a simplified implementation - in a full version you'd queue multiple tracks
-    toast.info('Playlist queuing not yet implemented for cached results');
-  }, []);
-
-  const handleSavePlaylist = useCallback(async () => {
-    toast.info('Playlist saving not yet implemented for cached results');
-  }, []);
-
-  const handleViewTracks = useCallback(() => {
-    toast.info('Track viewing not yet implemented for cached results');
-  }, []);
-
   const clearResults = () => {
     setCachedResult(null);
     setLoadedSearchHash(null);
@@ -175,20 +151,11 @@ export default function PlaylistSearchHistory() {
           </button>
         </div>
 
-        {/* Cached Results Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {cachedResult.playlists.map((playlist) => (
-            <PlaylistDiscoveryCard
-              key={playlist.id}
-              playlist={playlist}
-              onPlay={handlePlayPlaylist}
-              onQueue={handleQueuePlaylist}
-              onSave={handleSavePlaylist}
-              onViewTracks={handleViewTracks}
-              isLoading={isPlaybackLoading(`spotify:playlist:${playlist.id}`)}
-            />
-          ))}
-        </div>
+        {/* Use shared PlaylistResultsGrid component */}
+        <PlaylistResultsGrid 
+          playlists={cachedResult.playlists}
+          emptyMessage="No cached playlists to display"
+        />
       </div>
     );
   }
@@ -198,38 +165,25 @@ export default function PlaylistSearchHistory() {
       {/* Header */}
       <div className="flex items-center gap-3">
         <History className="w-6 h-6 text-green-500" />
-        <div>
-          <h2 className="text-2xl font-bold text-white">Search History</h2>
-          <p className="text-zinc-400">
-            View and reload your past playlist discovery searches
-          </p>
-        </div>
+        <h2 className="text-2xl font-bold text-white">Search History</h2>
       </div>
 
-      {/* Search Filter */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-zinc-400" />
+      {/* Filter Bar */}
+      <div className="relative max-w-md">
+        <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-zinc-400" />
         <input
           type="text"
-          placeholder="Filter searches..."
           value={searchFilter}
           onChange={(e) => setSearchFilter(e.target.value)}
-          className="w-full pl-10 pr-4 py-3 bg-zinc-900/50 border border-zinc-800 rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:border-green-600/50 focus:ring-1 focus:ring-green-600/30"
+          placeholder="Filter search history..."
+          className="w-full pl-10 pr-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
         />
-        {searchFilter && (
-          <button
-            onClick={() => setSearchFilter('')}
-            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-zinc-400 hover:text-white"
-          >
-            ×
-          </button>
-        )}
       </div>
 
       {/* Loading State */}
       {isLoadingHistory && (
-        <div className="text-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-green-500" />
+        <div className="flex flex-col items-center justify-center py-12 space-y-4">
+          <Loader2 className="w-8 h-8 text-green-500 animate-spin" />
           <p className="text-zinc-400">Loading search history...</p>
         </div>
       )}
@@ -237,91 +191,43 @@ export default function PlaylistSearchHistory() {
       {/* Error State */}
       {error && !isLoadingHistory && (
         <div className="max-w-2xl mx-auto">
-          <div className="flex items-center gap-3 p-4 rounded-xl bg-red-900/20 border border-red-800/30">
-            <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
+          <div className="bg-red-900/20 border border-red-700 rounded-lg p-4 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-red-400 font-medium">Error loading search history</p>
-              <p className="text-red-300/80 text-sm mt-1">{error}</p>
+              <h3 className="text-red-400 font-medium">Error</h3>
+              <p className="text-red-300 text-sm mt-1">{error}</p>
             </div>
-            <button
-              onClick={loadSearchHistory}
-              className="ml-auto px-3 py-1 rounded-lg bg-red-800/30 hover:bg-red-800/50 text-red-300 text-sm transition-colors"
-            >
-              Retry
-            </button>
           </div>
+        </div>
+      )}
+
+      {/* History Grid */}
+      {!isLoadingHistory && !error && filteredHistory.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredHistory.map((search, index) => (
+            <PlaylistSearchHistoryCard
+              key={`${search.searchHash}-${search.timestamp}-${index}`}
+              search={search}
+              onClick={() => loadCachedResult(search.searchHash)}
+              isLoading={isLoadingResult && loadedSearchHash === search.searchHash}
+            />
+          ))}
         </div>
       )}
 
       {/* Empty State */}
-      {!isLoadingHistory && !error && filteredHistory.length === 0 && searchHistory.length === 0 && (
-        <div className="text-center py-12">
-          <History className="w-16 h-16 mx-auto mb-4 text-zinc-600" />
-          <h3 className="text-xl font-medium text-white mb-2">No search history</h3>
-          <p className="text-zinc-400 mb-4">
-            Your playlist discovery searches will appear here
-          </p>
-        </div>
-      )}
-
-      {/* No Results for Filter */}
-      {!isLoadingHistory && !error && filteredHistory.length === 0 && searchHistory.length > 0 && searchFilter && (
-        <div className="text-center py-12">
-          <Filter className="w-16 h-16 mx-auto mb-4 text-zinc-600" />
-          <h3 className="text-xl font-medium text-white mb-2">No matching searches</h3>
-          <p className="text-zinc-400 mb-4">
-            No searches match "{searchFilter}"
-          </p>
-          <button
-            onClick={() => setSearchFilter('')}
-            className="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white transition-colors"
-          >
-            Clear Filter
-          </button>
-        </div>
-      )}
-
-      {/* Search History Grid */}
-      {!isLoadingHistory && !error && filteredHistory.length > 0 && (
-        <div className="space-y-4">
-          {/* Results count */}
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-zinc-400">
-              {filteredHistory.length} search{filteredHistory.length !== 1 ? 'es' : ''}
-              {searchFilter && ` matching "${searchFilter}"`}
+      {!isLoadingHistory && !error && filteredHistory.length === 0 && (
+        <div className="text-center py-12 space-y-4">
+          <Search className="w-12 h-12 text-zinc-600 mx-auto" />
+          <div className="space-y-2">
+            <h3 className="text-lg font-semibold text-zinc-400">
+              {searchFilter ? 'No matching searches' : 'No search history'}
+            </h3>
+            <p className="text-zinc-500 max-w-md mx-auto">
+              {searchFilter 
+                ? 'Try adjusting your filter to find more results.'
+                : 'Your playlist discovery searches will appear here for quick access.'}
             </p>
-            {searchFilter && (
-              <button
-                onClick={() => setSearchFilter('')}
-                className="text-sm text-green-400 hover:text-green-300"
-              >
-                Clear filter
-              </button>
-            )}
-          </div>
-
-          {/* History Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredHistory.map((search, index) => (
-              <PlaylistSearchHistoryCard
-                key={`${search.searchHash}-${search.timestamp}-${index}`}
-                search={search}
-                onClick={loadCachedResult}
-                isLoading={isLoadingResult && loadedSearchHash === search.searchHash}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Loading Result State */}
-      {isLoadingResult && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-zinc-900 p-6 rounded-xl border border-zinc-800">
-            <div className="flex items-center gap-3">
-              <Loader2 className="w-5 h-5 animate-spin text-green-500" />
-              <p className="text-white">Loading cached results...</p>
-            </div>
           </div>
         </div>
       )}

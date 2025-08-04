@@ -45,6 +45,7 @@ const PlaylistSelectionSchema = z.object({
 // Simplified schema for playlist summarization to avoid Gemini parsing issues
 const PlaylistSummarizationSchema = z.object({
   summary: z.string(),
+  alignmentLevel: z.enum(['strong', 'moderate', 'weak', 'tangential']).optional(),
   characteristics: z.object({
     primaryGenre: z.string().optional(),
     mood: z.string().optional(),
@@ -1464,14 +1465,17 @@ Respond with a JSON object containing:
 
       // If not cached, generate summary
       if (!summary) {
-        // Progress: Before playlist summary
+        // Progress: Starting playlist summary (emit before starting the work)
         if (musicWS && req.userId) {
+          // For progress calculation, we want to show we're STARTING to work on this playlist
+          // So we use playlistIndex (0-based) to show partial progress
+          const startingProgress = playlistIndex / playlistDetails.length;
           musicWS.emitToUser(req.userId, 'playlistDiscoveryProgress', {
             sessionId: sessionId || 'unknown',
-            step: `AI analyzing music style of '${playlist.name}'...`,
+            step: `AI analyzing music style of '${playlist.name}' (${playlistIndex + 1}/${playlistDetails.length})...`,
             phase: 'summarizing',
             timestamp: Date.now(),
-            itemNumber: playlistIndex + 1,
+            itemNumber: playlistIndex,  // 0-based to show we're starting this one
             totalItems: playlistDetails.length
           });
         }
@@ -1484,32 +1488,58 @@ Respond with a JSON object containing:
 
           const uniqueArtists = playlist.uniqueArtists.slice(0, 20);
 
-          const summaryPrompt = `Playlist: ${playlist.name}
-Tracks: 
+          const summaryPrompt = `Analyze this playlist against the user query: "${query}"
+
+Playlist: ${playlist.name}
+Sample tracks (${tracksForAnalysis.length} shown):
 ${trackList}
 
 Artists featured: ${uniqueArtists.join(', ')}
-User query: ${query}
 
-Write a 2-3 sentence description explaining:
-1. How this playlist matches the user's request ("${query}")
-2. What makes it unique or interesting
-3. The general mood/style
+Provide an HONEST assessment following these rules:
 
-Also identify key characteristics including:
-- Primary genre (single word/phrase)
-- Mood (single word/phrase) 
-- Instrumentation (array of key instruments if identifiable)
-- Tempo (slow/medium/fast/varied)
-- Decade range (e.g., "2010s-2020s", "1980s", "Various")
+STYLE GUIDE - MANDATORY:
+DO:
+- Use measured language: "partially", "mostly", "about half", "roughly 60%"
+- Cite specific evidence: "7 of ${tracksForAnalysis.length} tracks are...", "tracks like X and Y show..."
+- Acknowledge mismatches: "later tracks drift into...", "some tracks don't align..."
 
-Provide a match score (0.0-1.0) indicating how well this playlist matches the user's intent.
+DON'T use these words (BANNED):
+- perfect, perfectly, iconic, legendary, masterpiece, epitomizes
+- amazing, incredible, fantastic, essential, definitive
+- must-have, sultry, cruising, windows-down
 
-Respond with a JSON object containing:
-- summary: your 2-3 sentence description
-- characteristics: object with primaryGenre, mood, instrumentation (array), tempo, decadeRange
-- matchScore: number between 0.0 and 1.0
-- reasoning: brief explanation of the match score`;
+GOOD example: "8 of 10 sampled tracks are 90s hip-hop classics, directly matching the 'old school hip hop' query. The remaining 2 are early 2000s R&B, slightly diluting the old school focus."
+
+BAD example: "This playlist perfectly captures summer vibes with iconic anthems from legendary artists."
+
+ANALYSIS STRUCTURE:
+1. Match Analysis (2-3 sentences with evidence):
+   - What percentage/fraction of tracks align with "${query}"?
+   - Which specific elements match vs don't match?
+   - Reference actual track names or artists as evidence
+
+2. Alignment Level: Choose one: "strong" | "moderate" | "weak" | "tangential"
+
+3. Characteristics:
+   - Primary genre(s)
+   - Mood/energy 
+   - Era focus (decade or range)
+
+Respond with JSON:
+{
+  "summary": "Your evidence-based match analysis",
+  "alignmentLevel": "strong|moderate|weak|tangential",
+  "characteristics": {
+    "primaryGenre": "...",
+    "mood": "...",
+    "instrumentation": [...],
+    "tempo": "slow|medium|fast|varied",
+    "decadeRange": "..."
+  },
+  "matchScore": 0.0-1.0,
+  "reasoning": "Brief explanation of why this score"
+}`;
 
           // Dynamic token allocation for summaries - cap at 1500 for multiple playlists
           const summaryMaxTokens = Math.min(1500, 300 + (validatedRenderLimit * 200));
@@ -1519,7 +1549,7 @@ Respond with a JSON object containing:
             messages: [
               {
                 role: 'system',
-                content: 'You are a music analysis AI that creates engaging summaries of Spotify playlists. Always respond with valid JSON. Focus on being informative yet concise.'
+                content: 'You are an impartial music analyst providing evidence-based assessments. Goal: Explain concisely HOW and WHY a playlist matches (or does not match) the user\'s query. Tone: Analytical, neutral, objective. NO marketing language or superlatives. Output: Valid JSON only.'
               },
               {
                 role: 'user',
@@ -1528,7 +1558,7 @@ Respond with a JSON object containing:
             ],
             response_format: { type: 'json_object' },
             schema: PlaylistSummarizationSchema,
-            temperature: 0.55,  // Slightly lower for more consistent summaries
+            temperature: 0.3,  // Lower temperature for more analytical, less creative responses
             max_tokens: summaryMaxTokens,
             intentType: 'playlist_summarization' // Use dedicated playlist summarization schema
           };
@@ -1562,6 +1592,7 @@ Respond with a JSON object containing:
 
           summary = {
             summary: summaryData.summary || `This playlist "${playlist.name}" contains ${playlist.trackCount} tracks.`,
+            alignmentLevel: summaryData.alignmentLevel || 'moderate',
             characteristics: summaryData.characteristics || {
               primaryGenre: 'Various',
               mood: 'Mixed',
@@ -1652,14 +1683,15 @@ Respond with a JSON object containing:
           console.error(`❌ Failed to generate summary for ${playlist.id}:`, error.message);
           // Fallback summary
           summary = {
-            summary: `This playlist "${playlist.name}" contains ${playlist.trackCount} tracks featuring ${playlist.uniqueArtists.slice(0, 3).join(', ')}${playlist.uniqueArtists.length > 3 ? ' and others' : ''}. ${playlist.description || 'A curated collection of music for your listening pleasure.'}`,
+            summary: `This playlist "${playlist.name}" contains ${playlist.trackCount} tracks featuring ${playlist.uniqueArtists.slice(0, 3).join(', ')}${playlist.uniqueArtists.length > 3 ? ' and others' : ''}. ${playlist.description || 'Unable to analyze detailed track alignment with query.'}`,
+            alignmentLevel: 'moderate',
             characteristics: {
               primaryGenre: 'Various',
               mood: 'Mixed',
               tempo: 'Varied'
             },
-            matchScore: 0.7,
-            reasoning: 'Fallback analysis'
+            matchScore: 0.5,
+            reasoning: 'Fallback analysis - unable to perform detailed assessment'
           };
         }
       }
@@ -1675,6 +1707,7 @@ Respond with a JSON object containing:
         images: playlist.images,
         uniqueArtists: playlist.uniqueArtists,
         summary: summary.summary,
+        alignmentLevel: summary.alignmentLevel,
         characteristics: summary.characteristics,
         matchScore: summary.matchScore,
         reasoning: summary.reasoning
@@ -1685,6 +1718,24 @@ Respond with a JSON object containing:
     finalResults.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));
 
     console.log(`✅ Full workflow complete: ${finalResults.length} enhanced playlists returned`);
+    
+    // Progress: Almost done - finalizing results (90-95%)
+    if (musicWS && req.userId) {
+      musicWS.emitToUser(req.userId, 'playlistDiscoveryProgress', {
+        sessionId: sessionId || 'unknown',
+        step: `Finalizing your ${finalResults.length} best matches...`,
+        phase: 'summarizing',
+        timestamp: Date.now(),
+        itemNumber: playlistDetails.length,  // All playlists processed
+        totalItems: playlistDetails.length,
+        metadata: {
+          finalizing: true
+        }
+      });
+    }
+    
+    // Small delay to show the finalizing step
+    await new Promise(resolve => setTimeout(resolve, 500));
     
     // Progress: Final complete
     if (musicWS && req.userId) {
