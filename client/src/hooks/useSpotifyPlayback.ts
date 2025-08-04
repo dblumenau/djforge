@@ -114,10 +114,50 @@ export function useSpotifyPlayback() {
     }
   }, [loadingItems]);
 
+  const queuePlaylist = useCallback(async (uriOrId: string, name?: string) => {
+    if (loadingItems.has(uriOrId)) return;
+    
+    // Convert ID to full Spotify URI if needed
+    const uri = uriOrId.startsWith('spotify:') 
+      ? uriOrId 
+      : `spotify:playlist:${uriOrId}`;
+    
+    setLoadingItems(prev => new Set(prev).add(uriOrId));
+    
+    try {
+      const response = await authenticatedFetch(apiEndpoint('/api/direct/playlist-uri'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          uri,
+          action: 'queue',
+          name
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to queue playlist');
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error queueing playlist:', error);
+      throw error;
+    } finally {
+      setLoadingItems(prev => {
+        const next = new Set(prev);
+        next.delete(uriOrId);
+        return next;
+      });
+    }
+  }, [loadingItems]);
+
   return {
     playTrack,
     queueTrack,
     playPlaylist,
+    queuePlaylist,
     isLoading
   };
 }

@@ -24,6 +24,8 @@ interface PlaylistDiscoveryCardProps {
   onSave: (playlistId: string) => void;
   onViewTracks: (playlistId: string) => void;
   isLoading?: boolean;
+  isSaved?: boolean;
+  isSaving?: boolean;
 }
 
 export default function PlaylistDiscoveryCard({ 
@@ -32,7 +34,9 @@ export default function PlaylistDiscoveryCard({
   onQueue, 
   onSave, 
   onViewTracks,
-  isLoading = false 
+  isLoading = false,
+  isSaved = false,
+  isSaving = false
 }: PlaylistDiscoveryCardProps) {
   
   // Format follower count with K/M suffixes
@@ -196,12 +200,16 @@ export default function PlaylistDiscoveryCard({
           
           <button
             onClick={() => onSave(playlist.id)}
-            disabled={isLoading}
-            className="flex items-center justify-center gap-2 px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white text-sm rounded-md transition-colors disabled:opacity-60"
-            aria-label={`Save ${playlist.name} to library`}
+            disabled={isLoading || isSaving}
+            className={`flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-md transition-all disabled:opacity-60 ${
+              isSaved 
+                ? 'bg-green-600/20 hover:bg-red-600/20 text-green-400 hover:text-red-400' 
+                : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white'
+            }`}
+            aria-label={isSaved ? `Remove ${playlist.name} from library` : `Save ${playlist.name} to library`}
           >
-            <Heart className="w-4 h-4" />
-            Save
+            <Heart className={`w-4 h-4 ${isSaved ? 'fill-current' : ''}`} />
+            {isSaving ? 'Saving...' : (isSaved ? 'Saved' : 'Save')}
           </button>
           
           <button

@@ -272,10 +272,10 @@ directActionRouter.post('/playlist-uri', requireValidTokens, async (req: any, re
   const { uri, action = 'play', name } = req.body;
   
   // Validate input
-  if (!uri || !action || !['play'].includes(action)) {
+  if (!uri || !action || !['play', 'queue'].includes(action)) {
     return res.status(400).json({
       success: false,
-      error: 'Invalid request. Required: uri, action (currently only "play" supported)'
+      error: 'Invalid request. Required: uri, action (play/queue)'
     });
   }
 
@@ -310,6 +310,14 @@ directActionRouter.post('/playlist-uri', requireValidTokens, async (req: any, re
         response = playResult.success 
           ? `Playing playlist: ${name || 'Unknown playlist'}` 
           : playResult.message || 'Failed to play playlist';
+      } else if (action === 'queue') {
+        // Extract playlist ID from URI (format: spotify:playlist:ID)
+        const playlistId = uri.split(':').pop();
+        const queueResult = await spotifyControl.queuePlaylist(playlistId);
+        success = queueResult.success;
+        response = queueResult.success 
+          ? queueResult.message || `Queued tracks from playlist: ${name || 'Unknown playlist'}`
+          : queueResult.message || 'Failed to queue playlist';
       }
     } catch (error: any) {
       success = false;

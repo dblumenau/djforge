@@ -20,10 +20,12 @@ const REQUIRED_SCOPES = [
 export class SpotifyAuthService {
   private sessionManager: SessionManager;
   private redis: any;
+  private refreshPromises: Map<string, Promise<{ accessToken: string; expiresIn: number }>>;
   
   constructor(redisClient: any) {
     this.redis = redisClient;
     this.sessionManager = new SessionManager(redisClient);
+    this.refreshPromises = new Map();
   }
   
   // OAuth flow initiation
@@ -113,32 +115,31 @@ export class SpotifyAuthService {
     accessToken: string;
     expiresIn: number;
   }> {
-    const lockKey = `session:${sessionId}:refresh-lock`;
-    
-    // Try to acquire lock
-    const lock = await this.redis.set(lockKey, '1', 'NX', 'EX', 10);
-    if (!lock) {
-      // Another refresh in progress, wait and then check if tokens were refreshed
-      await new Promise(resolve => setTimeout(resolve, 200));
-      
-      // Check if the other process already refreshed the tokens
-      const tokens = await this.sessionManager.getTokens(sessionId);
-      if (!tokens) {
-        throw new Error('Session not found');
-      }
-      
-      // If tokens are still valid, return them
-      if (tokens.expires_at > Date.now() + 300000) {
-        return {
-          accessToken: tokens.access_token,
-          expiresIn: Math.floor((tokens.expires_at - Date.now()) / 1000)
-        };
-      }
-      
-      // Otherwise, try again
-      return this.refreshAccessToken(sessionId, retryCount);
+    // Check if there's already a refresh in progress for this session
+    const existingPromise = this.refreshPromises.get(sessionId);
+    if (existingPromise) {
+      console.log('🔒 Reusing existing refresh promise for session:', sessionId);
+      return existingPromise;
     }
     
+    // Create a new refresh promise
+    const refreshPromise = this._performTokenRefresh(sessionId, retryCount);
+    
+    // Store it for deduplication
+    this.refreshPromises.set(sessionId, refreshPromise);
+    
+    // Clean up after completion (success or failure)
+    refreshPromise.finally(() => {
+      this.refreshPromises.delete(sessionId);
+    });
+    
+    return refreshPromise;
+  }
+  
+  private async _performTokenRefresh(sessionId: string, retryCount: number = 0): Promise<{
+    accessToken: string;
+    expiresIn: number;
+  }> {
     let tokens: any;
     try {
       tokens = await this.sessionManager.getTokens(sessionId);
@@ -276,14 +277,11 @@ export class SpotifyAuthService {
             const delayMs = Math.min(1000 * Math.pow(2, retryCount), 16000); // 1s, 2s, 4s, 8s, 16s, 16s
             console.log(`🔁 Retrying token refresh in ${delayMs}ms (attempt ${retryCount + 1}/${maxRetries})...`);
             
-            // Release the lock before retrying
-            await this.redis.del(lockKey);
-            
             // Wait with exponential backoff
             await new Promise(resolve => setTimeout(resolve, delayMs));
             
-            // Retry the refresh
-            return this.refreshAccessToken(sessionId, retryCount + 1);
+            // Retry the refresh (will create a new promise)
+            return this._performTokenRefresh(sessionId, retryCount + 1);
           }
           
           // Max retries reached
@@ -295,9 +293,8 @@ export class SpotifyAuthService {
         if (retryCount < 6) {
           const delayMs = Math.min(1000 * Math.pow(2, retryCount), 16000);
           console.log(`🔁 Retrying after Spotify 500 error in ${delayMs}ms (attempt ${retryCount + 1}/6)...`);
-          await this.redis.del(lockKey);
           await new Promise(resolve => setTimeout(resolve, delayMs));
-          return this.refreshAccessToken(sessionId, retryCount + 1);
+          return this._performTokenRefresh(sessionId, retryCount + 1);
         }
         
         throw new Error('Spotify service temporarily unavailable. Please try again later.');
@@ -331,8 +328,6 @@ export class SpotifyAuthService {
       });
       
       throw error;
-    } finally {
-      await this.redis.del(lockKey);
     }
   }
   

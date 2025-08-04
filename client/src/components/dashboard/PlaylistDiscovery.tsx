@@ -48,7 +48,7 @@ interface PlaylistDiscoveryResponse {
 
 
 export default function PlaylistDiscovery() {
-  const { playPlaylist, playTrack, queueTrack, isLoading: isPlaybackLoading } = useSpotifyPlayback();
+  const { playPlaylist, queuePlaylist, playTrack, queueTrack, isLoading: isPlaybackLoading } = useSpotifyPlayback();
   const [query, setQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<DiscoveredPlaylist[]>([]);
@@ -59,6 +59,8 @@ export default function PlaylistDiscovery() {
   const [selectedModel, setSelectedModel] = useState<string>(() => {
     return localStorage.getItem('llmModel') || 'google/gemini-2.5-flash';
   });
+  const [savedPlaylists, setSavedPlaylists] = useState<Set<string>>(new Set());
+  const [savingPlaylists, setSavingPlaylists] = useState<Set<string>>(new Set());
 
   // Slider controls state
   const [playlistLimit, setPlaylistLimit] = useState(20);
@@ -156,8 +158,14 @@ export default function PlaylistDiscovery() {
       const spotifyUri = `spotify:playlist:${playlistId}`;
       
       await playPlaylist(spotifyUri, playlist?.name);
+      toast.success(`Now playing: ${playlist?.name || 'playlist'}`, {
+        description: `${playlist?.trackCount || 0} tracks`
+      });
     } catch (error) {
       console.error('❌ Failed to play playlist:', error);
+      toast.error('Failed to play playlist', {
+        description: 'Please try again or check your Spotify connection'
+      });
     }
   }, [results, playPlaylist]);
 
@@ -165,43 +173,86 @@ export default function PlaylistDiscovery() {
     try {
       console.log(`➕ Adding playlist to queue: ${playlistId}`);
       
-      // For now, log the action - full queue implementation would require additional backend support
       const playlist = results.find(p => p.id === playlistId);
-      console.log(`Queue playlist "${playlist?.name}" - Backend implementation needed`);
+      const spotifyUri = `spotify:playlist:${playlistId}`;
       
-      // TODO: Implement playlist queueing in backend
-      alert('Playlist queuing coming soon! For now, use "Play Now" to start the playlist.');
-    } catch (error) {
+      const result = await queuePlaylist(spotifyUri, playlist?.name);
+      
+      if (result.success) {
+        toast.success('Added to queue', {
+          description: result.response || `Queued tracks from "${playlist?.name}"`
+        });
+      } else {
+        throw new Error(result.error || 'Failed to queue playlist');
+      }
+    } catch (error: any) {
       console.error('❌ Failed to queue playlist:', error);
+      toast.error('Failed to queue playlist', {
+        description: error.message || 'Please try again'
+      });
     }
-  }, [results]);
+  }, [results, queuePlaylist]);
 
   const handleSave = useCallback(async (playlistId: string) => {
+    // Prevent duplicate requests
+    if (savingPlaylists.has(playlistId)) return;
+    
     try {
-      console.log(`💾 Saving playlist: ${playlistId}`);
+      setSavingPlaylists(prev => new Set(prev).add(playlistId));
       
-      // Use direct Spotify API call to follow the playlist
+      const playlist = results.find(p => p.id === playlistId);
+      const isCurrentlySaved = savedPlaylists.has(playlistId);
+      
+      console.log(`${isCurrentlySaved ? '❌ Unfollowing' : '💾 Saving'} playlist: ${playlistId}`);
+      
+      // Use direct Spotify API call to follow/unfollow the playlist
       const response = await authenticatedFetch(`https://api.spotify.com/v1/playlists/${playlistId}/followers`, {
-        method: 'PUT',
+        method: isCurrentlySaved ? 'DELETE' : 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ public: false })
       });
 
       if (!response.ok) {
-        throw new Error('Failed to follow playlist');
+        throw new Error(`Failed to ${isCurrentlySaved ? 'unfollow' : 'follow'} playlist`);
       }
 
-      const playlist = results.find(p => p.id === playlistId);
-      console.log(`✅ Followed playlist "${playlist?.name}"`);
+      // Update saved state
+      setSavedPlaylists(prev => {
+        const next = new Set(prev);
+        if (isCurrentlySaved) {
+          next.delete(playlistId);
+        } else {
+          next.add(playlistId);
+        }
+        return next;
+      });
       
       // Show success feedback
-      alert(`Followed "${playlist?.name}"! It will now appear in your library.`);
+      if (isCurrentlySaved) {
+        toast.success('Playlist removed from library', {
+          description: `"${playlist?.name}" has been removed from your Spotify library`,
+          duration: 3000
+        });
+      } else {
+        toast.success('Playlist saved to library', {
+          description: `"${playlist?.name}" has been added to your Spotify library`,
+          duration: 3000
+        });
+      }
       
     } catch (error) {
-      console.error('❌ Failed to follow playlist:', error);
-      alert('Failed to follow playlist. Please try again.');
+      console.error(`❌ Failed to ${savedPlaylists.has(playlistId) ? 'unfollow' : 'follow'} playlist:`, error);
+      toast.error(`Failed to ${savedPlaylists.has(playlistId) ? 'remove' : 'save'} playlist`, {
+        description: 'Please try again or check your connection'
+      });
+    } finally {
+      setSavingPlaylists(prev => {
+        const next = new Set(prev);
+        next.delete(playlistId);
+        return next;
+      });
     }
-  }, [results]);
+  }, [results, savedPlaylists, savingPlaylists]);
 
   const handleViewTracks = useCallback((playlistId: string) => {
     console.log(`👁️ View tracks for playlist: ${playlistId}`);
@@ -388,6 +439,8 @@ export default function PlaylistDiscovery() {
                 onSave={handleSave}
                 onViewTracks={handleViewTracks}
                 isLoading={isPlaybackLoading(`spotify:playlist:${playlist.id}`)}
+                isSaved={savedPlaylists.has(playlist.id)}
+                isSaving={savingPlaylists.has(playlist.id)}
               />
             ))}
           </div>

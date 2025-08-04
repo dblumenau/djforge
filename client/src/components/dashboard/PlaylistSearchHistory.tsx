@@ -46,7 +46,7 @@ interface CachedSearchResult {
 }
 
 export default function PlaylistSearchHistory() {
-  const { playPlaylist, isLoading: isPlaybackLoading } = useSpotifyPlayback();
+  const { playPlaylist, queuePlaylist, isLoading: isPlaybackLoading } = useSpotifyPlayback();
   const [searchHistory, setSearchHistory] = useState<SearchHistoryMetadata[]>([]);
   const [filteredHistory, setFilteredHistory] = useState<SearchHistoryMetadata[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
