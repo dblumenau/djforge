@@ -38,7 +38,7 @@ router.use(requireValidTokens);
 
 // Simplified schema for playlist selection to avoid Gemini parsing issues
 const PlaylistSelectionSchema = z.object({
-  selectedPlaylistIds: z.array(z.string()).max(10),
+  selectedPlaylistIds: z.array(z.string()).max(50), // Allow more IDs based on renderLimit
   reasoning: z.string().optional()
 });
 
@@ -154,7 +154,7 @@ Respond with a JSON object containing:
 - selectedPlaylistIds: array of ONLY the playlist ID strings (e.g., ["035OfvPcp5PUAAogsLxsbM", "7M65Xoo7Mr0XOrF5Dpd4CX"]) without any numbers or prefixes
 - reasoning: brief explanation of why these were chosen (optional)`;
 
-    const llmRequest: LLMRequest = {
+    const llmRequest: LLMRequest & { intentType?: string } = {
       model: model || 'google/gemini-2.5-flash',
       messages: [
         {
@@ -170,7 +170,7 @@ Respond with a JSON object containing:
       schema: PlaylistSelectionSchema,
       temperature: 0.4, // Lower temperature for more consistent selections
       max_tokens: 5000,
-      skipValidation: true // Skip intent validation for playlist selection response
+      intentType: 'playlist_selection' // Use dedicated playlist selection schema
     };
 
     let llmResponse;
@@ -801,7 +801,7 @@ Respond with a JSON object containing:
 - matchScore: number between 0.0 and 1.0
 - reasoning: brief explanation of the match score`;
 
-    const llmRequest: LLMRequest = {
+    const llmRequest: LLMRequest & { intentType?: string } = {
       model: model || 'google/gemini-2.5-flash',
       messages: [
         {
@@ -817,7 +817,7 @@ Respond with a JSON object containing:
       schema: PlaylistSummarizationSchema,
       temperature: 0.4, // Slightly creative but consistent
       max_tokens: 5000,
-      skipValidation: true // Skip intent validation for playlist summarization response
+      intentType: 'playlist_summarization' // Use dedicated playlist summarization schema
     };
 
     let llmResponse;
@@ -1048,7 +1048,12 @@ Respond with a JSON object containing:
  */
 router.post('/full-search', async (req: Request & { tokens?: any; userId?: string }, res: Response) => {
   try {
-    const { query, model }: PlaylistDiscoveryRequest & { model?: string } = req.body;
+    const { query, model, playlistLimit = 40, trackSampleSize = 30, renderLimit = 10 }: PlaylistDiscoveryRequest & { 
+      model?: string; 
+      playlistLimit?: number; 
+      trackSampleSize?: number; 
+      renderLimit?: number; 
+    } = req.body;
 
     // Validate query
     if (!query || typeof query !== 'string' || !query.trim()) {
@@ -1058,7 +1063,12 @@ router.post('/full-search', async (req: Request & { tokens?: any; userId?: strin
       });
     }
 
-    console.log(`🚀 Full Playlist Discovery Workflow: "${query}"`);
+    // Validate and sanitize parameters
+    const validatedPlaylistLimit = Math.min(Math.max(parseInt(String(playlistLimit), 10) || 40, 1), 100);
+    const validatedTrackSampleSize = Math.min(Math.max(parseInt(String(trackSampleSize), 10) || 30, 10), 100);
+    const validatedRenderLimit = Math.min(Math.max(parseInt(String(renderLimit), 10) || 10, 1), 50);
+
+    console.log(`🚀 Full Playlist Discovery Workflow: "${query}" (playlistLimit: ${validatedPlaylistLimit}, trackSampleSize: ${validatedTrackSampleSize}, renderLimit: ${validatedRenderLimit})`);
 
     // Get tokens from requireValidTokens middleware
     const tokens = req.tokens;
@@ -1091,7 +1101,7 @@ router.post('/full-search', async (req: Request & { tokens?: any; userId?: strin
     }
     
     const searchStart = Date.now();
-    const searchResults = await spotifyApi.searchPlaylists(query.trim(), 40, 0);
+    const searchResults = await spotifyApi.searchPlaylists(query.trim(), validatedPlaylistLimit, 0);
     const playlists = searchResults.playlists?.items || [];
     const searchTime = Date.now() - searchStart;
     
@@ -1157,7 +1167,7 @@ ${playlistsForAnalysis.map((p: any, i: number) =>
    Public: ${p.isPublic}
 `).join('\n')}
 
-Analyze these playlists and select up to 10 that best match the user's intent: "${query}"
+Analyze these playlists and select up to ${validatedRenderLimit} that best match the user's intent: "${query}"
 
 Consider:
 - Name relevance to the query
@@ -1166,15 +1176,15 @@ Consider:
 - Follower count as a quality/popularity signal
 - Owner credibility (verified accounts or high follower counts often indicate quality)
 
-Return between 5-10 playlist IDs that best match the query.
+Return between ${Math.min(validatedRenderLimit, 5)}-${validatedRenderLimit} playlist IDs that best match the query.
 Include more playlists to provide variety and fallback options.
-Focus on quality but aim for at least 8-10 good matches when available.
+Focus on quality but aim for at least ${Math.min(validatedRenderLimit, 8)} good matches when available.
 
 Respond with a JSON object containing:
 - selectedPlaylistIds: array of ONLY the playlist ID strings (e.g., ["035OfvPcp5PUAAogsLxsbM", "7M65Xoo7Mr0XOrF5Dpd4CX"]) without any numbers or prefixes
 - reasoning: brief explanation of why these were chosen (optional)`;
 
-    const llmRequest: LLMRequest = {
+    const llmRequest: LLMRequest & { intentType?: string } = {
       model: model || 'google/gemini-2.5-flash',
       messages: [
         {
@@ -1190,7 +1200,7 @@ Respond with a JSON object containing:
       schema: PlaylistSelectionSchema,
       temperature: 0.3,
       max_tokens: 1000,
-      skipValidation: true // Skip intent validation for playlist selection response
+      intentType: 'playlist_selection' // Use dedicated playlist selection schema
     };
 
     let llmResponse;
@@ -1226,7 +1236,7 @@ Respond with a JSON object containing:
       } else {
         console.warn('⚠️ Schema validation failed for selection, extracting IDs:', parsed.error);
         if (selectionData.selectedPlaylistIds && Array.isArray(selectionData.selectedPlaylistIds)) {
-          selectedPlaylistIds = selectionData.selectedPlaylistIds.slice(0, 10);
+          selectedPlaylistIds = selectionData.selectedPlaylistIds.slice(0, validatedRenderLimit);
         } else {
           throw new Error('No valid selectedPlaylistIds found in response');
         }
@@ -1246,17 +1256,17 @@ Respond with a JSON object containing:
         if (parsed.success) {
           selectedPlaylistIds = selectionData.selectedPlaylistIds;
         } else if (selectionData.selectedPlaylistIds && Array.isArray(selectionData.selectedPlaylistIds)) {
-          selectedPlaylistIds = selectionData.selectedPlaylistIds.slice(0, 10);
+          selectedPlaylistIds = selectionData.selectedPlaylistIds.slice(0, validatedRenderLimit);
         } else {
           throw new Error('Fallback model also failed to provide valid playlist IDs');
         }
         selectionFallbackUsed = true;
       } catch (fallbackError: any) {
         console.error('❌ Both primary and fallback models failed for selection, using popularity fallback:', fallbackError);
-        // Final fallback: Use top 10 by follower count
+        // Final fallback: Use top playlists by follower count (up to renderLimit)
         selectedPlaylistIds = playlistsForAnalysis
           .sort((a: any, b: any) => (b.followers || 0) - (a.followers || 0))
-          .slice(0, 10)
+          .slice(0, validatedRenderLimit)
           .map((p: any) => p.id);
         selectionFallbackUsed = true;
         selectionOriginalError = `Primary: ${selectionOriginalError}. Fallback: ${fallbackError.message}`;
@@ -1367,7 +1377,7 @@ Respond with a JSON object containing:
       if (!details) {
         try {
           const playlist = await spotifyApi.getPlaylist(playlistId);
-          const tracksBatch = await spotifyApi.getPlaylistTracks(playlistId, 30, 0);
+          const tracksBatch = await spotifyApi.getPlaylistTracks(playlistId, validatedTrackSampleSize, 0);
           const tracks = tracksBatch.items || [];
 
           const artistsInPlaylist = new Set<string>();
@@ -1464,8 +1474,8 @@ Respond with a JSON object containing:
         }
         
         try {
-          const first30Tracks = playlist.tracks.slice(0, 30);
-          const trackList = first30Tracks.map((track: any, index: number) => 
+          const tracksForAnalysis = playlist.tracks.slice(0, validatedTrackSampleSize);
+          const trackList = tracksForAnalysis.map((track: any, index: number) => 
             `${index + 1}. "${track.name}" by ${track.artists.map((a: any) => a.name).join(', ')}`
           ).join('\n');
 
@@ -1498,7 +1508,7 @@ Respond with a JSON object containing:
 - matchScore: number between 0.0 and 1.0
 - reasoning: brief explanation of the match score`;
 
-          const summaryLLMRequest: LLMRequest = {
+          const summaryLLMRequest: LLMRequest & { intentType?: string } = {
             model: model || 'google/gemini-2.5-flash',
             messages: [
               {
@@ -1514,7 +1524,7 @@ Respond with a JSON object containing:
             schema: PlaylistSummarizationSchema,
             temperature: 0.7,
             max_tokens: 2000,
-            skipValidation: true // Skip intent validation for playlist summarization response
+            intentType: 'playlist_summarization' // Use dedicated playlist summarization schema
           };
 
           let summaryLLMResponse;
@@ -1589,7 +1599,7 @@ Respond with a JSON object containing:
                     name: playlist.name,
                     trackCount: playlist.trackCount,
                     uniqueArtistsCount: uniqueArtists.length,
-                    first30Tracks: first30Tracks.map((track: any) => ({
+                    tracksForAnalysis: tracksForAnalysis.map((track: any) => ({
                       name: track.name,
                       artists: track.artists.map((a: any) => a.name).join(', ')
                     }))

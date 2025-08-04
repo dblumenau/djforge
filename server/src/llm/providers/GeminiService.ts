@@ -46,8 +46,10 @@ export class GeminiService {
 
   async complete(request: LLMRequest): Promise<LLMResponse> {
     try {
+      // Check for explicit intent type in request
+      let intentType = (request as any).intentType || this.determineIntentType(request);
+      
       // Determine schema based on request context
-      const intentType = this.determineIntentType(request);
       const schema = getSchemaForIntent(intentType);
       let systemPrompt = getSystemPromptForIntent(intentType);
       

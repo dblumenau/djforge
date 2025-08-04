@@ -514,9 +514,87 @@ Include specific song suggestions when relevant with Spotify-compatible search q
 Always assess your confidence in the information provided.`
 };
 
+// Playlist Discovery Selection Schema - For selecting best playlists from search results
+export const PlaylistSelectionSchema = {
+  type: Type.OBJECT,
+  properties: {
+    selectedPlaylistIds: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.STRING,
+        description: 'Spotify playlist ID'
+      },
+      description: 'Array of selected playlist IDs that best match the user query'
+    },
+    reasoning: {
+      type: Type.STRING,
+      description: 'Brief explanation of why these playlists were selected'
+    }
+  },
+  required: ['selectedPlaylistIds'],
+  propertyOrdering: ['selectedPlaylistIds', 'reasoning']
+};
+
+// Playlist Discovery Summarization Schema - For generating playlist summaries with characteristics
+export const PlaylistSummarizationSchema = {
+  type: Type.OBJECT,
+  properties: {
+    summary: {
+      type: Type.STRING,
+      description: '2-3 sentence description of the playlist'
+    },
+    characteristics: {
+      type: Type.OBJECT,
+      properties: {
+        primaryGenre: {
+          type: Type.STRING,
+          description: 'Primary music genre'
+        },
+        mood: {
+          type: Type.STRING,
+          description: 'Overall mood or vibe'
+        },
+        instrumentation: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.STRING
+          },
+          description: 'Key instruments featured'
+        },
+        tempo: {
+          type: Type.STRING,
+          enum: ['slow', 'medium', 'fast', 'varied'],
+          description: 'Overall tempo'
+        },
+        decadeRange: {
+          type: Type.STRING,
+          description: 'Decade range of music (e.g., "2010s-2020s")'
+        }
+      },
+      required: ['primaryGenre', 'mood', 'tempo']
+    },
+    matchScore: {
+      type: Type.NUMBER,
+      description: 'Match score between 0.0 and 1.0',
+      minimum: 0,
+      maximum: 1
+    },
+    reasoning: {
+      type: Type.STRING,
+      description: 'Brief explanation of the match score'
+    }
+  },
+  required: ['summary', 'characteristics', 'matchScore'],
+  propertyOrdering: ['summary', 'characteristics', 'matchScore', 'reasoning']
+};
+
 // Schema selection helper
 export function getSchemaForIntent(intentType: string) {
   switch (intentType) {
+    case 'playlist_selection':
+      return PlaylistSelectionSchema;
+    case 'playlist_summarization':
+      return PlaylistSummarizationSchema;
     case 'search_enhancement':
       return SpotifySearchEnhancementSchema;
     case 'music_knowledge':
@@ -534,6 +612,10 @@ export function getSchemaForIntent(intentType: string) {
 // Helper to get system prompt for intent
 export function getSystemPromptForIntent(intentType: string): string {
   switch (intentType) {
+    case 'playlist_selection':
+      return 'You are a music curator AI that analyzes playlists and selects the best matches for user queries. Focus on relevance, quality, and variety. Always respond with valid JSON.';
+    case 'playlist_summarization':
+      return 'You are a music analysis AI that creates engaging summaries of Spotify playlists. Focus on being informative yet concise. Identify key characteristics and assess match quality. Always respond with valid JSON.';
     case 'search_enhancement':
       return GEMINI_SYSTEM_PROMPTS.SEARCH_ENHANCER;
     case 'music_knowledge':
