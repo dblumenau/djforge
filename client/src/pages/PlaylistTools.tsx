@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Disc3, Search, History } from 'lucide-react';
+import { Toaster } from '@/components/ui/sonner';
 import PlaylistDiscovery from '../components/dashboard/PlaylistDiscovery';
 import PlaylistSearchHistory from '../components/dashboard/PlaylistSearchHistory';
 import PlaylistSearch from './PlaylistSearch';
@@ -32,6 +33,7 @@ export default function PlaylistTools() {
 
   return (
     <div className="min-h-screen bg-zinc-900 text-white">
+      <Toaster />
       <div className="max-w-7xl mx-auto p-6">
         {/* Header */}
         <div className="mb-8">

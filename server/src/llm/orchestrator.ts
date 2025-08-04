@@ -291,9 +291,16 @@ export class LLMOrchestrator {
           after: { 
             contentType: typeof response.content,
             hasContent: !!response.content,
+            contentLength: response.content?.length || 0,
             model: response.model 
           }
         });
+        
+        // Check if we got an empty response
+        if (!response.content || response.content.trim() === '') {
+          console.error(`❌ Gemini returned empty content for ${model}`);
+          throw new Error('Gemini API returned empty response - triggering fallback');
+        }
         
         // Step 2: Gemini provides native structured output
         if (request.response_format?.type === 'json_object') {
@@ -302,6 +309,17 @@ export class LLMOrchestrator {
             before: 'Gemini native JSON mode',
             after: response.content
           });
+          
+          // Try to parse JSON to ensure it's valid
+          try {
+            const parsed = JSON.parse(response.content);
+            if (!parsed || Object.keys(parsed).length === 0) {
+              throw new Error('Gemini returned empty JSON object');
+            }
+          } catch (parseError) {
+            console.error(`❌ Gemini JSON parsing failed:`, parseError);
+            throw new Error(`Gemini returned invalid JSON: ${parseError}`);
+          }
           
           // Validate structured output (unless skipValidation is set)
           if (!request.skipValidation) {
@@ -327,7 +345,7 @@ export class LLMOrchestrator {
         }
         
         // Log the actual model response
-        console.log(`📤 ${model} response:`, response.content);
+        console.log(`📤 ${model} response:`, response.content?.substring(0, 200) || 'EMPTY');
         
         // Add flow information and enhanced logging data
         return {
