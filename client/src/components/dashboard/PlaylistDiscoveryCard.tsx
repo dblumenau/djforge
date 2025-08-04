@@ -1,4 +1,5 @@
-import { Play, Plus, Heart, Eye, Users } from 'lucide-react';
+import { Play, Plus, Heart, Eye, Users, ChevronDown, ChevronUp } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
 
 interface PlaylistDiscoveryCardProps {
   playlist: {
@@ -38,6 +39,20 @@ export default function PlaylistDiscoveryCard({
   isSaved = false,
   isSaving = false
 }: PlaylistDiscoveryCardProps) {
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+  const descriptionRef = useRef<HTMLDivElement>(null);
+  const [showReadMore, setShowReadMore] = useState(false);
+
+  // Get the description text (prioritize summary over description)
+  const descriptionText = playlist.summary || playlist.description;
+
+  // Check if description needs "Read more" button
+  useEffect(() => {
+    if (descriptionText) {
+      // Simple character count approach - approximately 180 characters fits in 3 lines
+      setShowReadMore(descriptionText.length > 180);
+    }
+  }, [descriptionText]);
   
   // Format follower count with K/M suffixes
   const formatFollowers = (count: number): string => {
@@ -74,9 +89,9 @@ export default function PlaylistDiscoveryCard({
   };
 
   return (
-    <div className={`group relative bg-zinc-900 rounded-lg overflow-hidden hover:bg-zinc-800 transition-all duration-200 hover:shadow-xl ${isLoading ? 'pointer-events-none opacity-75' : ''}`}>
+    <div className={`group relative bg-zinc-900 rounded-lg overflow-hidden hover:bg-zinc-800 transition-all duration-200 hover:shadow-xl h-[550px] md:h-[600px] flex flex-col ${isLoading ? 'pointer-events-none opacity-75' : ''}`}>
       {/* Playlist Cover with Play Overlay */}
-      <div className="relative aspect-square overflow-hidden bg-zinc-800">
+      <div className="relative aspect-square overflow-hidden bg-zinc-800 flex-shrink-0 max-h-60">
         {renderPlaylistImage()}
         
         {/* Play button overlay */}
@@ -119,9 +134,9 @@ export default function PlaylistDiscoveryCard({
       </div>
 
       {/* Content Section */}
-      <div className="p-4 space-y-3">
+      <div className="p-4 flex-1 flex flex-col min-h-0 gap-0">
         {/* Playlist Info */}
-        <div className="space-y-1">
+        <div className="space-y-1 flex-shrink-0 mb-3">
           <h3 className="font-semibold text-white line-clamp-2 group-hover:text-green-400 transition-colors">
             {playlist.name}
           </h3>
@@ -138,17 +153,54 @@ export default function PlaylistDiscoveryCard({
           </div>
         </div>
 
-        {/* LLM Summary */}
-        {playlist.summary && (
-          <div className="text-sm text-zinc-300 leading-relaxed">
-            {playlist.summary}
+        {/* LLM Summary with Expandable Description */}
+        {descriptionText && (
+          <div className="flex-shrink-0 mb-3">
+            <div 
+              ref={descriptionRef}
+              className={`text-sm text-zinc-300 leading-relaxed transition-all duration-300 ${
+                isDescriptionExpanded 
+                  ? 'max-h-24 overflow-y-auto pr-2' 
+                  : 'line-clamp-3'
+              }`}
+              style={isDescriptionExpanded ? {
+                scrollbarWidth: 'thin',
+                scrollbarColor: '#52525b #27272a'
+              } : undefined}
+            >
+              {descriptionText}
+            </div>
+            
+            {/* Read More/Less Button */}
+            {showReadMore && (
+              <button
+                onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                className="flex items-center gap-1 mt-2 text-xs text-zinc-400 hover:text-zinc-300 transition-colors focus:outline-none focus:text-zinc-300"
+                aria-expanded={isDescriptionExpanded}
+                aria-label={isDescriptionExpanded ? 'Show less of description' : 'Show more of description'}
+              >
+                {isDescriptionExpanded ? (
+                  <>
+                    <ChevronUp className="w-3 h-3" />
+                    Show less
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="w-3 h-3" />
+                    Read more
+                  </>
+                )}
+              </button>
+            )}
           </div>
         )}
 
         {/* Characteristics Table */}
         {playlist.characteristics && (
-          <div className="border-t border-zinc-800 pt-3 mt-3">
-            <div className="grid grid-cols-2 gap-y-2 text-sm">
+          <div className="border-t border-zinc-800 pt-3 flex-1 min-h-0 overflow-hidden mb-3">
+            <div className={`grid grid-cols-2 gap-y-2 text-sm h-full overflow-y-auto ${
+              isDescriptionExpanded ? 'max-h-32' : ''
+            }`}>
               {/* Mood */}
               {playlist.characteristics.mood && (
                 <>
@@ -187,7 +239,7 @@ export default function PlaylistDiscoveryCard({
         )}
 
         {/* Action Buttons */}
-        <div className="grid grid-cols-2 gap-2 pt-2">
+        <div className="grid grid-cols-2 gap-2 pt-2 flex-shrink-0 mt-auto min-h-[84px]">
           <button
             onClick={() => onQueue(playlist.id)}
             disabled={isLoading}
