@@ -7,6 +7,7 @@ import { useSpotifyPlayback } from '../../hooks/useSpotifyPlayback';
 import PlaylistDiscoveryCard from './PlaylistDiscoveryCard';
 import PlaylistDetailsModal from './PlaylistDetailsModal';
 import ModelSelector from '../ModelSelector';
+import PlaylistSearchControls from '../playlist-search/PlaylistSearchControls';
 import usePlaylistDiscoveryProgress from '../../hooks/usePlaylistDiscoveryProgress';
 
 interface DiscoveredPlaylist {
@@ -59,6 +60,11 @@ export default function PlaylistDiscovery() {
     return localStorage.getItem('llmModel') || 'google/gemini-2.5-flash';
   });
 
+  // Slider controls state
+  const [playlistLimit, setPlaylistLimit] = useState(20);
+  const [trackSampleSize, setTrackSampleSize] = useState(30);
+  const [renderLimit, setRenderLimit] = useState(3);
+
   const sessionId = localStorage.getItem('spotify_session_id') || '';
   const currentProgress = usePlaylistDiscoveryProgress(sessionId);
 
@@ -84,7 +90,10 @@ export default function PlaylistDiscovery() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           query: searchQuery.trim(),
-          model: selectedModel
+          model: selectedModel,
+          playlistLimit,
+          trackSampleSize,
+          renderLimit
         })
       });
 
@@ -124,7 +133,7 @@ export default function PlaylistDiscovery() {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedModel]);
+  }, [selectedModel, playlistLimit, trackSampleSize, renderLimit]);
 
   const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
@@ -243,11 +252,11 @@ export default function PlaylistDiscovery() {
       </div>
 
       {/* Search Interface */}
-      <div className="max-w-2xl mx-auto space-y-4">
-        {/* Model Selector */}
-        <div className="flex justify-center">
-          <div className="w-full max-w-md">
-            <label className="block text-sm font-medium text-zinc-300 mb-2 text-center">
+      <div className="max-w-4xl mx-auto">
+        <div className="bg-zinc-800/50 border border-zinc-700 rounded-xl p-6 space-y-4">
+          {/* Model Selector */}
+          <div>
+            <label className="block text-sm font-medium text-zinc-300 mb-2">
               AI Model
             </label>
             <ModelSelector
@@ -256,33 +265,47 @@ export default function PlaylistDiscovery() {
               compact={false}
             />
           </div>
+          
+          {/* Divider */}
+          <div className="border-b border-zinc-700/50"></div>
+          
+          {/* Search Input */}
+          <form onSubmit={handleSubmit}>
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-zinc-400" />
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Describe the playlists you're looking for..."
+                disabled={isLoading}
+                className="w-full pl-12 pr-24 py-4 bg-zinc-900/50 border border-zinc-700 rounded-lg text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent disabled:opacity-60 disabled:cursor-not-allowed text-lg transition-all"
+              />
+              <button
+                type="submit"
+                disabled={isLoading || !query.trim()}
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 px-4 py-2 bg-green-600 hover:bg-green-500 disabled:bg-zinc-700 disabled:cursor-not-allowed text-white rounded-md transition-colors font-medium"
+              >
+                {isLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  'Search'
+                )}
+              </button>
+            </div>
+          </form>
+          
+          {/* Slider Controls - now inside the card */}
+          <PlaylistSearchControls
+            playlistLimit={playlistLimit}
+            trackSampleSize={trackSampleSize}
+            renderLimit={renderLimit}
+            onPlaylistLimitChange={setPlaylistLimit}
+            onTrackSampleSizeChange={setTrackSampleSize}
+            onRenderLimitChange={setRenderLimit}
+          />
         </div>
-
-        <form onSubmit={handleSubmit} className="relative">
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-zinc-400" />
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Describe the playlists you're looking for..."
-              disabled={isLoading}
-              className="w-full pl-12 pr-24 py-4 bg-zinc-900 border border-zinc-700 rounded-lg text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent disabled:opacity-60 disabled:cursor-not-allowed text-lg"
-            />
-            <button
-              type="submit"
-              disabled={isLoading || !query.trim()}
-              className="absolute right-2 top-1/2 transform -translate-y-1/2 px-4 py-2 bg-green-600 hover:bg-green-500 disabled:bg-zinc-700 disabled:cursor-not-allowed text-white rounded-md transition-colors font-medium"
-            >
-              {isLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                'Search'
-              )}
-            </button>
-          </div>
-        </form>
       </div>
 
       {/* Loading State */}

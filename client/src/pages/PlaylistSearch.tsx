@@ -3,6 +3,7 @@ import { authenticatedFetch } from '../utils/api';
 import SearchGuide from '../components/playlist-search/SearchGuide';
 import PlaylistCard from '../components/playlist-search/PlaylistCard';
 import PlaylistDetailsModal from '../components/playlist-search/PlaylistDetailsModal';
+import PlaylistSearchControls from '../components/playlist-search/PlaylistSearchControls';
 import type {
   SearchResults,
   PlaylistDetails
@@ -15,6 +16,11 @@ export default function PlaylistSearch() {
   const [error, setError] = useState<string | null>(null);
   const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout | null>(null);
   const [showJson, setShowJson] = useState(false);
+  
+  // Slider controls state
+  const [playlistLimit, setPlaylistLimit] = useState(20);
+  const [trackSampleSize, setTrackSampleSize] = useState(30);
+  const [renderLimit, setRenderLimit] = useState(3);
   
   // Modal state
   const [showModal, setShowModal] = useState(false);
@@ -35,7 +41,7 @@ export default function PlaylistSearch() {
 
     try {
       console.log('Starting playlist search for:', query);
-      const url = `/api/playlist-search?q=${encodeURIComponent(query)}`;
+      const url = `/api/playlist-search?q=${encodeURIComponent(query)}&playlistLimit=${playlistLimit}&renderLimit=${renderLimit}`;
       console.log('Request URL:', url);
       
       let response;
@@ -80,7 +86,7 @@ export default function PlaylistSearch() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [playlistLimit, renderLimit]);
 
   // Handle input change with debouncing
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -100,6 +106,13 @@ export default function PlaylistSearch() {
     setDebounceTimer(newTimer);
   };
 
+  // Re-search when control values change (if we have a query)
+  useEffect(() => {
+    if (searchQuery.trim()) {
+      performSearch(searchQuery);
+    }
+  }, [playlistLimit, renderLimit, performSearch]);
+
   // Cleanup timer on unmount
   useEffect(() => {
     return () => {
@@ -116,7 +129,7 @@ export default function PlaylistSearch() {
     setShowModal(true);
     
     try {
-      const response = await authenticatedFetch(`/api/playlist-search/${playlistId}`);
+      const response = await authenticatedFetch(`/api/playlist-search/${playlistId}?trackSampleSize=${trackSampleSize}`);
       
       if (!response.ok) {
         throw new Error('Failed to fetch playlist details');
@@ -237,6 +250,16 @@ export default function PlaylistSearch() {
           </p>
         </div>
 
+        {/* Search Controls */}
+        <PlaylistSearchControls
+          playlistLimit={playlistLimit}
+          trackSampleSize={trackSampleSize}
+          renderLimit={renderLimit}
+          onPlaylistLimitChange={setPlaylistLimit}
+          onTrackSampleSizeChange={setTrackSampleSize}
+          onRenderLimitChange={setRenderLimit}
+        />
+
         {/* Search Input */}
         <div className="mb-6">
           <div className="relative">
@@ -306,6 +329,7 @@ export default function PlaylistSearch() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {searchResults.playlists.items
                   .filter(playlist => playlist != null)  // Filter out null/undefined items first
+                  .slice(0, renderLimit)  // Apply render limit
                   .map((playlist, index) => (
                     <PlaylistCard 
                       key={playlist.id || `playlist-${index}`}
@@ -323,11 +347,14 @@ export default function PlaylistSearch() {
             )}
 
             {/* Pagination Info */}
-            {searchResults.playlists.total > searchResults.playlists.limit && (
+            {searchResults.playlists.total > 0 && (
               <div className="text-center text-sm text-zinc-500 pt-4">
-                Showing {searchResults.playlists.items.length} of {searchResults.playlists.total.toLocaleString()} results
-                {searchResults.playlists.next && (
-                  <p className="mt-1">Scroll or modify your search to see more results</p>
+                Showing {Math.min(searchResults.playlists.items?.filter(item => item != null).length || 0, renderLimit)} of {searchResults.playlists.total.toLocaleString()} results
+                {renderLimit < (searchResults.playlists.items?.filter(item => item != null).length || 0) && (
+                  <p className="mt-1">Increase render limit to see more results</p>
+                )}
+                {searchResults.playlists.total > searchResults.playlists.limit && (
+                  <p className="mt-1">Increase fetch limit to load more playlists</p>
                 )}
               </div>
             )}

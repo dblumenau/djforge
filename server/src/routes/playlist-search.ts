@@ -9,11 +9,11 @@ router.use(requireValidTokens);
 
 /**
  * Search for playlists on Spotify
- * GET /api/playlist-search?q=search_query&limit=20&offset=0
+ * GET /api/playlist-search?q=search_query&playlistLimit=20&renderLimit=3&offset=0
  */
 router.get('/', async (req: any, res: Response) => {
   try {
-    const { q, limit = '20', offset = '0' } = req.query;
+    const { q, playlistLimit = '20', renderLimit = '3', offset = '0' } = req.query;
 
     // Validate search query
     if (!q || typeof q !== 'string' || !q.trim()) {
@@ -23,11 +23,12 @@ router.get('/', async (req: any, res: Response) => {
       });
     }
 
-    // Parse and validate limit and offset
-    const parsedLimit = Math.min(Math.max(parseInt(limit as string, 10) || 20, 1), 50);
+    // Parse and validate parameters
+    const parsedPlaylistLimit = Math.min(Math.max(parseInt(playlistLimit as string, 10) || 20, 1), 100);
+    const parsedRenderLimit = Math.min(Math.max(parseInt(renderLimit as string, 10) || 3, 1), 10);
     const parsedOffset = Math.max(parseInt(offset as string, 10) || 0, 0);
 
-    console.log(`🔍 Searching playlists: query="${q}", limit=${parsedLimit}, offset=${parsedOffset}`);
+    console.log(`🔍 Searching playlists: query="${q}", playlistLimit=${parsedPlaylistLimit}, renderLimit=${parsedRenderLimit}, offset=${parsedOffset}`);
 
     // Get tokens from requireValidTokens middleware
     const tokens = req.tokens;
@@ -41,8 +42,8 @@ router.get('/', async (req: any, res: Response) => {
       req.tokens = newTokens;
     });
 
-    // Perform the search
-    const searchResults = await spotifyApi.searchPlaylists(q.trim(), parsedLimit, parsedOffset);
+    // Perform the search with playlist limit
+    const searchResults = await spotifyApi.searchPlaylists(q.trim(), parsedPlaylistLimit, parsedOffset);
 
     console.log(`✅ Playlist search completed:`, {
       query: q,
@@ -103,11 +104,12 @@ router.get('/', async (req: any, res: Response) => {
 
 /**
  * Get detailed information about a specific playlist
- * GET /api/playlist-search/:playlistId
+ * GET /api/playlist-search/:playlistId?trackSampleSize=30
  */
 router.get('/:playlistId', async (req: any, res: Response) => {
   try {
     const { playlistId } = req.params;
+    const { trackSampleSize = '30' } = req.query;
 
     if (!playlistId) {
       return res.status(400).json({
@@ -116,7 +118,10 @@ router.get('/:playlistId', async (req: any, res: Response) => {
       });
     }
 
-    console.log(`📋 Fetching playlist details: ${playlistId}`);
+    // Parse and validate trackSampleSize
+    const parsedTrackSampleSize = Math.min(Math.max(parseInt(trackSampleSize as string, 10) || 30, 10), 100);
+
+    console.log(`📋 Fetching playlist details: ${playlistId}, trackSampleSize: ${parsedTrackSampleSize}`);
 
     // Get tokens from requireValidTokens middleware
     const tokens = req.tokens;
@@ -132,6 +137,16 @@ router.get('/:playlistId', async (req: any, res: Response) => {
     // Get playlist details
     const playlist = await spotifyApi.getPlaylist(playlistId);
 
+    // Apply track sample size limit
+    if (playlist.tracks && playlist.tracks.items) {
+      const originalTrackCount = playlist.tracks.items.length;
+      playlist.tracks.items = playlist.tracks.items.slice(0, parsedTrackSampleSize);
+      // Update total to reflect the sampled size
+      playlist.tracks.total = playlist.tracks.items.length;
+      
+      console.log(`🎵 Applied track sampling: ${originalTrackCount} → ${playlist.tracks.items.length} tracks`);
+    }
+
     console.log(`✅ Playlist details fetched:`, {
       id: playlist.id,
       name: playlist.name,
@@ -139,7 +154,8 @@ router.get('/:playlistId', async (req: any, res: Response) => {
       tracks: playlist.tracks?.total,
       descriptionLength: playlist.description?.length || 0,
       public: playlist.public,
-      collaborative: playlist.collaborative
+      collaborative: playlist.collaborative,
+      trackSampleSize: parsedTrackSampleSize
     });
 
     res.json(playlist);

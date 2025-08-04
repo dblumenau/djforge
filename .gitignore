@@ -43,3 +43,8 @@ coverage/
 # Session store
 sessions/
 !sessions/.gitkeep
+
+# Unignore claude.md files and docs directory
+!**/claude.md
+!**/CLAUDE.md
+!docs/

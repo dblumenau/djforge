@@ -1184,6 +1184,9 @@ Respond with a JSON object containing:
 - selectedPlaylistIds: array of ONLY the playlist ID strings (e.g., ["035OfvPcp5PUAAogsLxsbM", "7M65Xoo7Mr0XOrF5Dpd4CX"]) without any numbers or prefixes
 - reasoning: brief explanation of why these were chosen (optional)`;
 
+    // Dynamic token allocation based on number of playlists to select
+    const selectionMaxTokens = Math.min(500, 100 + (validatedRenderLimit * 15));
+    
     const llmRequest: LLMRequest & { intentType?: string } = {
       model: model || 'google/gemini-2.5-flash',
       messages: [
@@ -1199,7 +1202,7 @@ Respond with a JSON object containing:
       response_format: { type: 'json_object' },
       schema: PlaylistSelectionSchema,
       temperature: 0.3,
-      max_tokens: 1000,
+      max_tokens: selectionMaxTokens,
       intentType: 'playlist_selection' // Use dedicated playlist selection schema
     };
 
@@ -1508,6 +1511,9 @@ Respond with a JSON object containing:
 - matchScore: number between 0.0 and 1.0
 - reasoning: brief explanation of the match score`;
 
+          // Dynamic token allocation for summaries - cap at 1500 for multiple playlists
+          const summaryMaxTokens = Math.min(1500, 300 + (validatedRenderLimit * 200));
+          
           const summaryLLMRequest: LLMRequest & { intentType?: string } = {
             model: model || 'google/gemini-2.5-flash',
             messages: [
@@ -1522,8 +1528,8 @@ Respond with a JSON object containing:
             ],
             response_format: { type: 'json_object' },
             schema: PlaylistSummarizationSchema,
-            temperature: 0.7,
-            max_tokens: 2000,
+            temperature: 0.55,  // Slightly lower for more consistent summaries
+            max_tokens: summaryMaxTokens,
             intentType: 'playlist_summarization' // Use dedicated playlist summarization schema
           };
 
