@@ -74,6 +74,32 @@ export class SpotifyWebAPI {
           }
         }
         
+        // Handle 5xx errors (server errors) with retry logic
+        if (error.response?.status >= 500 && error.response?.status < 600 && !originalRequest._retryCount) {
+          originalRequest._retryCount = originalRequest._retryCount || 0;
+          
+          if (originalRequest._retryCount < 3) {
+            originalRequest._retryCount++;
+            const delay = Math.pow(2, originalRequest._retryCount) * 1000; // Exponential backoff: 2s, 4s, 8s
+            
+            console.warn(`⚠️  Got ${error.response.status} from Spotify API, retrying in ${delay}ms (attempt ${originalRequest._retryCount}/3)...`);
+            
+            await new Promise(resolve => setTimeout(resolve, delay));
+            
+            try {
+              const retryResponse = await this.api(originalRequest);
+              console.log(`✅ Retry successful after ${error.response.status} error`);
+              return retryResponse;
+            } catch (retryError: any) {
+              if (originalRequest._retryCount >= 3) {
+                console.error(`❌ All retries failed for ${originalRequest.url}`);
+              }
+              // Continue with retry loop or throw final error
+              error = retryError;
+            }
+          }
+        }
+        
         throw error;
       }
     );

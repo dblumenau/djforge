@@ -198,31 +198,45 @@ export class UserDataService {
       if (cached) return cached;
     }
 
-    const response = await this.spotifyApi.getSavedTracks(limit, offset);
-    const paginatedResponse: PaginatedResponse<SavedTrack> = {
-      items: response.items,
-      total: response.total,
-      limit,
-      offset,
-      next: response.next,
-      previous: response.previous
-    };
+    try {
+      const response = await this.spotifyApi.getSavedTracks(limit, offset);
+      const paginatedResponse: PaginatedResponse<SavedTrack> = {
+        items: response.items,
+        total: response.total,
+        limit,
+        offset,
+        next: response.next,
+        previous: response.previous
+      };
 
-    await this.setCachedData(key, paginatedResponse);
+      await this.setCachedData(key, paginatedResponse);
 
-    // Store track IDs in list for quick access
-    if (offset === 0) {
-      const listKey = this.getKey('saved_tracks_ids');
-      const multi = this.redis.multi();
-      multi.del(listKey);
-      response.items.forEach((item: SavedTrack) => {
-        multi.rPush(listKey, item.track.id);
-      });
-      multi.expire(listKey, this.defaultTTL);
-      await multi.exec();
+      // Store track IDs in list for quick access
+      if (offset === 0) {
+        const listKey = this.getKey('saved_tracks_ids');
+        const multi = this.redis.multi();
+        multi.del(listKey);
+        response.items.forEach((item: SavedTrack) => {
+          multi.rPush(listKey, item.track.id);
+        });
+        multi.expire(listKey, this.defaultTTL);
+        await multi.exec();
+      }
+
+      return paginatedResponse;
+    } catch (error: any) {
+      console.error('❌ Error fetching saved tracks:', error.message);
+      
+      // Return empty result for dashboard to continue working
+      return {
+        items: [],
+        total: 0,
+        limit,
+        offset,
+        next: null,
+        previous: null
+      };
     }
-
-    return paginatedResponse;
   }
 
   // Saved Albums (with pagination)
