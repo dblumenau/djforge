@@ -41,6 +41,12 @@ export interface PlaybackControlsProps {
   onShowQueue?: () => void;
   isMobile?: boolean;
   devicePreference?: string;
+  hideHeaderControls?: boolean;
+}
+
+export interface PlaybackControlsRef {
+  enterFullscreen: () => void;
+  refresh: () => void;
 }
 
 export type ViewMode = 'minimized' | 'normal' | 'fullscreen';

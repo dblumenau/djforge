@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
 import ReactDOM from 'react-dom';
 import { api } from '../utils/api';
 import { useTrackLibrary } from '../hooks/useTrackLibrary';
@@ -14,10 +14,10 @@ import TrackInfo from './playback/TrackInfo';
 import VinylDisplay from './playback/VinylDisplay';
 import MinimizedView from './playback/MinimizedView';
 import FullscreenView from './playback/FullscreenView';
-import { PlaybackState, PlaybackControlsProps } from '../types/playback.types';
+import { PlaybackState, PlaybackControlsProps, PlaybackControlsRef } from '../types/playback.types';
 import { Monitor, Maximize, RefreshCw } from 'lucide-react';
 
-const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue, isMobile = false, devicePreference = 'auto' }) => {
+const PlaybackControls = forwardRef<PlaybackControlsRef, PlaybackControlsProps>(({ onShowQueue, isMobile = false, devicePreference = 'auto', hideHeaderControls = false }, ref) => {
   const [playbackState, setPlaybackState] = useState<PlaybackState>({
     isPlaying: false,
     track: null,
@@ -97,6 +97,27 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue, isMobi
       console.error('[PlaybackControls] Failed to fetch playback state:', error);
     }
   }, [apiCallCount, trackApiCall]);
+
+  // Manual refresh function - defined after fetchPlaybackState
+  const handleManualRefresh = useCallback(async () => {
+    if (isRefreshing) return;
+    
+    setIsRefreshing(true);
+    try {
+      await fetchPlaybackState(true);
+    } finally {
+      // Keep the spinning animation for at least 500ms for visual feedback
+      setTimeout(() => {
+        setIsRefreshing(false);
+      }, 500);
+    }
+  }, [isRefreshing, fetchPlaybackState]);
+
+  // Expose methods via ref
+  useImperativeHandle(ref, () => ({
+    enterFullscreen: () => setViewMode('fullscreen'),
+    refresh: () => handleManualRefresh()
+  }), [handleManualRefresh]);
 
   const { 
     localPosition, 
@@ -190,20 +211,6 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue, isMobi
     fetchPlaybackState();
   }, []);
 
-  // Manual refresh function
-  const handleManualRefresh = async () => {
-    if (isRefreshing) return;
-    
-    setIsRefreshing(true);
-    try {
-      await fetchPlaybackState(true);
-    } finally {
-      // Keep the spinning animation for at least 500ms for visual feedback
-      setTimeout(() => {
-        setIsRefreshing(false);
-      }, 500);
-    }
-  };
 
   // Handle escape key for fullscreen mode
   useEffect(() => {
@@ -381,8 +388,6 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue, isMobi
   const fullscreenModal = viewMode === 'fullscreen' && ReactDOM.createPortal(
     <FullscreenView
       playbackState={playbackState}
-      vinylRotation={vinylRotation}
-      vinylRef={vinylElementRef}
       volume={volume}
       savedStatus={savedStatus}
       libraryLoading={libraryLoading}
@@ -424,108 +429,110 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue, isMobi
           
           {/* Main content with frosted glass effect */}
           <div className="relative bg-black/60 backdrop-blur-sm border border-white/10">
-          {/* Header Bar */}
-          <div 
-            className="flex items-center justify-between p-2"
-          >
-          <div className="flex items-center gap-3">
-            {viewMode === 'minimized' ? (
-              <MinimizedView
-                track={playbackState.track}
-                vinylRotation={vinylRotation}
-                vinylRef={vinylElementRef}
-                wsConnected={wsConnected}
-              />
-            ) : (
-              // When expanded, just show connection status
-              <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${
-                  wsConnected 
-                    ? 'bg-green-500 animate-pulse' 
-                    : 'bg-gray-500'
-                }`} 
-                title={wsConnected ? 'Live updates connected' : 'Live updates disconnected'}
+          {/* Header Bar - conditionally hidden when used in HeaderPlaybackControls */}
+          {!hideHeaderControls && (
+            <div 
+              className="flex items-center justify-between p-2"
+            >
+            <div className="flex items-center gap-3">
+              {viewMode === 'minimized' ? (
+                <MinimizedView
+                  track={playbackState.track}
+                  vinylRotation={vinylRotation}
+                  vinylRef={vinylElementRef}
+                  wsConnected={wsConnected}
                 />
-                <span className="text-xs text-gray-400">
-                  {wsConnected ? 'Live updates connected' : 'Live updates disconnected'}
-                </span>
-              </div>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            {/* Refresh Button */}
-            {viewMode !== 'minimized' && (
-              <button
+              ) : (
+                // When expanded, just show connection status
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${
+                    wsConnected 
+                      ? 'bg-green-500 animate-pulse' 
+                      : 'bg-gray-500'
+                  }`} 
+                  title={wsConnected ? 'Live updates connected' : 'Live updates disconnected'}
+                  />
+                  <span className="text-xs text-gray-400">
+                    {wsConnected ? 'Live updates connected' : 'Live updates disconnected'}
+                  </span>
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {/* Refresh Button */}
+              {viewMode !== 'minimized' && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleManualRefresh();
+                  }}
+                  disabled={isRefreshing}
+                  className="p-1.5 hover:bg-white/10 rounded transition-colors disabled:opacity-50"
+                  title="Refresh playback state"
+                >
+                  <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''} text-gray-400 hover:text-white transition-colors`} />
+                </button>
+              )}
+              
+              {/* Device Selector Button - Integrated dropdown */}
+              {viewMode !== 'minimized' && (
+                <DeviceSelector 
+                  compact={true}
+                  onDeviceChange={() => {
+                    // Device change is handled by DeviceSelector
+                  }}
+                  customTrigger={(onClick: () => void, isOpen: boolean) => (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onClick();
+                      }}
+                      className="p-1.5 hover:bg-white/10 rounded transition-colors"
+                      title="Change playback device"
+                    >
+                      <Monitor className={`w-4 h-4 ${isOpen ? 'text-green-400' : 'text-gray-400'} transition-colors`} />
+                    </button>
+                  )}
+                />
+              )}
+              
+              {/* Fullscreen Button */}
+              {viewMode !== 'minimized' && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setViewMode('fullscreen');
+                  }}
+                  className="p-1.5 hover:bg-white/10 rounded transition-colors"
+                  title="Enter fullscreen"
+                >
+                  <Maximize className="w-4 h-4 text-gray-400" />
+                </button>
+              )}
+              
+              {/* Minimize/Expand Button */}
+              <button 
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleManualRefresh();
-                }}
-                disabled={isRefreshing}
-                className="p-1.5 hover:bg-white/10 rounded transition-colors disabled:opacity-50"
-                title="Refresh playback state"
-              >
-                <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''} text-gray-400 hover:text-white transition-colors`} />
-              </button>
-            )}
-            
-            {/* Device Selector Button - Integrated dropdown */}
-            {viewMode !== 'minimized' && (
-              <DeviceSelector 
-                compact={true}
-                onDeviceChange={() => {
-                  // Device change is handled by DeviceSelector
-                }}
-                customTrigger={(onClick: () => void, isOpen: boolean) => (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onClick();
-                    }}
-                    className="p-1.5 hover:bg-white/10 rounded transition-colors"
-                    title="Change playback device"
-                  >
-                    <Monitor className={`w-4 h-4 ${isOpen ? 'text-green-400' : 'text-gray-400'} transition-colors`} />
-                  </button>
-                )}
-              />
-            )}
-            
-            {/* Fullscreen Button */}
-            {viewMode !== 'minimized' && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setViewMode('fullscreen');
+                  setViewMode(viewMode === 'minimized' ? 'normal' : 'minimized');
                 }}
                 className="p-1.5 hover:bg-white/10 rounded transition-colors"
-                title="Enter fullscreen"
+                title={viewMode === 'minimized' ? 'Expand' : 'Minimize'}
               >
-                <Maximize className="w-4 h-4 text-gray-400" />
+                <svg 
+                  className={`w-4 h-4 text-gray-400 transition-transform ${
+                    viewMode === 'minimized' ? 'rotate-180' : ''
+                  }`} 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
               </button>
-            )}
-            
-            {/* Minimize/Expand Button */}
-            <button 
-              onClick={(e) => {
-                e.stopPropagation();
-                setViewMode(viewMode === 'minimized' ? 'normal' : 'minimized');
-              }}
-              className="p-1.5 hover:bg-white/10 rounded transition-colors"
-              title={viewMode === 'minimized' ? 'Expand' : 'Minimize'}
-            >
-              <svg 
-                className={`w-4 h-4 text-gray-400 transition-transform ${
-                  viewMode === 'minimized' ? 'rotate-180' : ''
-                }`} 
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
+            </div>
           </div>
-        </div>
+          )}
 
       {/* Expanded Content */}
       {viewMode !== 'minimized' && (
@@ -654,6 +661,8 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({ onShowQueue, isMobi
       )}
     </>
   );
-};
+});
+
+PlaybackControls.displayName = 'PlaybackControls';
 
 export default PlaybackControls;

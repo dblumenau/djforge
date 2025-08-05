@@ -1,8 +1,7 @@
 import React, { useEffect } from 'react';
 import ReactDOM from 'react-dom';
-import { X } from 'lucide-react';
+import { X, Music } from 'lucide-react';
 import { PlaybackState } from '../../types/playback.types';
-import VinylDisplay from './VinylDisplay';
 import ControlButtons from './ControlButtons';
 import SecondaryControls from './SecondaryControls';
 import ProgressBar from './ProgressBar';
@@ -10,8 +9,6 @@ import HeartIcon from '../HeartIcon';
 
 interface FullscreenViewProps {
   playbackState: PlaybackState;
-  vinylRotation: number;
-  vinylRef?: React.RefObject<HTMLElement>;
   volume: number;
   savedStatus: Map<string, boolean>;
   libraryLoading: Map<string, boolean>;
@@ -31,8 +28,6 @@ interface FullscreenViewProps {
 
 const FullscreenView: React.FC<FullscreenViewProps> = ({
   playbackState,
-  vinylRotation,
-  vinylRef,
   volume,
   savedStatus,
   libraryLoading,
@@ -64,7 +59,7 @@ const FullscreenView: React.FC<FullscreenViewProps> = ({
   }, [onClose]);
 
   const modal = (
-    <div className="fixed inset-0 z-[90]">
+    <div className="fixed inset-0 z-[90] fullscreen-playback-view">
       {/* Main backdrop - no blur for performance */}
       <div className="absolute inset-0 bg-black/80" />
       
@@ -83,33 +78,71 @@ const FullscreenView: React.FC<FullscreenViewProps> = ({
             {/* Dark backdrop behind everything - no blur */}
             <div className="absolute inset-0 bg-black/40" />
             
-            {/* Center: Large Vinyl as the star */}
-            <div className="relative">
-              {/* Main Vinyl - Even larger and centered */}
-              <div className="relative w-[650px] h-[650px] md:w-[750px] md:h-[750px] lg:w-[850px] lg:h-[850px]">
-                <VinylDisplay
-                  albumArt={playbackState.track.albumArt}
-                  albumName={playbackState.track.album}
-                  rotation={vinylRotation}
-                  vinylRef={vinylRef}
-                  size="xl"
-                  className="w-full h-full"
-                  style={{
-                    boxShadow: '0 0 80px rgba(0, 0, 0, 0.8), 0 0 120px rgba(0, 0, 0, 0.5)'
-                  }}
-                />
+            {/* Center: Large Album Art with Ambient Glow */}
+            <div className="relative p-32">
+              {/* Album Art Container */}
+              <div className="relative w-[500px] h-[500px] md:w-[600px] md:h-[600px] lg:w-[700px] lg:h-[700px]">
+                {playbackState.track.albumArt ? (
+                  <>
+                    {/* Ambient glow layer - blurred album art */}
+                    <div 
+                      className="absolute -inset-20 opacity-60 rounded-3xl"
+                      style={{
+                        background: `url(${playbackState.track.albumArt})`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                        filter: 'blur(100px) saturate(1.5)',
+                        transform: 'scale(1.2)',
+                      }}
+                    />
+                    
+                    {/* Secondary glow for extra depth */}
+                    <div 
+                      className="absolute -inset-10 opacity-40 rounded-3xl"
+                      style={{
+                        background: `url(${playbackState.track.albumArt})`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                        filter: 'blur(50px) saturate(2)',
+                        transform: 'scale(1.1)',
+                      }}
+                    />
+                    
+                    {/* Main album art */}
+                    <img 
+                      src={playbackState.track.albumArt}
+                      alt={playbackState.track.album || 'Album art'}
+                      className="relative z-10 w-full h-full rounded-3xl object-cover"
+                      style={{
+                        boxShadow: '0 20px 80px rgba(0, 0, 0, 0.6), 0 0 120px rgba(0, 0, 0, 0.4)',
+                        // Ensure image fills container completely
+                        objectFit: 'cover',
+                        objectPosition: 'center',
+                        // Slightly scale up to eliminate any edge gaps
+                        transform: 'scale(1.01)'
+                      }}
+                    />
+                  </>
+                ) : (
+                  <div className="relative z-10 w-full h-full rounded-3xl bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center shadow-2xl"
+                       style={{
+                         boxShadow: '0 0 80px rgba(0, 0, 0, 0.8), 0 0 120px rgba(0, 0, 0, 0.5)'
+                       }}>
+                    <Music className="w-48 h-48 text-gray-500" />
+                  </div>
+                )}
               </div>
             </div>
             
             {/* Track info - Top left */}
-            <div className="absolute top-6 left-6 max-w-md">
+            <div className="absolute top-6 left-6 max-w-md z-20">
               <h1 className="text-3xl font-bold text-white mb-1 drop-shadow-lg">{playbackState.track.name}</h1>
               <p className="text-xl text-gray-200 drop-shadow-lg">{playbackState.track.artist}</p>
               <p className="text-lg text-gray-300 drop-shadow-lg">{playbackState.track.album}</p>
             </div>
             
             {/* Compact controls - Bottom right corner */}
-            <div className="absolute bottom-6 right-6 bg-black/70 rounded-2xl p-4 shadow-2xl border border-white/10 max-w-sm overflow-hidden">              
+            <div className="absolute bottom-6 right-6 bg-black/70 rounded-2xl px-16 py-4 shadow-2xl border border-white/10 max-w-2xl overflow-hidden">              
               {/* Content wrapper to ensure everything stays clickable */}
               <div className="relative z-10">
                 {/* Progress bar */}
@@ -173,13 +206,9 @@ const FullscreenView: React.FC<FullscreenViewProps> = ({
           </>
         ) : (
           <div className="text-center">
-            <VinylDisplay
-              albumArt={null}
-              albumName=""
-              rotation={0}
-              size="xl"
-              className="w-32 h-32 mb-4 mx-auto"
-            />
+            <div className="w-32 h-32 mb-4 mx-auto rounded-full bg-gray-800 flex items-center justify-center">
+              <Music className="w-16 h-16 text-gray-600" />
+            </div>
             <p className="text-2xl text-gray-400">No track playing</p>
           </div>
         )}

@@ -4,6 +4,7 @@ import { usePlayback } from '../contexts/PlaybackContext';
 import { useWebPlayer } from '../hooks/useWebPlayer';
 import { api } from '../utils/api';
 import PlaybackControls from './PlaybackControls';
+import { PlaybackControlsRef } from '../types/playback.types';
 import WebPlayerControls from './WebPlayerControls';
 import DeviceSelector from './DeviceSelector';
 
@@ -12,10 +13,12 @@ interface HeaderPlaybackControlsProps {
 }
 
 const HeaderPlaybackControls: React.FC<HeaderPlaybackControlsProps> = ({ className = '' }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true); // Default to expanded
   const [isConnected, setIsConnected] = useState(true); // Track connection status
+  const [isRefreshing, setIsRefreshing] = useState(false); // Track refresh state
   const { devicePreference, showWebPlayer } = usePlayback();
   const dropdownRef = React.useRef<HTMLDivElement>(null);
+  const playbackControlsRef = React.useRef<PlaybackControlsRef>(null);
 
   // Close expanded view when clicking outside or pressing ESC
   useEffect(() => {
@@ -23,7 +26,8 @@ const HeaderPlaybackControls: React.FC<HeaderPlaybackControlsProps> = ({ classNa
       const target = event.target as HTMLElement;
       if (dropdownRef.current && 
           !dropdownRef.current.contains(target) && 
-          !target.closest('.device-selector-dropdown')) {
+          !target.closest('.device-selector-dropdown') &&
+          !target.closest('.fullscreen-playback-view')) {
         setIsExpanded(false);
       }
     };
@@ -74,20 +78,28 @@ const HeaderPlaybackControls: React.FC<HeaderPlaybackControlsProps> = ({ classNa
 
   // Handle refresh playback state
   const handleRefresh = async () => {
-    try {
-      // Trigger a refresh of playback state
-      const response = await api.get('/api/control/current-track');
-      setIsConnected(response.ok);
-    } catch (error) {
-      console.error('Failed to refresh playback state:', error);
-      setIsConnected(false);
+    if (isRefreshing) return;
+    
+    setIsRefreshing(true);
+    
+    if (playbackControlsRef.current) {
+      playbackControlsRef.current.refresh();
     }
+    
+    // Keep the spinning animation for at least 500ms for visual feedback
+    setTimeout(() => {
+      setIsRefreshing(false);
+    }, 500);
   };
 
-  // Handle fullscreen (placeholder for future functionality)
+  // Handle fullscreen
   const handleFullscreen = () => {
-    // Placeholder for future fullscreen functionality
-    console.log('Fullscreen toggle clicked');
+    if (showWebPlayer) {
+      // For web player, we might want to show a message or handle differently
+      console.log('Fullscreen not available for web player');
+    } else if (playbackControlsRef.current) {
+      playbackControlsRef.current.enterFullscreen();
+    }
   };
 
   return (
@@ -119,16 +131,17 @@ const HeaderPlaybackControls: React.FC<HeaderPlaybackControlsProps> = ({ classNa
                 {/* Control buttons */}
                 <button
                   onClick={handleRefresh}
-                  className="p-1 hover:bg-white/10 rounded transition-colors"
+                  disabled={isRefreshing}
+                  className="p-1 hover:bg-white/10 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Refresh playback state"
                 >
-                  <RefreshCw className="w-4 h-4 text-gray-400 hover:text-white" />
+                  <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''} text-gray-400 hover:text-white`} />
                 </button>
                 
                 <button
                   onClick={handleFullscreen}
                   className="p-1 hover:bg-white/10 rounded transition-colors"
-                  title="Fullscreen (coming soon)"
+                  title="Enter fullscreen mode"
                 >
                   <Expand className="w-4 h-4 text-gray-400 hover:text-white" />
                 </button>
@@ -150,8 +163,10 @@ const HeaderPlaybackControls: React.FC<HeaderPlaybackControlsProps> = ({ classNa
               ) : (
                 <div className="[&_.p-6]:p-4 [&_.p-2]:p-3 [&_.gap-6]:gap-4 [&_.mb-6]:mb-4 [&_.space-y-6]:space-y-4">
                   <PlaybackControls 
+                    ref={playbackControlsRef}
                     isMobile={false}
                     devicePreference={devicePreference}
+                    hideHeaderControls={true}
                   />
                 </div>
               )}
