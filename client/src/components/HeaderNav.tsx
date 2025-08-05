@@ -4,7 +4,7 @@ import ModelSelector from './ModelSelector';
 import DeviceSelector from './DeviceSelector';
 import WeatherDisplay from './WeatherDisplay';
 import HeaderPlaybackControls from './HeaderPlaybackControls';
-import { MessageSquare, BarChart3, Target, ClipboardList, RefreshCw, LogOut, MoreVertical, Wifi, Search, Music2 } from 'lucide-react';
+import { MessageSquare, BarChart3, Target, ClipboardList, RefreshCw, LogOut, MoreVertical, Wifi, Music2 } from 'lucide-react';
 
 interface HeaderNavProps {
   onModelChange: (model: string) => void;
@@ -56,16 +56,16 @@ const HeaderNav: React.FC<HeaderNavProps> = ({
               </svg>
             </button>
 
-            {/* Center: Header Playback Controls */}
-            <div className="flex-1 flex px-1">
+            {/* Header Playback Controls - full width on mobile */}
+            <div className="flex-1 px-1">
               <HeaderPlaybackControls />
             </div>
           </div>
 
           {/* Desktop Layout */}
-          <div className="hidden md:flex items-center justify-between w-full">
+          <div className="hidden md:flex items-center justify-between w-full gap-4">
             {/* Left: Logo and Navigation */}
-            <div className="flex items-center gap-8">
+            <div className="flex items-center gap-8 flex-shrink-0">
               <div className="flex items-center gap-3">
                 <img 
                   src="/square_icon.png" 
@@ -120,25 +120,16 @@ const HeaderNav: React.FC<HeaderNavProps> = ({
                   <Target className={`w-4 h-4 ${location.pathname === '/feedback-dashboard' ? 'text-green-500' : ''}`} />
                   Feedback
                 </button>
-                <button 
-                  onClick={() => navigate('/playlist-search')}
-                  className={`hidden lg:flex items-center gap-2 text-sm font-medium transition-all ${
-                    location.pathname === '/playlist-search' 
-                      ? 'text-white' 
-                      : 'text-zinc-400 hover:text-white'
-                  }`}
-                >
-                  <Search className={`w-4 h-4 ${location.pathname === '/playlist-search' ? 'text-green-500' : ''}`} />
-                  Playlist Search
-                </button>
               </nav>
             </div>
 
             {/* Center: Playback Controls */}
-            <HeaderPlaybackControls />
+            <div className="flex justify-center flex-shrink-0">
+              <HeaderPlaybackControls />
+            </div>
 
             {/* Right: Weather and Settings */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 flex-shrink-0">
               <WeatherDisplay compact />
               
               {/* Settings Dropdown */}

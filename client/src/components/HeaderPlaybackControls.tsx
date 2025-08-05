@@ -88,7 +88,7 @@ const HeaderPlaybackControls: React.FC<HeaderPlaybackControlsProps> = ({ classNa
   };
 
   return (
-    <div className={`flex w-full ${className}`}>
+    <div className={`w-full ${className}`}>
       {isExpanded ? (
         // Expanded view - show full controls in a dropdown-style container
         <div className="relative">
@@ -235,75 +235,72 @@ const HeaderCompactView: React.FC<HeaderCompactViewProps> = ({ onExpand }) => {
   };
 
   return (
-    <div 
-      className="flex items-center gap-2 px-2 py-1.5 bg-black/60 backdrop-blur-sm border border-white/10 rounded-lg w-full cursor-pointer hover:bg-black/70 transition-colors"
-      onClick={onExpand}
-      title="Click to expand player"
-    >
-      {/* Mini album art */}
-      {currentTrack?.albumArt ? (
-        <img 
-          src={currentTrack.albumArt} 
-          alt={currentTrack.album || 'Album'}
-          className="w-7 h-7 md:w-8 md:h-8 rounded object-cover flex-shrink-0 shadow-sm"
-        />
-      ) : (
-        <div className="w-7 h-7 md:w-8 md:h-8 rounded bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center flex-shrink-0">
-          <span className="text-xs">🎵</span>
-        </div>
-      )}
-      
-      {/* Track info */}
-      <div className="flex-1 min-w-0">
-        {currentTrack ? (
-          <>
-            <div className="text-sm text-white truncate">
-              {currentTrack.name}
-            </div>
-            <div className="text-xs text-gray-400 truncate">
-              {currentTrack.artists 
-                ? (Array.isArray(currentTrack.artists) 
-                    ? currentTrack.artists.map((a: any) => a.name).join(', ')
-                    : currentTrack.artists)
-                : currentTrack.artist}
-            </div>
-          </>
+    <div className="w-full md:w-auto md:max-w-80">
+      <div 
+        className="relative flex items-center gap-3 px-3 py-1 bg-zinc-900/50 hover:bg-zinc-800/50 rounded-full w-full cursor-pointer transition-all group overflow-hidden"
+        onClick={onExpand}
+        title="Click to expand player"
+      >
+        {/* Mini album art */}
+        {currentTrack?.albumArt ? (
+          <img 
+            src={currentTrack.albumArt} 
+            alt={currentTrack.album || 'Album'}
+            className="w-8 h-8 rounded-full object-cover flex-shrink-0 ring-1 ring-white/10"
+          />
         ) : (
-          <>
-            <div className="text-sm text-white truncate">
-              {showWebPlayer ? 'Web Player' : 'Remote Player'}
-            </div>
-            <div className="text-xs text-gray-400 truncate">
-              No track playing
-            </div>
-          </>
+          <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center flex-shrink-0 ring-1 ring-white/10">
+            <span className="text-xs">🎵</span>
+          </div>
         )}
         
-        {/* Mini progress bar */}
-        <div className="mt-1 h-0.5 bg-white/20 rounded-full overflow-hidden">
-          <div 
-            className="h-full bg-gradient-to-r from-green-400 to-green-500 transition-all duration-300"
-            style={{ width: `${Math.min(progressPercent, 100)}%` }}
-          />
+        {/* Track info - show on all devices */}
+        <div className="flex flex-col min-w-0 flex-1 md:max-w-[200px]">
+          {currentTrack ? (
+            <>
+              <div className="text-xs font-medium text-white truncate">
+                {currentTrack.name}
+              </div>
+              <div className="text-[10px] md:text-xs text-zinc-400 truncate">
+                {currentTrack.artists 
+                  ? (Array.isArray(currentTrack.artists) 
+                      ? currentTrack.artists.map((a: any) => a.name).join(', ')
+                      : currentTrack.artists)
+                  : currentTrack.artist}
+              </div>
+            </>
+          ) : (
+            <div className="text-xs text-zinc-400">
+              No track playing
+            </div>
+          )}
         </div>
-      </div>
-      
-      {/* Mini play/pause button */}
-      <button 
-        onClick={handlePlayPause}
-        className="p-1 hover:bg-white/10 rounded transition-colors text-gray-400 hover:text-white"
-        title={isPlaying ? 'Pause' : 'Play'}
-      >
-        {isPlaying ? (
-          <Pause className="w-3 h-3" />
-        ) : (
-          <Play className="w-3 h-3" />
+        
+        {/* Play/pause button */}
+        <button 
+          onClick={handlePlayPause}
+          className="p-1.5 hover:bg-white/10 rounded-full transition-colors text-zinc-400 hover:text-white"
+          title={isPlaying ? 'Pause' : 'Play'}
+        >
+          {isPlaying ? (
+            <Pause className="w-4 h-4" />
+          ) : (
+            <Play className="w-4 h-4" />
+          )}
+        </button>
+        
+        {/* Expand indicator - subtle on hover */}
+        <ChevronDown className="w-3 h-3 text-zinc-500 group-hover:text-zinc-300 transition-colors" />
+        
+        {/* Progress bar - inside the pill */}
+        {currentTrack && (
+          <div className="absolute bottom-1 left-3 right-3 h-0.5 bg-white/10 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-green-500/70 transition-all duration-300"
+              style={{ width: `${Math.min(progressPercent, 100)}%` }}
+            />
+          </div>
         )}
-      </button>
-      
-      {/* Expand indicator */}
-      <div className="p-1 text-gray-400">
-        <ChevronDown className="w-4 h-4" />
       </div>
     </div>
   );
