@@ -49,8 +49,8 @@ export default function PlaylistDiscoveryCard({
   // Check if description needs "Read more" button
   useEffect(() => {
     if (descriptionText) {
-      // Simple character count approach - approximately 500 characters fits in 6-7 lines
-      setShowReadMore(descriptionText.length > 500);
+      // Simple character count approach - approximately 300 characters fits in 4 lines
+      setShowReadMore(descriptionText.length > 300);
     }
   }, [descriptionText]);
   
@@ -89,9 +89,9 @@ export default function PlaylistDiscoveryCard({
   };
 
   return (
-    <div className={`group relative bg-zinc-900 rounded-lg overflow-hidden hover:bg-zinc-800 transition-all duration-200 hover:shadow-xl h-[850px] md:h-[950px] flex flex-col ${isLoading ? 'pointer-events-none opacity-75' : ''}`}>
+    <div className={`group relative bg-zinc-800/50 border border-zinc-700/50 rounded-lg overflow-hidden hover:shadow-md transition-all duration-200 shadow-sm flex flex-col ${isLoading ? 'pointer-events-none opacity-75' : ''}`}>
       {/* Playlist Cover with Play Overlay */}
-      <div className="relative aspect-square overflow-hidden bg-zinc-800 flex-shrink-0 max-h-60">
+      <div className="relative aspect-square overflow-hidden bg-zinc-800 flex-shrink-0">
         {renderPlaylistImage()}
         
         {/* Play button overlay */}
@@ -160,13 +160,9 @@ export default function PlaylistDiscoveryCard({
               ref={descriptionRef}
               className={`text-sm text-zinc-300 leading-relaxed transition-all duration-300 ${
                 isDescriptionExpanded 
-                  ? 'max-h-48 overflow-y-auto pr-2' 
-                  : 'line-clamp-6'
+                  ? 'max-h-32 overflow-y-auto pr-2 bg-zinc-900/30 outline outline-1 outline-zinc-700/50 rounded-md playlist-description-scroll' 
+                  : 'line-clamp-4'
               }`}
-              style={isDescriptionExpanded ? {
-                scrollbarWidth: 'thin',
-                scrollbarColor: '#52525b #27272a'
-              } : undefined}
             >
               {descriptionText}
             </div>
@@ -198,7 +194,7 @@ export default function PlaylistDiscoveryCard({
         {/* Characteristics Table */}
         {playlist.characteristics && (
           <div className="border-t border-zinc-800 pt-4 flex-1 mb-4">
-            <div className="grid grid-cols-2 gap-y-3 text-sm">
+            <div className="grid grid-cols-2 gap-y-4 gap-x-3 text-sm">
               {/* Mood */}
               {playlist.characteristics.mood && (
                 <>
@@ -241,7 +237,7 @@ export default function PlaylistDiscoveryCard({
           <button
             onClick={() => onQueue(playlist.id)}
             disabled={isLoading}
-            className="flex items-center justify-center gap-2 px-4 py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white text-sm rounded-md transition-colors disabled:opacity-60"
+            className="flex items-center justify-center gap-2 px-4 py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white text-sm font-medium rounded-md transition-colors disabled:opacity-60"
             aria-label={`Add ${playlist.name} to queue`}
           >
             <Plus className="w-4 h-4" />
@@ -251,7 +247,7 @@ export default function PlaylistDiscoveryCard({
           <button
             onClick={() => onSave(playlist.id)}
             disabled={isLoading || isSaving}
-            className={`flex items-center justify-center gap-2 px-4 py-3 text-sm rounded-md transition-all disabled:opacity-60 ${
+            className={`flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium rounded-md transition-all disabled:opacity-60 ${
               isSaved 
                 ? 'bg-green-600/20 hover:bg-red-600/20 text-green-400 hover:text-red-400' 
                 : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white'
@@ -265,7 +261,7 @@ export default function PlaylistDiscoveryCard({
           <button
             onClick={() => onViewTracks(playlist.id)}
             disabled={isLoading}
-            className="col-span-2 flex items-center justify-center gap-2 px-4 py-3 bg-green-600 hover:bg-green-500 text-white text-sm rounded-md transition-colors disabled:opacity-60"
+            className="col-span-2 flex items-center justify-center gap-2 px-4 py-3 bg-green-600 hover:bg-green-500 text-white text-sm font-medium rounded-md transition-colors disabled:opacity-60"
             aria-label={`View tracks in ${playlist.name}`}
           >
             <Eye className="w-4 h-4" />
