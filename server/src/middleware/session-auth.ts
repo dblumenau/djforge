@@ -39,14 +39,33 @@ export async function requireValidTokens(
       });
     }
     
-    // Get current tokens (this handles refresh if needed)
-    const authService = new SpotifyAuthService(redisClient);
-    const { accessToken } = await authService.refreshAccessToken(sessionId);
+    // Get tokens first and check if refresh is needed
     const tokens = await sessionManager.getTokens(sessionId);
-    
+    if (!tokens) {
+      return res.status(401).json({ 
+        error: 'No tokens found',
+        requiresReauth: true 
+      });
+    }
+
+    // Check if token is still valid (5 min buffer) - same logic as in SpotifyAuthService
+    const now = Date.now();
+    const expiresAt = tokens.expires_at;
+    const bufferTime = now + 300000; // 5 minutes from now
+
+    let accessToken = tokens.access_token;
+
+    // Only refresh if actually needed
+    if (expiresAt <= bufferTime) {
+      console.log('🔄 Token expired or expiring soon, refreshing...');
+      const authService = new SpotifyAuthService(redisClient);
+      const refreshResult = await authService.refreshAccessToken(sessionId);
+      accessToken = refreshResult.accessToken;
+    }
+
     req.tokens = {
       access_token: accessToken,
-      refresh_token: tokens!.refresh_token
+      refresh_token: tokens.refresh_token
     };
     req.userId = session.userId;
     
