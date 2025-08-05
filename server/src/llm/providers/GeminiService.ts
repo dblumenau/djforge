@@ -122,6 +122,11 @@ export class GeminiService {
       // Extract content from the response
       const content = this.extractContentFromResponse(response);
       
+      // Check if response was truncated due to token limit
+      if (response?.candidates?.[0]?.finishReason === 'MAX_TOKENS') {
+        throw new Error('Response truncated: Token limit exceeded. The request requires more output tokens than the current limit allows.');
+      }
+      
       // Validate the response
       if (request.response_format?.type === 'json_object') {
         const validationResult = this.validateStructuredOutput(content, request);
@@ -191,7 +196,8 @@ export class GeminiService {
         hasText: !!response?.text,
         hasCandidates: !!response?.candidates,
         candidatesLength: response?.candidates?.length,
-        responseKeys: response ? Object.keys(response) : []
+        responseKeys: response ? Object.keys(response) : [],
+        finishReason: response?.candidates?.[0]?.finishReason
       });
       
       // Check if response has a direct text method (common in @google/genai)
@@ -253,6 +259,12 @@ export class GeminiService {
           console.log('📤 Response appears to be pre-parsed structured output:', content.substring(0, 200));
           return content;
         }
+      }
+      
+      // Special handling for MAX_TOKENS finish reason
+      if (response?.candidates?.[0]?.finishReason === 'MAX_TOKENS') {
+        console.error('❌ Gemini response truncated due to MAX_TOKENS');
+        return '';
       }
       
       console.error('❌ Unexpected Gemini response format. Full response structure:', JSON.stringify(response, null, 2).substring(0, 1000));
