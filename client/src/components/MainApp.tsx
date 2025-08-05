@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import MusicLoader from './MusicLoader';
-import PlaybackControls from './PlaybackControls';
-import WebPlayerControls from './WebPlayerControls';
 import CommandHistorySkeleton from './skeletons/CommandHistorySkeleton';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
@@ -94,86 +92,14 @@ const MainApp: React.FC = () => {
     uiType?: string;
   }>>([]);
   const [commandHistoryLoading, setCommandHistoryLoading] = useState(false);
-  const [devicePreference, setDevicePreference] = useState<string>('auto');
   const [userProfile, setUserProfile] = useState<{ images?: Array<{ url: string }> } | null>(null);
-  const [showWebPlayer, setShowWebPlayer] = useState(false);
   // Note: Access token is now handled internally by the auth service
   
   // Authentication
   const { isAuthenticated, loading: authLoading } = useAuth();
   
-  // Track device preference from localStorage
-  useEffect(() => {
-    const checkDevicePreference = () => {
-      const savedPreference = localStorage.getItem('spotifyDevicePreference') || 'auto';
-      console.log('[MainApp] Checking device preference - saved:', savedPreference);
-      setDevicePreference(savedPreference);
-    };
-    
-    // Check initially
-    checkDevicePreference();
-    
-    // Listen for storage changes (from DeviceSelector in header)
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'spotifyDevicePreference') {
-        console.log('[MainApp] Device preference changed via storage event');
-        checkDevicePreference();
-      }
-    };
-    
-    // Listen for custom device change events (from DeviceSelector in same tab)
-    const handleDeviceChange = (e: CustomEvent) => {
-      console.log('[MainApp] Device changed via custom event:', e.detail);
-      checkDevicePreference();
-    };
-    
-    window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('device-changed', handleDeviceChange as EventListener);
-    window.addEventListener('devicePreferenceChanged', checkDevicePreference);
-    
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('device-changed', handleDeviceChange as EventListener);
-      window.removeEventListener('devicePreferenceChanged', checkDevicePreference);
-    };
-  }, []); // Empty dependency array means this effect only runs once
   
-  // Initialize web player on mount and handle device preference changes
-  useEffect(() => {
-    // Initialize web player on mount (but don't transfer playback)
-    if (isAuthenticated) {
-      console.log('[MainApp] Initializing web player service...');
-      // Import dynamically to avoid circular dependency
-      import('../services/webPlayer.service').then(({ webPlayerService }) => {
-        webPlayerService.initialize().catch(err => {
-          console.error('[MainApp] Failed to initialize web player on mount:', err);
-        });
-      });
-    }
-  }, [isAuthenticated]);
 
-  // Update showWebPlayer based on device preference
-  useEffect(() => {
-    const shouldShowWebPlayer = devicePreference === 'web-player';
-    console.log('[MainApp] Device preference effect:', {
-      devicePreference,
-      shouldShowWebPlayer,
-      currentShowWebPlayer: showWebPlayer
-    });
-    
-    // Force immediate state update
-    setShowWebPlayer(shouldShowWebPlayer);
-    
-    if (!shouldShowWebPlayer) {
-      // Import dynamically to avoid circular dependency
-      import('../services/webPlayer.service').then(({ webPlayerService }) => {
-        if (webPlayerService.isReady()) {
-          console.log('[MainApp] Device preference changed away from web-player, disconnecting...');
-          webPlayerService.disconnect();
-        }
-      });
-    }
-  }, [devicePreference]);
   
   // Extract all track IDs from alternatives and main tracks in command history
   const allTrackIds = commandHistory.reduce((ids: string[], item) => {
@@ -1012,21 +938,6 @@ const MainApp: React.FC = () => {
       <div className="chat-messages">
         {/* Auth errors are now handled by redirect to /landing */}
 
-        {/* Playback Controls or Web Player - Floating on desktop, in menu on mobile */}
-        <div className="hidden md:block fixed top-20 left-1/2 -translate-x-1/2 z-10" style={{ maxWidth: '600px', width: '90%' }}>
-          {showWebPlayer ? (
-            <WebPlayerControls
-              key="web-player-controls"
-              className="w-full"
-            />
-          ) : (
-            <PlaybackControls 
-              key="playback-controls"
-              onShowQueue={() => setShowQueue(true)} 
-              devicePreference={devicePreference}
-            />
-          )}
-        </div>
 
         {/* Messages Content */}
         <div 

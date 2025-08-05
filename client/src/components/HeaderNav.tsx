@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import ModelSelector from './ModelSelector';
 import DeviceSelector from './DeviceSelector';
 import WeatherDisplay from './WeatherDisplay';
+import HeaderPlaybackControls from './HeaderPlaybackControls';
 import { MessageSquare, BarChart3, Target, ClipboardList, RefreshCw, LogOut, MoreVertical, Wifi, Search, Music2 } from 'lucide-react';
 
 interface HeaderNavProps {
@@ -139,6 +140,9 @@ const HeaderNav: React.FC<HeaderNavProps> = ({
                 </button>
               </nav>
             </div>
+
+            {/* Center: Playback Controls */}
+            <HeaderPlaybackControls />
 
             {/* Right: Weather and Settings */}
             <div className="flex items-center gap-4">

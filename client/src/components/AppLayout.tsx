@@ -6,6 +6,7 @@ import { ErrorNotifications } from './ErrorNotifications';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../utils/temp-auth';
 import { ModelProvider, useModel } from '../contexts/ModelContext';
+import { PlaybackProvider } from '../contexts/PlaybackContext';
 
 interface AppLayoutProps {
   children?: React.ReactNode;
@@ -134,7 +135,9 @@ const AppLayoutInner: React.FC<AppLayoutProps> = ({ children }) => {
 const AppLayout: React.FC<AppLayoutProps> = (props) => {
   return (
     <ModelProvider>
-      <AppLayoutInner {...props} />
+      <PlaybackProvider>
+        <AppLayoutInner {...props} />
+      </PlaybackProvider>
     </ModelProvider>
   );
 };

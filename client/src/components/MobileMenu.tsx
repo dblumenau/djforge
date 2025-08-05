@@ -8,6 +8,7 @@ import WebPlayerControls from './WebPlayerControls';
 import QueueDisplay from './QueueDisplay';
 import { webPlayerService } from '../services/webPlayer.service';
 import { isMobileDevice } from '../utils/deviceDetection';
+import { usePlayback } from '../contexts/PlaybackContext';
 import { MessageSquare, BarChart3, Target, ClipboardList, LogOut, Search, Wifi, Music2 } from 'lucide-react';
 
 interface MobileMenuProps {
@@ -28,8 +29,8 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { devicePreference, showWebPlayer } = usePlayback();
   const [showQueue, setShowQueue] = useState(false);
-  const [devicePreference, setDevicePreference] = useState<string>('auto');
   const [needsWebPlayerActivation, setNeedsWebPlayerActivation] = useState(false);
 
   // Close menu on escape key
@@ -55,50 +56,13 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
     };
   }, [isOpen]);
 
-  // Track device preference from localStorage
-  useEffect(() => {
-    const checkDevicePreference = () => {
-      const savedPreference = localStorage.getItem('spotifyDevicePreference') || 'auto';
-      setDevicePreference(savedPreference);
-    };
-    
-    // Check initially and when menu opens
-    if (isOpen) {
-      checkDevicePreference();
-    }
-    
-    // Listen for storage changes
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'spotifyDevicePreference') {
-        checkDevicePreference();
-      }
-    };
-    
-    // Also listen for custom event that DeviceSelector dispatches
-    const handleDeviceChange = () => {
-      checkDevicePreference();
-    };
-    
-    window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('devicePreferenceChanged', handleDeviceChange);
-    
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('devicePreferenceChanged', handleDeviceChange);
-    };
-  }, [isOpen]);
 
-  // Clean up web player when device preference changes away from web-player
+  // Check if mobile device needs web player activation
   useEffect(() => {
     console.log('[MobileMenu] Device preference changed:', devicePreference);
     console.log('[MobileMenu] Web player is ready:', webPlayerService.isReady());
     
-    if (devicePreference !== 'web-player') {
-      // Disconnect the web player when not in use
-      webPlayerService.disconnect();
-      setNeedsWebPlayerActivation(false);
-      console.log('[MobileMenu] Set needsWebPlayerActivation to false');
-    } else if (devicePreference === 'web-player') {
+    if (devicePreference === 'web-player') {
       // Check if we're on mobile and need activation
       if (isMobileDevice() && !webPlayerService.isReady()) {
         setNeedsWebPlayerActivation(true);
@@ -107,6 +71,9 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
         setNeedsWebPlayerActivation(false);
         console.log('[MobileMenu] Web player ready or not mobile device');
       }
+    } else {
+      setNeedsWebPlayerActivation(false);
+      console.log('[MobileMenu] Set needsWebPlayerActivation to false');
     }
   }, [devicePreference]);
 
@@ -181,7 +148,7 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
             </div>
 
             {/* Web Player Activation (Mobile only) */}
-            {needsWebPlayerActivation && devicePreference === 'web-player' && (
+            {needsWebPlayerActivation && showWebPlayer && (
               <div className="bg-zinc-800/50 rounded-lg p-4">
                 <h3 className="text-sm font-medium text-gray-400 mb-3">Player Activation Required</h3>
                 <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
@@ -200,7 +167,7 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
             {/* Playback Controls or Web Player */}
             <div className="bg-zinc-800/50 rounded-lg p-4">
               <h3 className="text-sm font-medium text-gray-400 mb-3">Playback</h3>
-              {devicePreference === 'web-player' ? (
+              {showWebPlayer ? (
                 <WebPlayerControls className="w-full" />
               ) : (
                 <PlaybackControls 
