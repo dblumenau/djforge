@@ -49,6 +49,30 @@
   width: 8px;
 }
 
+/* For playlist description scrollable area */
+.playlist-description-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #52525b #27272a;
+}
+
+.playlist-description-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.playlist-description-scroll::-webkit-scrollbar-track {
+  background: #27272a;
+  border-radius: 3px;
+}
+
+.playlist-description-scroll::-webkit-scrollbar-thumb {
+  background: #52525b;
+  border-radius: 3px;
+}
+
+.playlist-description-scroll::-webkit-scrollbar-thumb:hover {
+  background: #71717a;
+}
+
 /* Animation for error notifications */
 @keyframes slide-in-right {
   from {

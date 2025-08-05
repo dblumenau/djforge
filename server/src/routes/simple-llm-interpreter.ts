@@ -56,7 +56,6 @@ async function getUserModelPreference(userId: string): Promise<string | null> {
 // Security constants
 const MAX_RESPONSE_SIZE = 10_000; // characters
 const INTERPRETATION_TIMEOUT = 120000; // 120 seconds - support slow models like Gemini
-const MAX_RETRIES = 2;
 
 interface TrackWithScore extends SpotifyTrack {
   relevanceScore: number;
@@ -255,8 +254,8 @@ function createConfirmationResponse(interpretation: any): any {
   };
 }
 
-// Simple, flexible interpretation with retries
-async function interpretCommand(command: string, userId?: string, retryCount = 0, preferredModel?: string, musicContext?: string, sessionId?: string): Promise<any> {
+// Simple, flexible interpretation
+async function interpretCommand(command: string, userId?: string, preferredModel?: string, musicContext?: string, sessionId?: string): Promise<any> {
   let conversationHistory: ConversationEntry[] = [];
   let dialogState: DialogState | null = null;
   
@@ -673,57 +672,15 @@ CRITICAL: You must use the discriminated union pattern - when intent is "play_sp
       }
     }
     
-    // Validate we got something useful
-    if (normalized.intent === 'unknown' && retryCount < MAX_RETRIES) {
-      console.log(`Retry ${retryCount + 1} for command interpretation`);
-      return interpretCommand(command, userId, retryCount + 1, preferredModel, musicContext, sessionId);
-    }
-    
     return normalized;
   } catch (error) {
     console.error('LLM interpretation error:', error);
     
-    // Retry with a different model if we haven't exhausted retries
-    if (retryCount < MAX_RETRIES) {
-      const fallbackModels = [
-        OPENROUTER_MODELS.CLAUDE_SONNET_4,
-        OPENROUTER_MODELS.O3_PRO
-      ];
-      
-      try {
-        const response = await llmOrchestrator.complete({
-          messages: [
-            { role: 'system', content: 'Respond with JSON for this music command.' },
-            { role: 'user', content: command }
-          ],
-          model: fallbackModels[retryCount],
-          temperature: 0.7,
-          response_format: { type: 'json_object' }
-        });
-        
-        const normalized = normalizeResponse(response.content);
-        normalized.model = response.model || fallbackModels[retryCount] || 'unknown';
-        normalized.provider = response.provider || 'unknown';
-        normalized.flow = response.flow || 'unknown';
-        normalized.fallbackUsed = response.fallbackUsed || false;
-        normalized.actualModel = response.actualModel || response.model;
-        
-        return normalized;
-      } catch (retryError) {
-        console.error(`Fallback model ${fallbackModels[retryCount]} also failed:`, retryError);
-      }
-    }
-    
-    // Final fallback - basic keyword matching
-    const lowerCommand = command.toLowerCase();
-    return {
-      intent: lowerCommand.includes('play') ? 'play_specific_song' : 
-              lowerCommand.includes('pause') ? 'pause' :
-              lowerCommand.includes('skip') || lowerCommand.includes('next') ? 'skip' :
-              lowerCommand.includes('volume') ? 'volume' : 'unknown',
-      query: command.replace(/^(play|search for|find)\s+/i, ''),
-      confidence: 0.3,
-      reasoning: 'Basic keyword matching fallback'
+    // Return error information for the frontend to handle
+    throw {
+      success: false,
+      error: error instanceof Error ? error.message : 'Model failed to interpret command',
+      model: preferredModel || 'unknown'
     };
   }
 }
@@ -1234,7 +1191,7 @@ simpleLLMInterpreterRouter.post('/command', requireValidTokens, async (req: any,
     const combinedContext = tasteProfile ? `${tasteProfile}\n${musicContext}` : musicContext;
     
     // Use userId for conversation history instead of sessionId
-    const interpretation = await interpretCommand(command, userId || undefined, 0, preferredModel, combinedContext, userId || 'anonymous');
+    const interpretation = await interpretCommand(command, userId || undefined, preferredModel, combinedContext, userId || 'anonymous');
     console.log('LLM interpretation:', interpretation);
 
     let refreshedTokens: SpotifyAuthTokens | null = null;
@@ -2243,7 +2200,7 @@ simpleLLMInterpreterRouter.get('/test', async (req, res) => {
   const results = [];
   for (const cmd of testCommands) {
     try {
-      const interpretation = await interpretCommand(cmd, undefined, 0, undefined, undefined, 'test');
+      const interpretation = await interpretCommand(cmd, undefined, undefined, undefined, 'test');
       results.push({ command: cmd, interpretation });
     } catch (error) {
       results.push({ command: cmd, error: error instanceof Error ? error.message : 'Failed' });
@@ -2296,7 +2253,7 @@ simpleLLMInterpreterRouter.post('/test-interpret', async (req, res) => {
       }
     }
     
-    const interpretation = await interpretCommand(command, userId || undefined, 0, preferredModel, musicContext, userId || 'test');
+    const interpretation = await interpretCommand(command, userId || undefined, preferredModel, musicContext, userId || 'test');
     const responseTime = Date.now() - startTime;
     
     // Store conversation entry for testing (same as main endpoint)

@@ -41,8 +41,6 @@ export interface LLMResponse {
   model: string;
   provider: string;
   flow?: 'openrouter' | 'gemini-direct';
-  fallbackUsed?: boolean;
-  actualModel?: string;
   rawResponse?: any;  // Complete raw response before processing
   fullRequest?: any;  // Complete request object
   processingSteps?: Array<{
@@ -155,21 +153,12 @@ const JSON_CAPABLE_MODELS = new Set([
 export class LLMOrchestrator {
   private providers: LLMProvider[] = [];
   private defaultModel: string;
-  private fallbackChain: string[] = [];
   private initialized = false;
   private geminiService: GeminiService | null = null;
   private loggingService: LLMLoggingService | null = null;
   
   constructor() {
     this.defaultModel = OPENROUTER_MODELS.GEMINI_2_5_FLASH;
-    // Optimized fallback chain: fast -> capable -> cost-effective
-    this.fallbackChain = [
-      OPENROUTER_MODELS.GEMINI_2_5_FLASH, // Primary: fast and reliable
-      OPENROUTER_MODELS.CLAUDE_SONNET_4,  // High quality fallback
-      OPENROUTER_MODELS.GPT_4_1,          // Latest GPT with 1M context
-      OPENROUTER_MODELS.O3_PRO,           // High capability reasoning
-      OPENROUTER_MODELS.DEEPSEEK_R1_0528, // Cost-effective with good performance
-    ];
   }
 
   private ensureInitialized() {
@@ -233,38 +222,18 @@ export class LLMOrchestrator {
   async complete(request: LLMRequest): Promise<LLMResponse> {
     this.ensureInitialized();
     const model = request.model || this.defaultModel;
-    const errors: Array<{ provider: string; error: string }> = [];
 
-    // Try primary model first
+    // Try the specified model only - no fallbacks
     try {
       const response = await this.callModel(model, request);
       return response;
     } catch (error) {
-      errors.push({ provider: model, error: this.extractErrorMessage(error) });
-      console.error(`Primary model ${model} failed:`, error);
-    }
-
-    // Try fallback chain
-    for (const fallbackModel of this.fallbackChain) {
-      if (fallbackModel === model) continue; // Skip if same as primary
+      const errorMessage = this.extractErrorMessage(error);
+      console.error(`Model ${model} failed:`, error);
       
-      try {
-        console.log(`Trying fallback model: ${fallbackModel}`);
-        const response = await this.callModel(fallbackModel, request);
-        // Add fallback information to response
-        return {
-          ...response,
-          fallbackUsed: true,
-          actualModel: fallbackModel
-        };
-      } catch (error) {
-        errors.push({ provider: fallbackModel, error: this.extractErrorMessage(error) });
-        console.error(`Fallback model ${fallbackModel} failed:`, error);
-      }
+      // Create a descriptive error message for the frontend
+      throw new Error(`${model} failed: ${errorMessage}`);
     }
-
-    // All models failed
-    throw new Error(`All LLM providers failed. Errors: ${JSON.stringify(errors, null, 2)}`);
   }
 
   private async callModel(model: string, request: LLMRequest): Promise<LLMResponse> {
@@ -632,10 +601,6 @@ export class LLMOrchestrator {
     return Array.from(models);
   }
 
-  // Set custom fallback chain
-  setFallbackChain(models: string[]) {
-    this.fallbackChain = models;
-  }
 
   // Set default model
   setDefaultModel(model: string) {
