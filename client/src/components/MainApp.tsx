@@ -16,7 +16,7 @@ import { useWebPlayer } from '../hooks/useWebPlayer';
 import { apiEndpoint } from '../config/api';
 import { authenticatedFetch, api } from '../utils/temp-auth';
 import { useModel } from '../contexts/ModelContext';
-// import { toast } from "sonner";
+import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 
 // Helper component for clickable example lists
@@ -825,6 +825,11 @@ const MainApp: React.FC = () => {
         
         setCommandHistory(prev => [...prev, newMessage]);
       } else {
+        // Show user-friendly error toast with model information
+        const modelName = data.interpretation?.model || currentModel || 'Unknown model';
+        const errorMessage = `${modelName} failed to process your command. Please try again or select a different model.`;
+        toast.error(errorMessage);
+        
         setCommandHistory(prev => [...prev, {
           command: userCommand,
           response: data.error || data.message || 'An error occurred',
@@ -839,6 +844,10 @@ const MainApp: React.FC = () => {
       }
     } catch (error) {
       console.error('Command error:', error);
+      
+      // Show user-friendly error toast
+      toast.error("Failed to process your command. Please try again or select a different model.");
+      
       setCommandHistory(prev => [...prev, {
         command: userCommand,
         response: 'Network error. Please try again.',
@@ -920,6 +929,11 @@ const MainApp: React.FC = () => {
         
         setCommandHistory(prev => [...prev, newMessage]);
       } else {
+        // Show user-friendly error toast with model information for clarification
+        const modelName = data.interpretation?.model || currentModel || 'Unknown model';
+        const errorMessage = `${modelName} failed to process your clarification. Please try again or select a different model.`;
+        toast.error(errorMessage);
+        
         setCommandHistory(prev => [...prev, {
           command: commandToSend,
           response: data.error || data.message || 'An error occurred',
@@ -934,6 +948,10 @@ const MainApp: React.FC = () => {
       }
     } catch (error) {
       console.error('Clarification command error:', error);
+      
+      // Show user-friendly error toast for clarification network errors
+      toast.error("Failed to process your clarification. Please try again or select a different model.");
+      
       setCommandHistory(prev => [...prev, {
         command: commandToSend,
         response: 'Network error. Please try again.',

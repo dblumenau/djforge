@@ -122,6 +122,11 @@ export class GeminiService {
       // Extract content from the response
       const content = this.extractContentFromResponse(response);
       
+      // Check if response was truncated due to token limit
+      if (response?.candidates?.[0]?.finishReason === 'MAX_TOKENS') {
+        throw new Error('Response truncated: Token limit exceeded. The request requires more output tokens than the current limit allows.');
+      }
+      
       // Validate the response
       if (request.response_format?.type === 'json_object') {
         const validationResult = this.validateStructuredOutput(content, request);
@@ -184,23 +189,88 @@ export class GeminiService {
    */
   private extractContentFromResponse(response: any): string {
     try {
-      // For structured output, the response should be in the candidates array
-      if (response.candidates && response.candidates.length > 0) {
-        const candidate = response.candidates[0];
-        if (candidate.content && candidate.content.parts && candidate.content.parts.length > 0) {
-          return candidate.content.parts[0].text || '';
+      // Log the response structure for debugging
+      console.log('🔍 Gemini response structure:', {
+        hasResponse: !!response,
+        responseType: typeof response,
+        hasText: !!response?.text,
+        hasCandidates: !!response?.candidates,
+        candidatesLength: response?.candidates?.length,
+        responseKeys: response ? Object.keys(response) : [],
+        finishReason: response?.candidates?.[0]?.finishReason
+      });
+      
+      // Check if response has a direct text method (common in @google/genai)
+      if (response?.text && typeof response.text === 'function') {
+        try {
+          const textContent = response.text();
+          console.log('📤 Extracted via text() method:', textContent?.substring(0, 200));
+          return textContent || '';
+        } catch (textError) {
+          console.warn('Failed to call text() method:', textError);
         }
       }
       
-      // Fallback to response.text if available
-      if (response.text) {
+      // Check if response has direct text property
+      if (response?.text && typeof response.text === 'string') {
+        console.log('📤 Extracted via text property:', response.text.substring(0, 200));
         return response.text;
       }
       
-      console.warn('Unexpected response format:', response);
+      // Check candidates array structure
+      if (response?.candidates && response.candidates.length > 0) {
+        const candidate = response.candidates[0];
+        
+        // Try different paths for content extraction
+        if (candidate.content?.parts?.[0]?.text) {
+          console.log('📤 Extracted via candidates.content.parts:', candidate.content.parts[0].text.substring(0, 200));
+          return candidate.content.parts[0].text;
+        }
+        
+        if (candidate.text) {
+          console.log('📤 Extracted via candidates.text:', candidate.text.substring(0, 200));
+          return candidate.text;
+        }
+        
+        // Check if candidate has output directly (for structured responses)
+        if (candidate.output) {
+          const output = typeof candidate.output === 'string' 
+            ? candidate.output 
+            : JSON.stringify(candidate.output);
+          console.log('📤 Extracted via candidates.output:', output.substring(0, 200));
+          return output;
+        }
+      }
+      
+      // Check if response itself is the content (for structured output)
+      if (response?.response) {
+        const content = typeof response.response === 'string'
+          ? response.response
+          : JSON.stringify(response.response);
+        console.log('📤 Extracted via response.response:', content.substring(0, 200));
+        return content;
+      }
+      
+      // If response is already a parsed object (possible with structured output)
+      if (response && typeof response === 'object' && !response.candidates && !response.text) {
+        // Check if it looks like our expected schema
+        if (response.selectedPlaylistIds || response.summary || response.intent) {
+          const content = JSON.stringify(response);
+          console.log('📤 Response appears to be pre-parsed structured output:', content.substring(0, 200));
+          return content;
+        }
+      }
+      
+      // Special handling for MAX_TOKENS finish reason
+      if (response?.candidates?.[0]?.finishReason === 'MAX_TOKENS') {
+        console.error('❌ Gemini response truncated due to MAX_TOKENS');
+        return '';
+      }
+      
+      console.error('❌ Unexpected Gemini response format. Full response structure:', JSON.stringify(response, null, 2).substring(0, 1000));
       return '';
     } catch (error) {
-      console.error('Error extracting content from response:', error);
+      console.error('❌ Error extracting content from Gemini response:', error);
       return '';
     }
   }

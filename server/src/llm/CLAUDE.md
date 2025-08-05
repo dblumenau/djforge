@@ -4,10 +4,12 @@ This directory contains the multi-LLM integration system that powers natural lan
 
 ## Architecture Overview
 
-The system uses a **dual-provider architecture** with multiple models and fallback chains:
+The system uses a **dual-provider architecture** with multiple models:
 
-1. **Primary Flow**: Google Gemini Direct API (fastest, structured output)
-2. **Fallback Flow**: OpenRouter API (30+ models, flexible routing)
+1. **Google Gemini Direct API**: Fastest response times with structured output
+2. **OpenRouter API**: Access to 30+ models with flexible routing
+
+Each model request is attempted once. If it fails, an error is returned immediately, allowing users to manually retry or select a different model.
 
 ## Key Components
 
@@ -15,9 +17,9 @@ The system uses a **dual-provider architecture** with multiple models and fallba
 - **Purpose**: Central LLM routing and management
 - **Key Features**:
   - Automatic provider selection based on model
-  - Fallback chains for reliability
   - Unified interface for all LLM calls
   - Response normalization across providers
+  - Fail-fast error handling
 - **Model Constants**: `OPENROUTER_MODELS` and `GEMINI_MODELS`
 
 ### providers/GeminiService.ts
@@ -104,7 +106,6 @@ The system uses a **dual-provider architecture** with multiple models and fallba
   provider: 'openrouter',
   flow: 'openrouter',
   usage: { promptTokens, completionTokens, totalTokens },
-  fallbackUsed?: boolean,
   actualModel?: string
 }
 ```
@@ -121,10 +122,7 @@ GEMINI_SEARCH_GROUNDING=true  # Optional
 ### Model Selection Strategy
 1. User preference (if set via model preferences)
 2. Gemini 2.5 Flash (default - fastest)
-3. Fallback chain on errors:
-   - Claude Sonnet 4
-   - O3 Pro
-   - Basic keyword matching
+3. On errors: Return error immediately, no automatic fallbacks
 
 ## Best Practices
 
@@ -132,7 +130,7 @@ GEMINI_SEARCH_GROUNDING=true  # Optional
 1. Add to model constants in `orchestrator.ts`
 2. Update provider logic if needed
 3. Test with various command types
-4. Update fallback chains
+4. Ensure proper error handling
 
 ### Prompt Engineering
 - Keep system prompts focused on task
@@ -180,10 +178,10 @@ ${tasteProfile}
 - **Both Flows**: Updated both `simple-llm-interpreter.ts` and `gemini-schemas.ts` for consistency
 
 ### Error Handling
-- Always provide fallback behavior
-- Log errors with context
-- Return sensible defaults
-- Preserve user experience
+- Use fail-fast approach - return errors immediately
+- Log errors with context for debugging
+- Allow users to manually retry or select different models
+- Provide clear error messages to guide user action
 
 ### Performance Optimization
 - Gemini Direct is 2-3x faster than OpenRouter
@@ -218,5 +216,5 @@ console.log('[LLM Debug]', {
 Check logs:
 - LLM selection decisions
 - Response parsing failures
-- Fallback chain activation
+- Request failures and error types
 - Token usage patterns

@@ -45,6 +45,7 @@ const PlaylistSelectionSchema = z.object({
 // Simplified schema for playlist summarization to avoid Gemini parsing issues
 const PlaylistSummarizationSchema = z.object({
   summary: z.string(),
+  alignmentLevel: z.enum(['strong', 'moderate', 'weak', 'tangential']).optional(),
   characteristics: z.object({
     primaryGenre: z.string().optional(),
     mood: z.string().optional(),
@@ -169,13 +170,11 @@ Respond with a JSON object containing:
       response_format: { type: 'json_object' },
       schema: PlaylistSelectionSchema,
       temperature: 0.4, // Lower temperature for more consistent selections
-      max_tokens: 5000,
+      max_tokens: 8000,
       intentType: 'playlist_selection' // Use dedicated playlist selection schema
     };
 
     let llmResponse;
-    let fallbackUsed = false;
-    let originalError = '';
     let latency = 0;
     
     try {
@@ -183,39 +182,12 @@ Respond with a JSON object containing:
       llmResponse = await llmOrchestrator.complete(llmRequest);
       latency = Date.now() - startTime;
     } catch (error: any) {
-      console.error('❌ Primary model failed, attempting fallback:', error);
-      originalError = error.message;
-      
-      // Try with fallback model
-      llmRequest.model = 'anthropic/claude-3.5-sonnet';
-      try {
-        const fallbackStartTime = Date.now();
-        llmResponse = await llmOrchestrator.complete(llmRequest);
-        latency = Date.now() - fallbackStartTime;
-        fallbackUsed = true;
-      } catch (fallbackError: any) {
-        console.error('❌ Both primary and fallback models failed:', fallbackError);
-        // Final fallback: Return first 10 playlists sorted by follower count
-        const fallbackPlaylists = playlistsForAnalysis
-          .sort((a: any, b: any) => (b.followers || 0) - (a.followers || 0))
-          .slice(0, 10);
-        
-        return res.json({
-          query: query.trim(),
-          selectedPlaylists: fallbackPlaylists.map((p: any) => ({
-            id: p.id,
-            name: p.name,
-            owner: p.owner,
-            description: p.description || 'No description available',
-            trackCount: p.trackCount,
-            followers: p.followers,
-            images: p.images
-          })),
-          fallbackUsed: true,
-          originalError: `Primary: ${originalError}. Fallback: ${fallbackError.message}`,
-          message: 'Both LLM models failed, using popularity-based selection'
-        });
-      }
+      console.error('❌ LLM request failed:', error);
+      return res.status(500).json({
+        success: false,
+        error: `Playlist selection failed: ${error.message}`,
+        model: llmRequest.model || 'unknown'
+      });
     }
 
     // Step 4: Parse and validate LLM response with lenient validation
@@ -240,25 +212,10 @@ Respond with a JSON object containing:
       console.error('❌ Invalid LLM response format:', error);
       console.error('LLM response content:', llmResponse.content);
       
-      // Fallback: Return first 5 playlists sorted by follower count
-      const fallbackPlaylists = playlistsForAnalysis
-        .sort((a: any, b: any) => (b.followers || 0) - (a.followers || 0))
-        .slice(0, 5);
-      
-      return res.json({
-        query: query.trim(),
-        selectedPlaylists: fallbackPlaylists.map((p: any) => ({
-          id: p.id,
-          name: p.name,
-          owner: p.owner,
-          description: p.description || 'No description available',
-          trackCount: p.trackCount,
-          followers: p.followers,
-          images: p.images
-        })),
-        fallbackUsed: true,
-        originalError: originalError || error.message,
-        message: 'LLM response parsing failed, using popularity-based selection'
+      return res.status(500).json({
+        success: false,
+        error: `Playlist selection response parsing failed: ${error.message}`,
+        model: llmResponse?.model || llmRequest.model || 'unknown'
       });
     }
 
@@ -293,7 +250,7 @@ Respond with a JSON object containing:
             selectedPlaylistIds: selectionData.selectedPlaylistIds,
             reasoning: selectionData.reasoning,
             playlistCount: selectedPlaylists.length,
-            fallbackUsed,
+            fallbackUsed: false,
             playlistsAnalyzed: playlistsForAnalysis.map((p: any) => ({
               id: p.id,
               name: p.name,
@@ -315,8 +272,7 @@ Respond with a JSON object containing:
             content: llmResponse.content,
             usage: llmResponse.usage,
             latency: latency,
-            fallbackUsed,
-            actualModel: llmResponse.actualModel,
+            fallbackUsed: false,
             rawResponse: llmResponse.rawResponse,
             processingSteps: llmResponse.processingSteps
           },
@@ -342,11 +298,6 @@ Respond with a JSON object containing:
       model: llmResponse.model,
       provider: llmResponse.provider
     };
-    
-    if (fallbackUsed) {
-      response.fallbackUsed = true;
-      response.originalError = originalError;
-    }
     
     res.json(response);
 
@@ -821,8 +772,6 @@ Respond with a JSON object containing:
     };
 
     let llmResponse;
-    let fallbackUsed = false;
-    let originalError = '';
     let latency = 0;
     
     try {
@@ -830,38 +779,12 @@ Respond with a JSON object containing:
       llmResponse = await llmOrchestrator.complete(llmRequest);
       latency = Date.now() - startTime;
     } catch (error: any) {
-      console.error('❌ Primary model failed for summarization, attempting fallback:', error);
-      originalError = error.message;
-      
-      // Try with fallback model
-      llmRequest.model = 'anthropic/claude-3.5-sonnet';
-      try {
-        const fallbackStartTime = Date.now();
-        llmResponse = await llmOrchestrator.complete(llmRequest);
-        latency = Date.now() - fallbackStartTime;
-        fallbackUsed = true;
-      } catch (fallbackError: any) {
-        console.error('❌ Both primary and fallback models failed for summarization:', fallbackError);
-        // Final fallback: Create basic summary from playlist metadata
-        const fallbackSummary = `This playlist "${playlistDetails.name}" contains ${playlistDetails.trackCount} tracks featuring ${uniqueArtists.slice(0, 3).join(', ')}${uniqueArtists.length > 3 ? ' and others' : ''}. ${playlistDetails.description || 'A curated collection of music for your listening pleasure.'}`;
-        
-        return res.json({
-          playlistId,
-          summary: fallbackSummary,
-          characteristics: {
-            primaryGenre: 'Various',
-            mood: 'Mixed',
-            tempo: 'Varied'
-          },
-          matchScore: 0.7,
-          reasoning: 'Fallback analysis due to both models failing',
-          model: 'fallback',
-          provider: 'system',
-          fromCache: false,
-          fallbackUsed: true,
-          originalError: `Primary: ${originalError}. Fallback: ${fallbackError.message}`
-        } as any);
-      }
+      console.error('❌ LLM request failed:', error);
+      return res.status(500).json({
+        success: false,
+        error: `Playlist summarization failed: ${error.message}`,
+        model: llmRequest.model || 'unknown'
+      } as any);
     }
 
     // Parse and validate LLM response with lenient validation
@@ -888,24 +811,10 @@ Respond with a JSON object containing:
       console.error('❌ Invalid LLM summarization response format:', error);
       console.error('LLM response content:', llmResponse.content);
       
-      // Fallback: Create basic summary
-      const fallbackSummary = `This playlist "${playlistDetails.name}" contains ${playlistDetails.trackCount} tracks featuring ${uniqueArtists.slice(0, 3).join(', ')}${uniqueArtists.length > 3 ? ' and others' : ''}. ${playlistDetails.description || 'A curated collection of music for your listening pleasure.'}`;
-      
-      return res.json({
-        playlistId,
-        summary: fallbackSummary,
-        characteristics: {
-          primaryGenre: 'Various',
-          mood: 'Mixed', 
-          tempo: 'Varied'
-        },
-        matchScore: 0.7,
-        reasoning: 'Fallback analysis due to invalid LLM response',
-        model: llmResponse.model,
-        provider: llmResponse.provider,
-        fromCache: false,
-        fallbackUsed: fallbackUsed,
-        originalError: originalError || error.message
+      return res.status(500).json({
+        success: false,
+        error: `Playlist summarization response parsing failed: ${error.message}`,
+        model: llmResponse?.model || llmRequest.model || 'unknown'
       } as any);
     }
 
@@ -920,11 +829,6 @@ Respond with a JSON object containing:
       provider: llmResponse.provider,
       fromCache: false
     };
-    
-    if (fallbackUsed) {
-      response.fallbackUsed = true;
-      response.originalError = originalError;
-    }
 
     // Cache the result with 7-day TTL as specified in the plan
     if (redisClient) {
@@ -963,7 +867,7 @@ Respond with a JSON object containing:
             characteristics: summaryData.characteristics,
             matchScore: summaryData.matchScore,
             reasoning: summaryData.reasoning,
-            fallbackUsed,
+            fallbackUsed: false,
             playlistDetails: {
               name: playlistDetails.name,
               trackCount: playlistDetails.trackCount,
@@ -987,8 +891,7 @@ Respond with a JSON object containing:
             content: llmResponse.content,
             usage: llmResponse.usage,
             latency: latency,
-            fallbackUsed,
-            actualModel: llmResponse.actualModel,
+            fallbackUsed: false,
             rawResponse: llmResponse.rawResponse,
             processingSteps: llmResponse.processingSteps
           },
@@ -1185,7 +1088,8 @@ Respond with a JSON object containing:
 - reasoning: brief explanation of why these were chosen (optional)`;
 
     // Dynamic token allocation based on number of playlists to select
-    const selectionMaxTokens = Math.min(500, 100 + (validatedRenderLimit * 15));
+    // Be generous with tokens - we want complete responses
+    const selectionMaxTokens = Math.max(4000, 2000 + (validatedRenderLimit * 200)); // At least 4000, scales up generously
     
     const llmRequest: LLMRequest & { intentType?: string } = {
       model: model || 'google/gemini-2.5-flash',
@@ -1208,8 +1112,6 @@ Respond with a JSON object containing:
 
     let llmResponse;
     let selectedPlaylistIds: string[] = [];
-    let selectionFallbackUsed = false;
-    let selectionOriginalError = '';
     let selectionLatency = 0;
     
     try {
@@ -1245,35 +1147,12 @@ Respond with a JSON object containing:
         }
       }
     } catch (error: any) {
-      console.error('❌ Primary model selection failed, attempting fallback:', error);
-      selectionOriginalError = error.message;
-      
-      // Try with fallback model
-      llmRequest.model = 'anthropic/claude-3.5-sonnet';
-      try {
-        const fallbackStartTime = Date.now();
-        llmResponse = await llmOrchestrator.complete(llmRequest);
-        selectionLatency = Date.now() - fallbackStartTime;
-        const selectionData = JSON.parse(llmResponse.content);
-        const parsed = PlaylistSelectionSchema.safeParse(selectionData);
-        if (parsed.success) {
-          selectedPlaylistIds = selectionData.selectedPlaylistIds;
-        } else if (selectionData.selectedPlaylistIds && Array.isArray(selectionData.selectedPlaylistIds)) {
-          selectedPlaylistIds = selectionData.selectedPlaylistIds.slice(0, validatedRenderLimit);
-        } else {
-          throw new Error('Fallback model also failed to provide valid playlist IDs');
-        }
-        selectionFallbackUsed = true;
-      } catch (fallbackError: any) {
-        console.error('❌ Both primary and fallback models failed for selection, using popularity fallback:', fallbackError);
-        // Final fallback: Use top playlists by follower count (up to renderLimit)
-        selectedPlaylistIds = playlistsForAnalysis
-          .sort((a: any, b: any) => (b.followers || 0) - (a.followers || 0))
-          .slice(0, validatedRenderLimit)
-          .map((p: any) => p.id);
-        selectionFallbackUsed = true;
-        selectionOriginalError = `Primary: ${selectionOriginalError}. Fallback: ${fallbackError.message}`;
-      }
+      console.error('❌ LLM request failed:', error);
+      return res.status(500).json({
+        success: false,
+        error: `Playlist selection failed: ${error.message}`,
+        model: llmRequest.model || 'unknown'
+      });
     }
 
     // Log the selection LLM interaction
@@ -1287,7 +1166,7 @@ Respond with a JSON object containing:
           interpretation: {
             selectedPlaylistIds,
             playlistCount: selectedPlaylistIds.length,
-            fallbackUsed: selectionFallbackUsed,
+            fallbackUsed: false,
             playlistsAnalyzed: playlistsForAnalysis.map((p: any) => ({
               id: p.id,
               name: p.name,
@@ -1309,8 +1188,7 @@ Respond with a JSON object containing:
             content: llmResponse.content,
             usage: llmResponse.usage,
             latency: selectionLatency,
-            fallbackUsed: selectionFallbackUsed,
-            actualModel: llmResponse.actualModel,
+            fallbackUsed: false,
             rawResponse: llmResponse.rawResponse,
             processingSteps: llmResponse.processingSteps
           },
@@ -1464,14 +1342,17 @@ Respond with a JSON object containing:
 
       // If not cached, generate summary
       if (!summary) {
-        // Progress: Before playlist summary
+        // Progress: Starting playlist summary (emit before starting the work)
         if (musicWS && req.userId) {
+          // For progress calculation, we want to show we're STARTING to work on this playlist
+          // So we use playlistIndex (0-based) to show partial progress
+          const startingProgress = playlistIndex / playlistDetails.length;
           musicWS.emitToUser(req.userId, 'playlistDiscoveryProgress', {
             sessionId: sessionId || 'unknown',
-            step: `AI analyzing music style of '${playlist.name}'...`,
+            step: `AI analyzing music style of '${playlist.name}' (${playlistIndex + 1}/${playlistDetails.length})...`,
             phase: 'summarizing',
             timestamp: Date.now(),
-            itemNumber: playlistIndex + 1,
+            itemNumber: playlistIndex,  // 0-based to show we're starting this one
             totalItems: playlistDetails.length
           });
         }
@@ -1484,42 +1365,68 @@ Respond with a JSON object containing:
 
           const uniqueArtists = playlist.uniqueArtists.slice(0, 20);
 
-          const summaryPrompt = `Playlist: ${playlist.name}
-Tracks: 
+          const summaryPrompt = `Analyze this playlist against the user query: "${query}"
+
+Playlist: ${playlist.name}
+Sample tracks (${tracksForAnalysis.length} shown):
 ${trackList}
 
 Artists featured: ${uniqueArtists.join(', ')}
-User query: ${query}
 
-Write a 2-3 sentence description explaining:
-1. How this playlist matches the user's request ("${query}")
-2. What makes it unique or interesting
-3. The general mood/style
+Provide an HONEST assessment following these rules:
 
-Also identify key characteristics including:
-- Primary genre (single word/phrase)
-- Mood (single word/phrase) 
-- Instrumentation (array of key instruments if identifiable)
-- Tempo (slow/medium/fast/varied)
-- Decade range (e.g., "2010s-2020s", "1980s", "Various")
+STYLE GUIDE - MANDATORY:
+DO:
+- Use measured language: "partially", "mostly", "about half", "roughly 60%"
+- Cite specific evidence: "7 of ${tracksForAnalysis.length} tracks are...", "tracks like X and Y show..."
+- Acknowledge mismatches: "later tracks drift into...", "some tracks don't align..."
 
-Provide a match score (0.0-1.0) indicating how well this playlist matches the user's intent.
+DON'T use these words (BANNED):
+- perfect, perfectly, iconic, legendary, masterpiece, epitomizes
+- amazing, incredible, fantastic, essential, definitive
+- must-have, sultry, cruising, windows-down
 
-Respond with a JSON object containing:
-- summary: your 2-3 sentence description
-- characteristics: object with primaryGenre, mood, instrumentation (array), tempo, decadeRange
-- matchScore: number between 0.0 and 1.0
-- reasoning: brief explanation of the match score`;
+GOOD example: "8 of 10 sampled tracks are 90s hip-hop classics, directly matching the 'old school hip hop' query. The remaining 2 are early 2000s R&B, slightly diluting the old school focus."
 
-          // Dynamic token allocation for summaries - cap at 1500 for multiple playlists
-          const summaryMaxTokens = Math.min(1500, 300 + (validatedRenderLimit * 200));
+BAD example: "This playlist perfectly captures summer vibes with iconic anthems from legendary artists."
+
+ANALYSIS STRUCTURE:
+1. Match Analysis (2-3 sentences with evidence):
+   - What percentage/fraction of tracks align with "${query}"?
+   - Which specific elements match vs don't match?
+   - Reference actual track names or artists as evidence
+
+2. Alignment Level: Choose one: "strong" | "moderate" | "weak" | "tangential"
+
+3. Characteristics:
+   - Primary genre(s)
+   - Mood/energy 
+   - Era focus (decade or range)
+
+Respond with JSON:
+{
+  "summary": "Your evidence-based match analysis",
+  "alignmentLevel": "strong|moderate|weak|tangential",
+  "characteristics": {
+    "primaryGenre": "...",
+    "mood": "...",
+    "instrumentation": [...],
+    "tempo": "slow|medium|fast|varied",
+    "decadeRange": "..."
+  },
+  "matchScore": 0.0-1.0,
+  "reasoning": "Brief explanation of why this score"
+}`;
+
+          // Dynamic token allocation for summaries - be generous
+          const summaryMaxTokens = Math.max(4000, 2000 + (validatedRenderLimit * 300)); // At least 4000, scales up for multiple summaries
           
           const summaryLLMRequest: LLMRequest & { intentType?: string } = {
             model: model || 'google/gemini-2.5-flash',
             messages: [
               {
                 role: 'system',
-                content: 'You are a music analysis AI that creates engaging summaries of Spotify playlists. Always respond with valid JSON. Focus on being informative yet concise.'
+                content: 'You are an impartial music analyst providing evidence-based assessments. Goal: Explain concisely HOW and WHY a playlist matches (or does not match) the user\'s query. Tone: Analytical, neutral, objective. NO marketing language or superlatives. Output: Valid JSON only.'
               },
               {
                 role: 'user',
@@ -1528,7 +1435,7 @@ Respond with a JSON object containing:
             ],
             response_format: { type: 'json_object' },
             schema: PlaylistSummarizationSchema,
-            temperature: 0.55,  // Slightly lower for more consistent summaries
+            temperature: 0.3,  // Lower temperature for more analytical, less creative responses
             max_tokens: summaryMaxTokens,
             intentType: 'playlist_summarization' // Use dedicated playlist summarization schema
           };
@@ -1540,17 +1447,8 @@ Respond with a JSON object containing:
             summaryLLMResponse = await llmOrchestrator.complete(summaryLLMRequest);
             summaryLatency = Date.now() - summaryStartTime;
           } catch (summaryError: any) {
-            console.error('❌ Primary model failed for summary, attempting fallback:', summaryError.message);
-            // Try with fallback model
-            summaryLLMRequest.model = 'anthropic/claude-3.5-sonnet';
-            try {
-              const fallbackSummaryStartTime = Date.now();
-              summaryLLMResponse = await llmOrchestrator.complete(summaryLLMRequest);
-              summaryLatency = Date.now() - fallbackSummaryStartTime;
-            } catch (summaryFallbackError: any) {
-              console.error('❌ Both models failed for summary, using basic fallback');
-              throw summaryFallbackError; // Let it fall through to the catch block
-            }
+            console.error('❌ LLM request failed:', summaryError.message);
+            throw summaryError;
           }
           
           const summaryData = JSON.parse(summaryLLMResponse.content);
@@ -1562,6 +1460,7 @@ Respond with a JSON object containing:
 
           summary = {
             summary: summaryData.summary || `This playlist "${playlist.name}" contains ${playlist.trackCount} tracks.`,
+            alignmentLevel: summaryData.alignmentLevel || 'moderate',
             characteristics: summaryData.characteristics || {
               primaryGenre: 'Various',
               mood: 'Mixed',
@@ -1624,8 +1523,7 @@ Respond with a JSON object containing:
                   content: summaryLLMResponse.content,
                   usage: summaryLLMResponse.usage,
                   latency: summaryLatency,
-                  fallbackUsed: summaryLLMRequest.model !== (model || 'google/gemini-2.5-flash'),
-                  actualModel: summaryLLMResponse.actualModel,
+                  fallbackUsed: false,
                   rawResponse: summaryLLMResponse.rawResponse,
                   processingSteps: summaryLLMResponse.processingSteps
                 },
@@ -1650,17 +1548,11 @@ Respond with a JSON object containing:
           }
         } catch (error: any) {
           console.error(`❌ Failed to generate summary for ${playlist.id}:`, error.message);
-          // Fallback summary
-          summary = {
-            summary: `This playlist "${playlist.name}" contains ${playlist.trackCount} tracks featuring ${playlist.uniqueArtists.slice(0, 3).join(', ')}${playlist.uniqueArtists.length > 3 ? ' and others' : ''}. ${playlist.description || 'A curated collection of music for your listening pleasure.'}`,
-            characteristics: {
-              primaryGenre: 'Various',
-              mood: 'Mixed',
-              tempo: 'Varied'
-            },
-            matchScore: 0.7,
-            reasoning: 'Fallback analysis'
-          };
+          return res.status(500).json({
+            success: false,
+            error: `Playlist summarization failed: ${error.message}`,
+            model: model || 'google/gemini-2.5-flash'
+          });
         }
       }
 
@@ -1675,6 +1567,7 @@ Respond with a JSON object containing:
         images: playlist.images,
         uniqueArtists: playlist.uniqueArtists,
         summary: summary.summary,
+        alignmentLevel: summary.alignmentLevel,
         characteristics: summary.characteristics,
         matchScore: summary.matchScore,
         reasoning: summary.reasoning
@@ -1685,6 +1578,24 @@ Respond with a JSON object containing:
     finalResults.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));
 
     console.log(`✅ Full workflow complete: ${finalResults.length} enhanced playlists returned`);
+    
+    // Progress: Almost done - finalizing results (90-95%)
+    if (musicWS && req.userId) {
+      musicWS.emitToUser(req.userId, 'playlistDiscoveryProgress', {
+        sessionId: sessionId || 'unknown',
+        step: `Finalizing your ${finalResults.length} best matches...`,
+        phase: 'summarizing',
+        timestamp: Date.now(),
+        itemNumber: playlistDetails.length,  // All playlists processed
+        totalItems: playlistDetails.length,
+        metadata: {
+          finalizing: true
+        }
+      });
+    }
+    
+    // Small delay to show the finalizing step
+    await new Promise(resolve => setTimeout(resolve, 500));
     
     // Progress: Final complete
     if (musicWS && req.userId) {
@@ -1704,16 +1615,11 @@ Respond with a JSON object containing:
       finalCount: finalResults.length,
       phases: {
         search: '✅ Complete',
-        selection: llmResponse ? '✅ LLM' : '⚠️ Fallback',
+        selection: '✅ LLM',
         details: '✅ Complete',
         summarization: '✅ Complete'
       }
     };
-    
-    if (selectionFallbackUsed) {
-      response.fallbackUsed = true;
-      response.originalError = selectionOriginalError;
-    }
     
     // Cache the search results in Redis
     if (redisClient && req.userId) {

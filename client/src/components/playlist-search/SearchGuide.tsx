@@ -88,27 +88,33 @@ export default function SearchGuide({ setSearchQuery, performSearch }: SearchGui
             </div>
           </div>
 
-          {/* Field Filters */}
+          {/* Field Filters - Note about limitations */}
           <div>
             <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
-              <span className="text-spotify-green">4.</span> Field Filters
+              <span className="text-spotify-green">4.</span> Search Tips for Better Results
             </h4>
             <div className="space-y-2 text-sm">
-              <div className="flex gap-3">
-                <code className="bg-zinc-900 px-2 py-1 rounded text-zinc-300 flex-shrink-0">genre:rock</code>
-                <span className="text-zinc-400">Filter by music genre</span>
+              <div className="bg-yellow-900/20 border border-yellow-700/50 rounded p-3 mb-3">
+                <p className="text-yellow-400 text-xs">
+                  <strong>Note:</strong> Spotify's playlist search only searches within playlist names and descriptions. 
+                  To find genre-specific or year-specific playlists, include those terms in your search query.
+                </p>
               </div>
               <div className="flex gap-3">
-                <code className="bg-zinc-900 px-2 py-1 rounded text-zinc-300 flex-shrink-0">year:2024</code>
-                <span className="text-zinc-400">Playlists created/updated in 2024</span>
+                <code className="bg-zinc-900 px-2 py-1 rounded text-zinc-300 flex-shrink-0">indie 2024</code>
+                <span className="text-zinc-400">Find playlists mentioning "indie" and "2024"</span>
               </div>
               <div className="flex gap-3">
-                <code className="bg-zinc-900 px-2 py-1 rounded text-zinc-300 flex-shrink-0">year:2020-2024</code>
-                <span className="text-zinc-400">Year range filtering</span>
+                <code className="bg-zinc-900 px-2 py-1 rounded text-zinc-300 flex-shrink-0">rock playlist 2023</code>
+                <span className="text-zinc-400">Rock playlists mentioning 2023</span>
               </div>
               <div className="flex gap-3">
-                <code className="bg-zinc-900 px-2 py-1 rounded text-zinc-300 flex-shrink-0">tag:summer</code>
-                <span className="text-zinc-400">Search by playlist tags</span>
+                <code className="bg-zinc-900 px-2 py-1 rounded text-zinc-300 flex-shrink-0">"summer hits" 2024</code>
+                <span className="text-zinc-400">Exact phrase plus year mention</span>
+              </div>
+              <div className="flex gap-3">
+                <code className="bg-zinc-900 px-2 py-1 rounded text-zinc-300 flex-shrink-0">electronic dance</code>
+                <span className="text-zinc-400">Genre-focused search terms</span>
               </div>
             </div>
           </div>
@@ -120,20 +126,20 @@ export default function SearchGuide({ setSearchQuery, performSearch }: SearchGui
             </h4>
             <div className="space-y-2 text-sm">
               <div className="flex gap-3">
-                <code className="bg-zinc-900 px-2 py-1 rounded text-zinc-300 flex-shrink-0">genre:indie year:2024</code>
-                <span className="text-zinc-400">Indie playlists from 2024</span>
+                <code className="bg-zinc-900 px-2 py-1 rounded text-zinc-300 flex-shrink-0">indie 2024</code>
+                <span className="text-zinc-400">Playlists mentioning indie and 2024</span>
               </div>
               <div className="flex gap-3">
                 <code className="bg-zinc-900 px-2 py-1 rounded text-zinc-300 flex-shrink-0">(rock OR metal) NOT classical</code>
-                <span className="text-zinc-400">Rock or metal, but not classical</span>
+                <span className="text-zinc-400">Rock or metal, excluding classical mentions</span>
               </div>
               <div className="flex gap-3">
-                <code className="bg-zinc-900 px-2 py-1 rounded text-zinc-300 flex-shrink-0">workout* year:2023-2024</code>
-                <span className="text-zinc-400">Recent workout playlists</span>
+                <code className="bg-zinc-900 px-2 py-1 rounded text-zinc-300 flex-shrink-0">workout* 2023</code>
+                <span className="text-zinc-400">Workout playlists mentioning 2023</span>
               </div>
               <div className="flex gap-3">
-                <code className="bg-zinc-900 px-2 py-1 rounded text-zinc-300 flex-shrink-0">"road trip" genre:rock</code>
-                <span className="text-zinc-400">Exact phrase + genre filter</span>
+                <code className="bg-zinc-900 px-2 py-1 rounded text-zinc-300 flex-shrink-0">"road trip" rock</code>
+                <span className="text-zinc-400">Exact phrase with genre mention</span>
               </div>
             </div>
           </div>
@@ -141,20 +147,20 @@ export default function SearchGuide({ setSearchQuery, performSearch }: SearchGui
           {/* Special Searches */}
           <div>
             <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
-              <span className="text-spotify-green">6.</span> Special Search Types
+              <span className="text-spotify-green">6.</span> Search Strategies
             </h4>
             <div className="space-y-2 text-sm">
               <div className="flex gap-3">
-                <code className="bg-zinc-900 px-2 py-1 rounded text-zinc-300 flex-shrink-0">owner:spotify</code>
-                <span className="text-zinc-400">Official Spotify playlists</span>
+                <code className="bg-zinc-900 px-2 py-1 rounded text-zinc-300 flex-shrink-0">spotify official</code>
+                <span className="text-zinc-400">Find official Spotify playlists</span>
               </div>
               <div className="flex gap-3">
-                <code className="bg-zinc-900 px-2 py-1 rounded text-zinc-300 flex-shrink-0">owner:"user name"</code>
-                <span className="text-zinc-400">Playlists by specific user</span>
+                <code className="bg-zinc-900 px-2 py-1 rounded text-zinc-300 flex-shrink-0">"curated by"</code>
+                <span className="text-zinc-400">Find curated playlists</span>
               </div>
               <div className="flex gap-3">
-                <code className="bg-zinc-900 px-2 py-1 rounded text-zinc-300 flex-shrink-0">followers:&gt;1000</code>
-                <span className="text-zinc-400">Popular playlists (theoretical)</span>
+                <code className="bg-zinc-900 px-2 py-1 rounded text-zinc-300 flex-shrink-0">top hits</code>
+                <span className="text-zinc-400">Popular music compilations</span>
               </div>
             </div>
           </div>
@@ -228,10 +234,10 @@ export default function SearchGuide({ setSearchQuery, performSearch }: SearchGui
               </code>
               <code className="bg-zinc-800 px-3 py-2 rounded text-zinc-300 hover:bg-zinc-700 cursor-pointer transition-colors"
                     onClick={() => {
-                      setSearchQuery('genre:electronic year:2024');
-                      performSearch('genre:electronic year:2024');
+                      setSearchQuery('electronic 2024');
+                      performSearch('electronic 2024');
                     }}>
-                genre:electronic year:2024
+                electronic 2024
               </code>
               <code className="bg-zinc-800 px-3 py-2 rounded text-zinc-300 hover:bg-zinc-700 cursor-pointer transition-colors"
                     onClick={() => {
@@ -249,17 +255,17 @@ export default function SearchGuide({ setSearchQuery, performSearch }: SearchGui
               </code>
               <code className="bg-zinc-800 px-3 py-2 rounded text-zinc-300 hover:bg-zinc-700 cursor-pointer transition-colors"
                     onClick={() => {
-                      setSearchQuery('workout* genre:hip-hop');
-                      performSearch('workout* genre:hip-hop');
+                      setSearchQuery('workout hip-hop');
+                      performSearch('workout hip-hop');
                     }}>
-                workout* genre:hip-hop
+                workout hip-hop
               </code>
               <code className="bg-zinc-800 px-3 py-2 rounded text-zinc-300 hover:bg-zinc-700 cursor-pointer transition-colors"
                     onClick={() => {
-                      setSearchQuery('owner:spotify rock');
-                      performSearch('owner:spotify rock');
+                      setSearchQuery('indie 2024');
+                      performSearch('indie 2024');
                     }}>
-                owner:spotify rock
+                indie 2024
               </code>
             </div>
             <p className="text-xs text-zinc-500 mt-3">Click any example to try it!</p>

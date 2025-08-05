@@ -96,6 +96,10 @@ export function validateIntent(
     return validateErrorResponse(response, options);
   } else if (looksLikeBatchCommand(response)) {
     return validateBatchCommand(response, options);
+  } else if (looksLikePlaylistSelection(response)) {
+    return validatePlaylistSelection(response, options);
+  } else if (looksLikePlaylistSummarization(response)) {
+    return validatePlaylistSummarization(response, options);
   } else {
     result.errors.push('Unknown intent type - does not match any supported schema');
     return logAndReturn(result, options);
@@ -151,6 +155,28 @@ function looksLikeBatchCommand(obj: any): boolean {
     'commands' in obj &&
     Array.isArray(obj.commands) &&
     !('intent' in obj) // Don't conflict with music command
+  );
+}
+
+function looksLikePlaylistSelection(obj: any): boolean {
+  return (
+    obj &&
+    typeof obj === 'object' &&
+    'selectedPlaylistIds' in obj &&
+    Array.isArray(obj.selectedPlaylistIds) &&
+    !('intent' in obj) // This is a specialized schema
+  );
+}
+
+function looksLikePlaylistSummarization(obj: any): boolean {
+  return (
+    obj &&
+    typeof obj === 'object' &&
+    'summary' in obj &&
+    'matchScore' in obj &&
+    !('intent' in obj) && // This is a specialized schema
+    !('query' in obj) && // Don't conflict with knowledge response
+    !('error' in obj) // Don't conflict with error response
   );
 }
 
@@ -611,6 +637,106 @@ export function createTestIntent(overrides: Partial<MusicCommandIntent> = {}): M
   };
 
   return { ...defaultIntent, ...overrides };
+}
+
+/**
+ * Validate Playlist Selection Response
+ */
+export function validatePlaylistSelection(
+  selection: any,
+  options: ValidationOptions
+): ValidationResult {
+  const result: ValidationResult = {
+    isValid: true,
+    intentType: 'playlist_selection',
+    errors: [],
+    warnings: []
+  };
+
+  // Required fields
+  if (!selection.selectedPlaylistIds || !Array.isArray(selection.selectedPlaylistIds)) {
+    result.errors.push('Required field "selectedPlaylistIds" must be an array');
+  } else {
+    selection.selectedPlaylistIds.forEach((id: any, index: number) => {
+      if (typeof id !== 'string' || id.trim() === '') {
+        result.errors.push(`selectedPlaylistIds[${index}] must be a non-empty string`);
+      }
+    });
+  }
+
+  // Optional fields
+  if (selection.reasoning !== undefined && typeof selection.reasoning !== 'string') {
+    result.errors.push('Optional field "reasoning" must be a string if provided');
+  }
+
+  result.isValid = result.errors.length === 0;
+  if (options.normalize && result.isValid) {
+    result.normalizedIntent = selection;
+  }
+
+  return logAndReturn(result, options);
+}
+
+/**
+ * Validate Playlist Summarization Response
+ */
+export function validatePlaylistSummarization(
+  summary: any,
+  options: ValidationOptions
+): ValidationResult {
+  const result: ValidationResult = {
+    isValid: true,
+    intentType: 'playlist_summarization',
+    errors: [],
+    warnings: []
+  };
+
+  // Required fields
+  if (!summary.summary || typeof summary.summary !== 'string') {
+    result.errors.push('Required field "summary" must be a non-empty string');
+  }
+
+  if (typeof summary.matchScore !== 'number') {
+    result.errors.push('Required field "matchScore" must be a number');
+  } else if (summary.matchScore < 0 || summary.matchScore > 1) {
+    result.errors.push('Field "matchScore" must be between 0 and 1');
+  }
+
+  // Optional fields
+  if (summary.characteristics !== undefined) {
+    if (typeof summary.characteristics !== 'object') {
+      result.errors.push('Optional field "characteristics" must be an object if provided');
+    } else {
+      // Validate characteristics structure
+      const chars = summary.characteristics;
+      if (chars.primaryGenre !== undefined && typeof chars.primaryGenre !== 'string') {
+        result.errors.push('characteristics.primaryGenre must be a string if provided');
+      }
+      if (chars.mood !== undefined && typeof chars.mood !== 'string') {
+        result.errors.push('characteristics.mood must be a string if provided');
+      }
+      if (chars.tempo !== undefined && typeof chars.tempo !== 'string') {
+        result.errors.push('characteristics.tempo must be a string if provided');
+      }
+      if (chars.instrumentation !== undefined && !Array.isArray(chars.instrumentation)) {
+        result.errors.push('characteristics.instrumentation must be an array if provided');
+      }
+      if (chars.decadeRange !== undefined && typeof chars.decadeRange !== 'string') {
+        result.errors.push('characteristics.decadeRange must be a string if provided');
+      }
+    }
+  }
+
+  if (summary.reasoning !== undefined && typeof summary.reasoning !== 'string') {
+    result.errors.push('Optional field "reasoning" must be a string if provided');
+  }
+
+  result.isValid = result.errors.length === 0;
+  if (options.normalize && result.isValid) {
+    result.normalizedIntent = summary;
+  }
+
+  return logAndReturn(result, options);
 }
 
 /**

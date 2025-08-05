@@ -267,7 +267,7 @@ export default function PlaylistSearch() {
               type="text"
               value={searchQuery}
               onChange={handleInputChange}
-              placeholder="Search for playlists... (e.g., 'summer vibes', 'workout', 'jazz 2024')"
+              placeholder="Search for playlists... (e.g., 'summer vibes', 'workout', 'indie 2024')"
               className="w-full px-4 py-3 pr-12 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-spotify-green focus:border-transparent transition-all"
             />
             {loading && (
@@ -280,7 +280,7 @@ export default function PlaylistSearch() {
             )}
           </div>
           <p className="mt-2 text-sm text-zinc-500">
-            Try queries like: "chill", "workout motivation", "jazz NOT sad", "genre:indie", "summer*"
+            Try queries like: "chill", "workout motivation", "jazz NOT sad", "indie 2024", "summer*"
           </p>
         </div>
 

@@ -195,60 +195,13 @@ async function interpretCommand(command: string, userId?: string, preferredModel
     const response = await llmOrchestrator.complete(request);
     return JSON.parse(response.content) as MusicCommand;
   } catch (error: any) {
-    console.error('LLM interpretation with schema failed:', error.message);
+    console.error(`LLM interpretation failed with model ${request.model}:`, error.message);
     
-    // Try without schema validation - just get raw response
-    try {
-      const rawRequest = {
-        messages: request.messages,
-        model: request.model,
-        temperature: 0.7,
-        response_format: { type: 'json_object' as const },
-        conversationContext: request.conversationContext
-      };
-      
-      const rawResponse = await llmOrchestrator.complete(rawRequest);
-      const parsed = JSON.parse(rawResponse.content);
-      
-      // Extract essential fields even if full validation fails
-      const essential = extractEssentialFields(parsed);
-      
-      console.log('Using essential fields fallback:', essential);
-      
-      return {
-        intent: (essential.intent || 'play_specific_song') as MusicCommand['intent'],
-        query: essential.query,
-        artist: essential.artist,
-        track: essential.track,
-        confidence: essential.confidence || 0.7,
-        reasoning: 'Interpreted using fallback extraction',
-        alternatives: [],
-        modifiers: { exclude: [] }
-      };
-    } catch (fallbackError) {
-      console.error('Fallback interpretation also failed:', fallbackError);
-      
-      // Final fallback - try to extract intent from command
-      const lowerCommand = command.toLowerCase();
-      if (lowerCommand.includes('play')) {
-        return {
-          intent: 'play_specific_song',
-          query: command.replace(/^play\s+/i, ''),
-          confidence: 0.5,
-          reasoning: 'Basic keyword matching fallback',
-          alternatives: [],
-          modifiers: { exclude: [] }
-        };
-      }
-      
-      return {
-        intent: 'unknown',
-        confidence: 0,
-        reasoning: 'All interpretation methods failed',
-        alternatives: [],
-        modifiers: { exclude: [] }
-      };
-    }
+    // Re-throw with model information for proper error handling upstream
+    const enhancedError = new Error(`LLM interpretation failed with model ${request.model}: ${error.message}`);
+    (enhancedError as any).model = request.model;
+    (enhancedError as any).originalError = error;
+    throw enhancedError;
   }
 }
 
@@ -278,8 +231,8 @@ Modifiers: ${JSON.stringify(interpretation.modifiers)}`;
   try {
     const response = await llmOrchestrator.complete(request);
     return JSON.parse(response.content);
-  } catch (error) {
-    console.error('Search enhancement failed:', error);
+  } catch (error: any) {
+    console.error(`Search enhancement failed with model ${OPENROUTER_MODELS.GPT_4O}:`, error);
     return null;
   }
 }
@@ -652,11 +605,17 @@ llmInterpreterRouter.post('/command', requireValidTokens, async (req: any, res) 
       });
     }
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('LLM command processing error:', error);
-    res.status(500).json({ 
-      error: 'Failed to process command',
-      details: error instanceof Error ? error.message : 'Unknown error'
+    
+    // Extract model information if available
+    const model = error.model || 'unknown';
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
+    res.status(500).json({
+      success: false,
+      error: `Failed to process command with model ${model}: ${errorMessage}`,
+      model: model
     });
   }
 });
@@ -684,11 +643,17 @@ llmInterpreterRouter.post('/ask', requireValidTokens, async (req: any, res) => {
       success: true,
       ...knowledge
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Music knowledge query failed:', error);
-    res.status(500).json({ 
-      error: 'Failed to answer question',
-      details: error instanceof Error ? error.message : 'Unknown error'
+    
+    // Extract model information if available
+    const model = error.model || OPENROUTER_MODELS.GPT_4O;
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
+    res.status(500).json({
+      success: false,
+      error: `Failed to answer question with model ${model}: ${errorMessage}`,
+      model: model
     });
   }
 });
