@@ -958,7 +958,7 @@ const MainApp: React.FC = () => {
           )}
 
           {/* Messages */}
-          <div className="space-y-4 mb-1 md:mb-32">
+          <div className="space-y-4">
             {commandHistoryLoading ? (
               <CommandHistorySkeleton count={3} />
             ) : commandHistory.length === 0 ? (
@@ -987,6 +987,9 @@ const MainApp: React.FC = () => {
                 />
               ))
             )}
+            
+            {/* Spacer to ensure messages are not hidden behind input */}
+            <div className="h-35"></div>
           </div>
           </div>
         </div>

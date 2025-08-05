@@ -13,12 +13,21 @@ interface HeaderPlaybackControlsProps {
 }
 
 const HeaderPlaybackControls: React.FC<HeaderPlaybackControlsProps> = ({ className = '' }) => {
-  const [isExpanded, setIsExpanded] = useState(true); // Default to expanded
+  // Load saved state from localStorage, default to expanded if not set
+  const [isExpanded, setIsExpanded] = useState(() => {
+    const saved = localStorage.getItem('headerPlayerExpanded');
+    return saved !== null ? saved === 'true' : true;
+  });
   const [isConnected, setIsConnected] = useState(true); // Track connection status
   const [isRefreshing, setIsRefreshing] = useState(false); // Track refresh state
   const { devicePreference, showWebPlayer } = usePlayback();
   const dropdownRef = React.useRef<HTMLDivElement>(null);
   const playbackControlsRef = React.useRef<PlaybackControlsRef>(null);
+  
+  // Persist expanded state to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('headerPlayerExpanded', isExpanded.toString());
+  }, [isExpanded]);
 
   // Close expanded view when clicking outside or pressing ESC
   useEffect(() => {

@@ -58,7 +58,7 @@ html, body {
   -webkit-overflow-scrolling: touch;
   min-height: 0; /* Important for proper scrolling */
   /* Use dynamic input height with fallback */
-  padding-bottom: calc(var(--chat-input-height, 8rem) + var(--keyboard-height, 0));
+  padding-bottom: calc(var(--chat-input-height, 20rem) + var(--keyboard-height, 0));
   transition: padding-bottom 0.2s ease-in-out;
 }
 

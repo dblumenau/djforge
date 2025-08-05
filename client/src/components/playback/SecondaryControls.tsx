@@ -155,9 +155,43 @@ const SecondaryControls: React.FC<SecondaryControlsProps> = ({
     );
   }
 
-  // Desktop layout
+  // Desktop/Compact layout
   if (compact) {
     // Compact mode for fullscreen - just volume and queue
+    if (isMobile) {
+      return (
+        <div className="flex items-center gap-3">
+          {/* Volume */}
+          <div className="relative flex items-center">
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={volume}
+              onChange={(e) => onVolumeChange(Number(e.target.value))}
+              className={volumeClassName || "w-24 h-1.5 accent-red-500"}
+              title={`Volume: ${volume}%`}
+              style={{ minHeight: '44px' }} // Ensure touch-friendly height
+            />
+          </div>
+
+          {/* Queue */}
+          {onShowQueue && (
+            <button
+              onClick={onShowQueue}
+              className={buttonClassName || "p-2 text-gray-400 hover:text-white transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-white/10"}
+              title="View queue"
+            >
+              <svg className={queueIconClassName || "w-5 h-5"} fill="currentColor" viewBox="0 0 24 24">
+                <path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/>
+              </svg>
+            </button>
+          )}
+        </div>
+      );
+    }
+    
+    // Desktop compact mode
     return (
       <div className="flex items-center gap-2">
         {/* Volume */}
@@ -168,7 +202,7 @@ const SecondaryControls: React.FC<SecondaryControlsProps> = ({
             max="100"
             value={volume}
             onChange={(e) => onVolumeChange(Number(e.target.value))}
-            className={volumeClassName || "w-24 accent-green-500"}
+            className={volumeClassName || "w-16 h-1 accent-red-500"}
             title={`Volume: ${volume}%`}
           />
         </div>
@@ -177,7 +211,7 @@ const SecondaryControls: React.FC<SecondaryControlsProps> = ({
         {onShowQueue && (
           <button
             onClick={onShowQueue}
-            className={buttonClassName || "p-1.5 text-gray-400 hover:text-white transition-colors"}
+            className={buttonClassName || "p-1 text-gray-400 hover:text-white transition-colors"}
             title="View queue"
           >
             <svg className={queueIconClassName || "w-4 h-4"} fill="currentColor" viewBox="0 0 24 24">

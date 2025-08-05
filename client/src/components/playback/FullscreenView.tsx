@@ -59,16 +59,16 @@ const FullscreenView: React.FC<FullscreenViewProps> = ({
   }, [onClose]);
 
   const modal = (
-    <div className="fixed inset-0 z-[90] fullscreen-playback-view">
+    <div className="fixed inset-0 z-[90] fullscreen-playback-view" style={{ height: '100dvh' }}>
       {/* Main backdrop - no blur for performance */}
       <div className="absolute inset-0 bg-black/80" />
       
-      {/* Content container */}
-      <div className="relative h-full w-full flex items-center justify-center">
-        {/* Close button */}
+      {/* Content container - Mobile viewport height optimization */}
+      <div className="relative h-full w-full flex items-center justify-center min-h-screen sm:min-h-0 overflow-hidden">
+        {/* Close button - responsive positioning */}
         <button
           onClick={onClose}
-          className="absolute top-6 right-6 p-2 bg-white/10 rounded-full hover:bg-white/20 transition-all z-20"
+          className="absolute top-3 right-3 sm:top-6 sm:right-6 p-2 bg-white/10 rounded-full hover:bg-white/20 transition-all z-20"
         >
           <X className="w-5 h-5 text-white" />
         </button>
@@ -78,33 +78,46 @@ const FullscreenView: React.FC<FullscreenViewProps> = ({
             {/* Dark backdrop behind everything - no blur */}
             <div className="absolute inset-0 bg-black/40" />
             
-            {/* Center: Large Album Art with Ambient Glow */}
-            <div className="relative p-32">
-              {/* Album Art Container */}
-              <div className="relative w-[500px] h-[500px] md:w-[600px] md:h-[600px] lg:w-[700px] lg:h-[700px]">
+            {/* Center: Large Album Art with Ambient Glow - responsive padding */}
+            <div className="relative p-4 sm:p-8 md:p-12 lg:p-16 xl:p-20 2xl:p-24 flex items-center justify-center max-h-[60vh] sm:max-h-none">
+              {/* Album Art Container - responsive sizing with mobile constraints */}
+              <div className="relative w-[240px] h-[240px] sm:w-[320px] sm:h-[320px] md:w-[450px] md:h-[450px] lg:w-[600px] lg:h-[600px] xl:w-[700px] xl:h-[700px] 2xl:w-[800px] 2xl:h-[800px] max-w-[60vw] max-h-[60vw] sm:max-w-none sm:max-h-none">
                 {playbackState.track.albumArt ? (
                   <>
-                    {/* Ambient glow layer - blurred album art */}
+                    {/* Primary ambient glow - large color spread */}
                     <div 
-                      className="absolute -inset-20 opacity-60 rounded-3xl"
+                      className="absolute -inset-32 sm:-inset-48 md:-inset-64 lg:-inset-80 xl:-inset-96 opacity-40"
                       style={{
                         background: `url(${playbackState.track.albumArt})`,
                         backgroundSize: 'cover',
                         backgroundPosition: 'center',
-                        filter: 'blur(100px) saturate(1.5)',
-                        transform: 'scale(1.2)',
+                        filter: 'blur(150px) saturate(3) brightness(1.3) contrast(1.2)',
+                        transform: 'scale(2) rotate(45deg)',
+                        borderRadius: '50%',
                       }}
                     />
                     
-                    {/* Secondary glow for extra depth */}
+                    {/* Secondary glow layer - medium spread */}
                     <div 
-                      className="absolute -inset-10 opacity-40 rounded-3xl"
+                      className="absolute -inset-20 sm:-inset-32 md:-inset-40 lg:-inset-48 xl:-inset-64 opacity-50 rounded-full"
                       style={{
                         background: `url(${playbackState.track.albumArt})`,
                         backgroundSize: 'cover',
                         backgroundPosition: 'center',
-                        filter: 'blur(50px) saturate(2)',
-                        transform: 'scale(1.1)',
+                        filter: 'blur(100px) saturate(2.5) brightness(1.2)',
+                        transform: 'scale(1.5)',
+                      }}
+                    />
+                    
+                    {/* Tertiary glow for depth - closer to album */}
+                    <div 
+                      className="absolute -inset-8 sm:-inset-12 md:-inset-16 lg:-inset-20 xl:-inset-24 opacity-60 rounded-full"
+                      style={{
+                        background: `url(${playbackState.track.albumArt})`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                        filter: 'blur(60px) saturate(2) brightness(1.1)',
+                        transform: 'scale(1.2)',
                       }}
                     />
                     
@@ -128,21 +141,25 @@ const FullscreenView: React.FC<FullscreenViewProps> = ({
                        style={{
                          boxShadow: '0 0 80px rgba(0, 0, 0, 0.8), 0 0 120px rgba(0, 0, 0, 0.5)'
                        }}>
-                    <Music className="w-48 h-48 text-gray-500" />
+                    <Music className="w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 lg:w-48 lg:h-48 text-gray-500" />
                   </div>
                 )}
               </div>
             </div>
             
-            {/* Track info - Top left */}
-            <div className="absolute top-6 left-6 max-w-md z-20">
-              <h1 className="text-3xl font-bold text-white mb-1 drop-shadow-lg">{playbackState.track.name}</h1>
-              <p className="text-xl text-gray-200 drop-shadow-lg">{playbackState.track.artist}</p>
-              <p className="text-lg text-gray-300 drop-shadow-lg">{playbackState.track.album}</p>
+            {/* Track info - responsive positioning and sizing */}
+            <div className="absolute top-3 left-3 sm:top-6 sm:left-6 max-w-[calc(100%-6rem)] sm:max-w-md z-20">
+              <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-white mb-0.5 sm:mb-1 drop-shadow-lg line-clamp-2">{playbackState.track.name}</h1>
+              <p className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-200 drop-shadow-lg line-clamp-1">{playbackState.track.artist}</p>
+              <p className="text-xs sm:text-sm md:text-base lg:text-lg text-gray-300 drop-shadow-lg line-clamp-1">{playbackState.track.album}</p>
             </div>
             
-            {/* Compact controls - Bottom right corner */}
-            <div className="absolute bottom-6 right-6 bg-black/70 rounded-2xl px-16 py-4 shadow-2xl border border-white/10 max-w-2xl overflow-hidden">              
+            {/* Compact controls - Responsive positioning with safe area */}
+            <div className="fixed sm:absolute bottom-0 sm:bottom-6 left-0 sm:left-auto right-0 sm:right-6 sm:max-w-2xl bg-black/70 rounded-t-2xl sm:rounded-2xl px-3 py-3 sm:px-6 sm:py-4 md:px-8 md:py-4 lg:px-12 lg:py-4 shadow-2xl border border-white/10 overflow-hidden" 
+                 style={{ 
+                   paddingBottom: `calc(12px + env(safe-area-inset-bottom, 0px))`,
+                   maxHeight: 'calc(40vh - env(safe-area-inset-bottom, 0px))'
+                 }}>              
               {/* Content wrapper to ensure everything stays clickable */}
               <div className="relative z-10">
                 {/* Progress bar */}
@@ -158,8 +175,8 @@ const FullscreenView: React.FC<FullscreenViewProps> = ({
                   />
                 </div>
                 
-                {/* Main controls */}
-                <div className="flex items-center justify-center gap-2 mb-3">
+                {/* Main controls - responsive layout */}
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-2 mb-3">
                   <ControlButtons
                     isPlaying={playbackState.isPlaying}
                     loading={false}
@@ -171,45 +188,54 @@ const FullscreenView: React.FC<FullscreenViewProps> = ({
                     onShuffle={onShuffle}
                     onRepeat={onRepeat}
                     size="sm"
-                    playButtonClassName="p-3 bg-red-500 rounded-full text-white hover:bg-red-400"
-                    otherButtonClassName="p-1.5 rounded-lg transition-all"
+                    variant="mobile"
+                    isMobile={true}
+                    playButtonClassName="p-3 sm:p-4 bg-red-500 rounded-full text-white hover:bg-red-400 shadow-lg transition-all"
+                    otherButtonClassName="p-2 sm:p-2.5 rounded-lg transition-all min-w-[44px] min-h-[44px] flex items-center justify-center"
                     activeClassName="text-red-400 bg-red-400/20"
-                    inactiveClassName="text-gray-400 hover:bg-white/10"
+                    inactiveClassName="text-gray-400 hover:bg-white/10 hover:text-white"
                   />
                 </div>
                 
-                {/* Secondary controls */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+                {/* Secondary controls - responsive layout */}
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-0">
+                  {/* Heart icon - touch-friendly sizing */}
+                  <div className="flex items-center justify-center sm:justify-start">
                     {playbackState.track?.id && (
                       <HeartIcon
                         filled={savedStatus.get(playbackState.track.id) || false}
                         loading={libraryLoading.get(playbackState.track.id) || false}
                         size="sm"
                         onClick={() => playbackState.track?.id && onToggleSave(playbackState.track.id)}
+                        className="min-w-[44px] min-h-[44px] flex items-center justify-center"
                       />
                     )}
                   </div>
                   
-                  <SecondaryControls
-                    volume={volume}
-                    onVolumeChange={onVolumeChange}
-                    onShowQueue={onShowQueue}
-                    compact={true}
-                    volumeClassName="w-16 h-1 accent-red-500"
-                    queueIconClassName="w-4 h-4"
-                    buttonClassName="p-1 text-gray-400 hover:text-white transition-colors"
-                  />
+                  {/* Volume and queue controls - mobile-optimized */}
+                  <div className="flex items-center gap-3 sm:gap-2">
+                    <SecondaryControls
+                      volume={volume}
+                      onVolumeChange={onVolumeChange}
+                      onShowQueue={onShowQueue}
+                      compact={true}
+                      variant="mobile"
+                      isMobile={true}
+                      volumeClassName="w-20 sm:w-16 h-1.5 sm:h-1 accent-red-500"
+                      queueIconClassName="w-5 h-5 sm:w-4 sm:h-4"
+                      buttonClassName="p-2 sm:p-1.5 text-gray-400 hover:text-white transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-white/10"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
           </>
         ) : (
-          <div className="text-center">
-            <div className="w-32 h-32 mb-4 mx-auto rounded-full bg-gray-800 flex items-center justify-center">
-              <Music className="w-16 h-16 text-gray-600" />
+          <div className="text-center px-4">
+            <div className="w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 mb-4 mx-auto rounded-full bg-gray-800 flex items-center justify-center">
+              <Music className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 text-gray-600" />
             </div>
-            <p className="text-2xl text-gray-400">No track playing</p>
+            <p className="text-lg sm:text-xl md:text-2xl text-gray-400">No track playing</p>
           </div>
         )}
       </div>

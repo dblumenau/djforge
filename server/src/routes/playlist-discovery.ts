@@ -92,7 +92,7 @@ router.post('/search', async (req: Request & { tokens?: any; userId?: string }, 
 
     // Step 1: Perform initial Spotify search for playlists
     console.log('🔍 Step 1: Performing initial Spotify search...');
-    const searchResults = await spotifyApi.searchPlaylists(query.trim(), 40, 0);
+    const searchResults = await spotifyApi.searchPlaylists(query.trim(), 50, 0);
     
     const playlists = searchResults.playlists?.items || [];
     
@@ -155,6 +155,19 @@ Respond with a JSON object containing:
 - selectedPlaylistIds: array of ONLY the playlist ID strings (e.g., ["035OfvPcp5PUAAogsLxsbM", "7M65Xoo7Mr0XOrF5Dpd4CX"]) without any numbers or prefixes
 - reasoning: brief explanation of why these were chosen (optional)`;
 
+    // Scale max_tokens based on the number of playlists being analyzed
+    // Base: 8000 tokens, plus 150 tokens per playlist to handle the increased data
+    // Gemini 2.5 Flash supports up to 64k output tokens
+    const calculatedMaxTokens = Math.min(
+      8000 + (playlistsForAnalysis.length * 150),
+      60000 // Cap at 60k to leave buffer from Gemini's 64k limit
+    );
+    
+    console.log(`📊 Token Allocation for Playlist Selection:`);
+    console.log(`   - Analyzing ${playlistsForAnalysis.length} playlists`);
+    console.log(`   - Max output tokens: ${calculatedMaxTokens.toLocaleString()}`);
+    console.log(`   - Model limit: 64,000 tokens (Gemini 2.5 Flash)`);
+
     const llmRequest: LLMRequest & { intentType?: string } = {
       model: model || 'google/gemini-2.5-flash',
       messages: [
@@ -170,7 +183,7 @@ Respond with a JSON object containing:
       response_format: { type: 'json_object' },
       schema: PlaylistSelectionSchema,
       temperature: 0.4, // Lower temperature for more consistent selections
-      max_tokens: 8000,
+      max_tokens: calculatedMaxTokens,
       intentType: 'playlist_selection' // Use dedicated playlist selection schema
     };
 
@@ -767,7 +780,7 @@ Respond with a JSON object containing:
       response_format: { type: 'json_object' },
       schema: PlaylistSummarizationSchema,
       temperature: 0.4, // Slightly creative but consistent
-      max_tokens: 5000,
+      max_tokens: 16000, // Increased for comprehensive summary generation
       intentType: 'playlist_summarization' // Use dedicated playlist summarization schema
     };
 
@@ -967,7 +980,7 @@ router.post('/full-search', async (req: Request & { tokens?: any; userId?: strin
     }
 
     // Validate and sanitize parameters
-    const validatedPlaylistLimit = Math.min(Math.max(parseInt(String(playlistLimit), 10) || 40, 1), 100);
+    const validatedPlaylistLimit = Math.min(Math.max(parseInt(String(playlistLimit), 10) || 40, 1), 200);
     const validatedTrackSampleSize = Math.min(Math.max(parseInt(String(trackSampleSize), 10) || 30, 10), 100);
     const validatedRenderLimit = Math.min(Math.max(parseInt(String(renderLimit), 10) || 10, 1), 50);
 
@@ -999,22 +1012,99 @@ router.post('/full-search', async (req: Request & { tokens?: any; userId?: strin
         sessionId: sessionId || 'unknown',
         step: `Searching Spotify for '${query}'...`,
         phase: 'searching',
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        progress: 0  // Start at 0% for searching phase
       });
     }
     
     const searchStart = Date.now();
-    const searchResults = await spotifyApi.searchPlaylists(query.trim(), validatedPlaylistLimit, 0);
-    const playlists = searchResults.playlists?.items || [];
+    let allPlaylists: any[] = [];
+    
+    // Calculate how many requests we need (50 per request)
+    const requestsNeeded = Math.ceil(validatedPlaylistLimit / 50);
+    
+    // Make paginated requests
+    for (let i = 0; i < requestsNeeded; i++) {
+      const offset = i * 50;
+      const limit = Math.min(50, validatedPlaylistLimit - offset);
+      
+      // Add delay between requests (except for the first one)
+      if (i > 0) {
+        const delayMs = 2000; // 2 second delay between requests
+        console.log(`⏳ Waiting ${delayMs}ms before next request to avoid rate limiting...`);
+        
+        // Emit progress update about rate limit delay
+        if (musicWS && req.userId) {
+          // Keep the same progress percentage during the delay
+          const currentProgress = (i / requestsNeeded) * 5;  // Current progress before next batch
+          
+          musicWS.emitToUser(req.userId, 'playlistDiscoveryProgress', {
+            sessionId: sessionId || 'unknown',
+            step: `Waiting to avoid rate limits... Next batch in 2 seconds`,
+            phase: 'searching',
+            timestamp: Date.now(),
+            progress: currentProgress,  // Maintain current progress during delay
+            itemNumber: i,  // Current completed batches
+            totalItems: requestsNeeded,  // Total batches
+            metadata: {
+              isRateLimitDelay: true,
+              delayMs: delayMs,
+              nextBatch: i + 1,
+              totalBatches: requestsNeeded
+            }
+          });
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+      }
+      
+      console.log(`📄 Fetching playlists batch ${i + 1}/${requestsNeeded} (offset: ${offset}, limit: ${limit})`);
+      
+      const searchResults = await spotifyApi.searchPlaylists(query.trim(), limit, offset);
+      const batchPlaylists = searchResults.playlists?.items || [];
+      allPlaylists = allPlaylists.concat(batchPlaylists);
+      
+      // Progress update for each batch
+      if (musicWS && req.userId) {
+        // Calculate progress within the searching phase (0-5%)
+        // We want to show progress as we fetch each batch
+        const searchProgress = ((i + 1) / requestsNeeded) * 5;  // Maps to 0-5% of total progress
+        
+        musicWS.emitToUser(req.userId, 'playlistDiscoveryProgress', {
+          sessionId: sessionId || 'unknown',
+          step: `Fetching playlists page ${i + 1}/${requestsNeeded}... (${allPlaylists.length}/${validatedPlaylistLimit} collected)`,
+          phase: 'searching',
+          timestamp: Date.now(),
+          progress: searchProgress,  // Direct progress value for the searching phase
+          itemNumber: i + 1,  // Current batch number
+          totalItems: requestsNeeded,  // Total batches
+          metadata: {
+            batchNumber: i + 1,
+            totalBatches: requestsNeeded,
+            playlistsFetched: allPlaylists.length,
+            targetTotal: validatedPlaylistLimit
+          }
+        });
+      }
+      
+      // If we got fewer results than requested, we've reached the end
+      if (batchPlaylists.length < limit) {
+        console.log(`📊 Reached end of results at batch ${i + 1}`);
+        break;
+      }
+    }
+    
+    const playlists = allPlaylists;
     const searchTime = Date.now() - searchStart;
     
-    // Progress: After search results
+    // Progress: After search results - transition to analyzing phase
     if (musicWS && req.userId) {
       musicWS.emitToUser(req.userId, 'playlistDiscoveryProgress', {
         sessionId: sessionId || 'unknown',
         step: `Found ${playlists.length} playlists, sending to AI for analysis...`,
         phase: 'searching',
         timestamp: Date.now(),
+        progress: 5,  // Complete the searching phase at 5%
         metadata: {
           searchTime: searchTime,
           playlistCount: playlists.length
@@ -1089,7 +1179,11 @@ Respond with a JSON object containing:
 
     // Dynamic token allocation based on number of playlists to select
     // Be generous with tokens - we want complete responses
-    const selectionMaxTokens = Math.max(4000, 2000 + (validatedRenderLimit * 200)); // At least 4000, scales up generously
+    // Gemini 2.5 Flash supports up to 64k output tokens
+    const selectionMaxTokens = Math.min(
+      Math.max(16000, 8000 + (validatedRenderLimit * 400)), // At least 16k, scales up generously
+      60000 // Cap at 60k to leave buffer from Gemini's 64k limit
+    );
     
     const llmRequest: LLMRequest & { intentType?: string } = {
       model: model || 'google/gemini-2.5-flash',
@@ -1109,6 +1203,12 @@ Respond with a JSON object containing:
       max_tokens: selectionMaxTokens,
       intentType: 'playlist_selection' // Use dedicated playlist selection schema
     };
+    
+    console.log(`📊 Token Allocation for Full Search Selection:`);
+    console.log(`   - Selecting from ${playlistsForAnalysis.length} playlists`);
+    console.log(`   - Target selection: ${validatedRenderLimit} playlists`);
+    console.log(`   - Max output tokens: ${selectionMaxTokens.toLocaleString()}`);
+    console.log(`   - Model limit: 64,000 tokens (Gemini 2.5 Flash)`);
 
     let llmResponse;
     let selectedPlaylistIds: string[] = [];
@@ -1419,7 +1519,11 @@ Respond with JSON:
 }`;
 
           // Dynamic token allocation for summaries - be generous
-          const summaryMaxTokens = Math.max(4000, 2000 + (validatedRenderLimit * 300)); // At least 4000, scales up for multiple summaries
+          // Gemini 2.5 Flash supports up to 64k output tokens
+          const summaryMaxTokens = Math.min(
+            Math.max(20000, 10000 + (validatedRenderLimit * 500)), // At least 20k, scales up for multiple summaries
+            60000 // Cap at 60k to leave buffer from Gemini's 64k limit
+          );
           
           const summaryLLMRequest: LLMRequest & { intentType?: string } = {
             model: model || 'google/gemini-2.5-flash',
@@ -1439,6 +1543,11 @@ Respond with JSON:
             max_tokens: summaryMaxTokens,
             intentType: 'playlist_summarization' // Use dedicated playlist summarization schema
           };
+          
+          console.log(`📊 Token Allocation for Full Search Summary ${playlistIndex + 1}/${playlistDetails.length}:`);
+          console.log(`   - Playlist: ${playlist.name}`);
+          console.log(`   - Max output tokens: ${summaryMaxTokens.toLocaleString()}`);
+          console.log(`   - Model limit: 64,000 tokens (Gemini 2.5 Flash)`);
 
           let summaryLLMResponse;
           let summaryLatency = 0;

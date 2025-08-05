@@ -24,7 +24,7 @@ router.get('/', async (req: any, res: Response) => {
     }
 
     // Parse and validate parameters
-    const parsedPlaylistLimit = Math.min(Math.max(parseInt(playlistLimit as string, 10) || 20, 1), 100);
+    const parsedPlaylistLimit = Math.min(Math.max(parseInt(playlistLimit as string, 10) || 20, 1), 200);
     const parsedRenderLimit = Math.min(Math.max(parseInt(renderLimit as string, 10) || 3, 1), 10);
     const parsedOffset = Math.max(parseInt(offset as string, 10) || 0, 0);
 
@@ -42,8 +42,65 @@ router.get('/', async (req: any, res: Response) => {
       req.tokens = newTokens;
     });
 
-    // Perform the search with playlist limit
-    const searchResults = await spotifyApi.searchPlaylists(q.trim(), parsedPlaylistLimit, parsedOffset);
+    // Perform paginated search if limit > 50
+    let allPlaylists: any[] = [];
+    let totalResults = 0;
+    let hasNext = false;
+    let hasPrevious = parsedOffset > 0;
+    
+    if (parsedPlaylistLimit <= 50) {
+      // Single request for limits <= 50
+      const searchResults = await spotifyApi.searchPlaylists(q.trim(), parsedPlaylistLimit, parsedOffset);
+      allPlaylists = searchResults.playlists?.items || [];
+      totalResults = searchResults.playlists?.total || 0;
+      hasNext = !!searchResults.playlists?.next;
+    } else {
+      // Multiple requests for limits > 50
+      const requestsNeeded = Math.ceil(parsedPlaylistLimit / 50);
+      
+      for (let i = 0; i < requestsNeeded; i++) {
+        const batchOffset = parsedOffset + (i * 50);
+        const batchLimit = Math.min(50, parsedPlaylistLimit - (i * 50));
+        
+        // Add delay between requests (except for the first one)
+        if (i > 0) {
+          const delayMs = 2000; // 2 second delay between requests
+          console.log(`⏳ Waiting ${delayMs}ms before next request to avoid rate limiting...`);
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+        }
+        
+        console.log(`📄 Fetching batch ${i + 1}/${requestsNeeded} (offset: ${batchOffset}, limit: ${batchLimit})`);
+        
+        const batchResults = await spotifyApi.searchPlaylists(q.trim(), batchLimit, batchOffset);
+        const batchPlaylists = batchResults.playlists?.items || [];
+        allPlaylists = allPlaylists.concat(batchPlaylists);
+        
+        // Set metadata from first batch
+        if (i === 0) {
+          totalResults = batchResults.playlists?.total || 0;
+        }
+        
+        // Check if we have more results after our last batch
+        if (i === requestsNeeded - 1) {
+          hasNext = !!batchResults.playlists?.next;
+        }
+        
+        // If we got fewer results than requested, we've reached the end
+        if (batchPlaylists.length < batchLimit) {
+          console.log(`📊 Reached end of results at batch ${i + 1}`);
+          break;
+        }
+      }
+    }
+    
+    const searchResults = {
+      playlists: {
+        items: allPlaylists,
+        total: totalResults,
+        next: hasNext,
+        previous: hasPrevious
+      }
+    };
 
     console.log(`✅ Playlist search completed:`, {
       query: q,

@@ -8,14 +8,29 @@ interface PlaylistDiscoveryProgress {
   itemNumber?: number;
   totalItems?: number;
   metadata?: any;
+  reset: () => void;  // Add reset function to interface
 }
 
 export default function usePlaylistDiscoveryProgress(sessionId: string): PlaylistDiscoveryProgress {
   const [currentProgress, setCurrentProgress] = useState<PlaylistDiscoveryProgress>({
     phase: 'idle',
     step: '',
-    progress: 0
+    progress: 0,
+    reset: () => {}  // Will be overridden below
   });
+
+  // Manual reset function
+  const reset = () => {
+    setCurrentProgress(prev => ({
+      ...prev,
+      phase: 'idle',
+      step: '',
+      progress: 0,
+      itemNumber: undefined,
+      totalItems: undefined,
+      metadata: undefined
+    }));
+  };
 
   useEffect(() => {
     // Ensure music socket is connected for progress updates
@@ -85,14 +100,15 @@ export default function usePlaylistDiscoveryProgress(sessionId: string): Playlis
           calculatedProgress = data.progress || 0;
       }
 
-      setCurrentProgress({
+      setCurrentProgress(prev => ({
+        ...prev,
         step: data.step || '',
         phase: data.phase || 'idle',
         progress: Math.round(calculatedProgress),
         itemNumber: data.itemNumber,
         totalItems: data.totalItems,
         metadata: data.metadata
-      });
+      }));
     };
 
     console.log('[PlaylistDiscoveryProgress] Registering event listener for sessionId:', sessionId);
@@ -112,5 +128,8 @@ export default function usePlaylistDiscoveryProgress(sessionId: string): Playlis
     };
   }, [sessionId]);
 
-  return currentProgress;
+  return {
+    ...currentProgress,
+    reset  // Include the reset function in the returned object
+  };
 }

@@ -21,10 +21,10 @@ interface Preset {
 }
 
 const presets: Preset[] = [
-  { name: 'Quick', playlistLimit: 5, trackSampleSize: 10, renderLimit: 3, icon: <Zap className="w-3 h-3" /> },
-  { name: 'Standard', playlistLimit: 20, trackSampleSize: 30, renderLimit: 5, icon: <Search className="w-3 h-3" /> },
-  { name: 'Deep', playlistLimit: 50, trackSampleSize: 50, renderLimit: 8, icon: <Brain className="w-3 h-3" /> },
-  { name: 'Maximum', playlistLimit: 100, trackSampleSize: 100, renderLimit: 10, icon: <Sparkles className="w-3 h-3" /> },
+  { name: 'Quick', playlistLimit: 10, trackSampleSize: 10, renderLimit: 3, icon: <Zap className="w-3 h-3" /> },
+  { name: 'Standard', playlistLimit: 50, trackSampleSize: 30, renderLimit: 5, icon: <Search className="w-3 h-3" /> },
+  { name: 'Deep', playlistLimit: 100, trackSampleSize: 50, renderLimit: 8, icon: <Brain className="w-3 h-3" /> },
+  { name: 'Maximum', playlistLimit: 200, trackSampleSize: 100, renderLimit: 10, icon: <Sparkles className="w-3 h-3" /> },
 ];
 
 // Custom slider component with gradient styling
@@ -140,11 +140,11 @@ const PlaylistSearchControls: React.FC<PlaylistSearchControlsProps> = ({
                 value={playlistLimit}
                 onChange={onPlaylistLimitChange}
                 min={1}
-                max={100}
+                max={200}
               />
               <div className="flex justify-between text-xs text-zinc-500">
                 <span>1</span>
-                <span>100</span>
+                <span>200</span>
               </div>
             </div>
 

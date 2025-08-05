@@ -71,6 +71,11 @@ export default function PlaylistDiscovery() {
   const handleSearch = useCallback(async (searchQuery: string) => {
     if (!searchQuery.trim()) return;
 
+    // Reset progress for new search
+    if (currentProgress.reset) {
+      currentProgress.reset();
+    }
+
     setIsLoading(true);
     setError(null);
     setResults([]);
@@ -81,7 +86,9 @@ export default function PlaylistDiscovery() {
 
       const response = await authenticatedFetch(apiEndpoint('/api/playlist-discovery/full-search'), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({ 
           query: searchQuery.trim(),
           model: selectedModel,
@@ -126,7 +133,7 @@ export default function PlaylistDiscovery() {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedModel, playlistLimit, trackSampleSize, renderLimit]);
+  }, [selectedModel, playlistLimit, trackSampleSize, renderLimit, sessionId, currentProgress]);
 
   const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
