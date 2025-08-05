@@ -445,7 +445,7 @@ directActionRouter.post('/start-playback', requireValidTokens, async (req: any, 
           message: `Started playing ${trackUris.length} tracks` 
         };
       } catch (playError: any) {
-        console.error('Failed with track-by-track approach:', playError);
+        console.log('Track-by-track queueing failed (404 - no active playback), falling back to batch play method');
         // Fall back to original method
         result = await spotifyControl.playTracks(trackUris);
       }
