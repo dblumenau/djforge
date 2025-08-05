@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronDown, ChevronUp, Play, Pause } from 'lucide-react';
+import { ChevronDown, ChevronUp, Play, Pause, RefreshCw, Expand } from 'lucide-react';
 import { usePlayback } from '../contexts/PlaybackContext';
 import { useWebPlayer } from '../hooks/useWebPlayer';
 import { api } from '../utils/api';
 import PlaybackControls from './PlaybackControls';
 import WebPlayerControls from './WebPlayerControls';
+import DeviceSelector from './DeviceSelector';
 
 interface HeaderPlaybackControlsProps {
   className?: string;
@@ -12,7 +13,51 @@ interface HeaderPlaybackControlsProps {
 
 const HeaderPlaybackControls: React.FC<HeaderPlaybackControlsProps> = ({ className = '' }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const { devicePreference, showWebPlayer } = usePlayback();
+  const [isConnected, setIsConnected] = useState(true); // Track connection status
+  const { devicePreference, showWebPlayer, setDevicePreference } = usePlayback();
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
+
+  // Close expanded view when clicking outside or pressing ESC
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsExpanded(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsExpanded(false);
+      }
+    };
+
+    if (isExpanded) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleKeyDown);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+        document.removeEventListener('keydown', handleKeyDown);
+      };
+    }
+  }, [isExpanded]);
+
+  // Periodic connection check
+  useEffect(() => {
+    const checkConnection = async () => {
+      try {
+        const response = await api.get('/api/control/current-track');
+        setIsConnected(response.ok);
+      } catch (error) {
+        setIsConnected(false);
+      }
+    };
+
+    // Check connection immediately and then every 10 seconds
+    checkConnection();
+    const interval = setInterval(checkConnection, 10000);
+    
+    return () => clearInterval(interval);
+  }, []);
 
   // Don't render anything if no device preference is set or it's auto
   // This prevents the header from showing controls when the main playback area is handling it
@@ -24,33 +69,89 @@ const HeaderPlaybackControls: React.FC<HeaderPlaybackControlsProps> = ({ classNa
     setIsExpanded(!isExpanded);
   };
 
+  // Handle refresh playback state
+  const handleRefresh = async () => {
+    try {
+      // Trigger a refresh of playback state
+      const response = await api.get('/api/control/current-track');
+      setIsConnected(response.ok);
+    } catch (error) {
+      console.error('Failed to refresh playback state:', error);
+      setIsConnected(false);
+    }
+  };
+
+  // Handle fullscreen (placeholder for future functionality)
+  const handleFullscreen = () => {
+    // Placeholder for future fullscreen functionality
+    console.log('Fullscreen toggle clicked');
+  };
+
   return (
-    <div className={`hidden md:flex ${className}`}>
+    <div className={`flex w-full ${className}`}>
       {isExpanded ? (
         // Expanded view - show full controls in a dropdown-style container
         <div className="relative">
-          <div className="absolute top-0 right-0 z-50 min-w-[400px] max-w-[500px] bg-black/90 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl">
-            {/* Header with collapse button */}
+          <div 
+            ref={dropdownRef}
+            className="fixed top-16 left-1/2 -translate-x-1/2 z-500 w-[600px] max-w-[calc(100vw-1rem)] md:max-w-[calc(100vw-2rem)] bg-black/90 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl animate-in fade-in slide-in-from-top-4 duration-200"
+          >
+            {/* Header with status indicators and controls */}
             <div className="flex items-center justify-between p-3 border-b border-white/10">
               <span className="text-sm font-medium text-white">Now Playing</span>
-              <button
-                onClick={toggleExpanded}
-                className="p-1 hover:bg-white/10 rounded transition-colors"
-                title="Collapse player"
-              >
-                <ChevronUp className="w-4 h-4 text-gray-400" />
-              </button>
+              
+              {/* Right side controls */}
+              <div className="flex items-center gap-2">
+                {/* Live updates status */}
+                <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                  <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400' : 'bg-red-400'}`} />
+                  <span>Live updates {isConnected ? 'connected' : 'disconnected'}</span>
+                </div>
+                
+                {/* Device selector */}
+                <DeviceSelector 
+                  onDeviceChange={setDevicePreference}
+                  compact={true}
+                />
+                
+                {/* Control buttons */}
+                <button
+                  onClick={handleRefresh}
+                  className="p-1 hover:bg-white/10 rounded transition-colors"
+                  title="Refresh playback state"
+                >
+                  <RefreshCw className="w-4 h-4 text-gray-400 hover:text-white" />
+                </button>
+                
+                <button
+                  onClick={handleFullscreen}
+                  className="p-1 hover:bg-white/10 rounded transition-colors"
+                  title="Fullscreen (coming soon)"
+                >
+                  <Expand className="w-4 h-4 text-gray-400 hover:text-white" />
+                </button>
+                
+                <button
+                  onClick={toggleExpanded}
+                  className="p-1 hover:bg-white/10 rounded transition-colors"
+                  title="Collapse player"
+                >
+                  <ChevronUp className="w-4 h-4 text-gray-400 hover:text-white" />
+                </button>
+              </div>
             </div>
             
             {/* Full controls container */}
-            <div className="max-h-[80vh] overflow-y-auto">
+            <div className="max-h-[calc(100vh-6rem)] overflow-y-auto">
               {showWebPlayer ? (
                 <WebPlayerControls className="border-0 rounded-none bg-transparent" />
               ) : (
-                <PlaybackControls 
-                  isMobile={false}
-                  devicePreference={devicePreference}
-                />
+                <div className="[&_.p-6]:p-4 [&_.p-2]:p-3 [&_.gap-6]:gap-4 [&_.mb-6]:mb-4 [&_.space-y-6]:space-y-4">
+                  <PlaybackControls 
+                    isMobile={false}
+                    devicePreference={devicePreference}
+                  />
+                </div>
               )}
             </div>
           </div>
@@ -119,7 +220,8 @@ const HeaderCompactView: React.FC<HeaderCompactViewProps> = ({ onExpand }) => {
   const progressPercent = duration > 0 ? (position / duration) * 100 : 0;
 
   // Handle play/pause
-  const handlePlayPause = async () => {
+  const handlePlayPause = async (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent expanding when clicking play/pause
     try {
       if (showWebPlayer) {
         await webPlayer.togglePlayPause();
@@ -133,16 +235,20 @@ const HeaderCompactView: React.FC<HeaderCompactViewProps> = ({ onExpand }) => {
   };
 
   return (
-    <div className="flex items-center gap-3 px-3 py-2 bg-black/60 backdrop-blur-sm border border-white/10 rounded-lg max-w-[320px]">
+    <div 
+      className="flex items-center gap-2 px-2 py-1.5 bg-black/60 backdrop-blur-sm border border-white/10 rounded-lg w-full cursor-pointer hover:bg-black/70 transition-colors"
+      onClick={onExpand}
+      title="Click to expand player"
+    >
       {/* Mini album art */}
       {currentTrack?.albumArt ? (
         <img 
           src={currentTrack.albumArt} 
           alt={currentTrack.album || 'Album'}
-          className="w-8 h-8 rounded object-cover flex-shrink-0 shadow-sm"
+          className="w-7 h-7 md:w-8 md:h-8 rounded object-cover flex-shrink-0 shadow-sm"
         />
       ) : (
-        <div className="w-8 h-8 rounded bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center flex-shrink-0">
+        <div className="w-7 h-7 md:w-8 md:h-8 rounded bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center flex-shrink-0">
           <span className="text-xs">🎵</span>
         </div>
       )}
@@ -195,14 +301,10 @@ const HeaderCompactView: React.FC<HeaderCompactViewProps> = ({ onExpand }) => {
         )}
       </button>
       
-      {/* Expand button */}
-      <button
-        onClick={onExpand}
-        className="p-1 hover:bg-white/10 rounded transition-colors text-gray-400 hover:text-white"
-        title="Expand player"
-      >
+      {/* Expand indicator */}
+      <div className="p-1 text-gray-400">
         <ChevronDown className="w-4 h-4" />
-      </button>
+      </div>
     </div>
   );
 };

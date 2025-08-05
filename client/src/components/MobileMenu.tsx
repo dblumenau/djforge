@@ -116,7 +116,14 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-zinc-800">
-            <h2 className="text-lg font-semibold">Menu</h2>
+            <div className="flex items-center gap-3">
+              <img 
+                src="/landscape_icon.png" 
+                alt="DJ Forge" 
+                className="h-8"
+              />
+              <h2 className="text-lg font-semibold">DJ Forge</h2>
+            </div>
             <button
               onClick={onClose}
               className="p-2 hover:bg-zinc-800 rounded-lg transition-colors"
