@@ -14,13 +14,16 @@ interface HeaderPlaybackControlsProps {
 const HeaderPlaybackControls: React.FC<HeaderPlaybackControlsProps> = ({ className = '' }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isConnected, setIsConnected] = useState(true); // Track connection status
-  const { devicePreference, showWebPlayer, setDevicePreference } = usePlayback();
+  const { devicePreference, showWebPlayer } = usePlayback();
   const dropdownRef = React.useRef<HTMLDivElement>(null);
 
   // Close expanded view when clicking outside or pressing ESC
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      const target = event.target as HTMLElement;
+      if (dropdownRef.current && 
+          !dropdownRef.current.contains(target) && 
+          !target.closest('.device-selector-dropdown')) {
         setIsExpanded(false);
       }
     };
@@ -110,7 +113,6 @@ const HeaderPlaybackControls: React.FC<HeaderPlaybackControlsProps> = ({ classNa
                 
                 {/* Device selector */}
                 <DeviceSelector 
-                  onDeviceChange={setDevicePreference}
                   compact={true}
                 />
                 
