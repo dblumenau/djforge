@@ -4,7 +4,6 @@ import { SpotifyWebAPI } from '../spotify/api';
 import { requireValidTokens } from '../middleware/session-auth';
 import { ConversationManager, getConversationManager } from '../services/ConversationManager';
 import { UserDataService } from '../services/UserDataService';
-import { ConversationEntry } from '../utils/redisConversation';
 import { getWebSocketService } from '../services/websocket.service';
 
 export const directActionRouter = Router();
@@ -40,16 +39,8 @@ async function emitDirectActionWebSocketEvents(
   }
 
   try {
-    // Emit command execution status
-    musicService.emitCommandExecuted(userId, {
-      command: `[Direct Action] ${action}`,
-      intent: action,
-      success: success,
-      confidence: 100, // Direct actions have 100% confidence
-      result: success ? result : undefined,
-      error: success ? undefined : result.error || 'Direct action failed',
-      timestamp: Date.now()
-    });
+    // Don't emit command execution for direct actions to avoid chat messages
+    // Only emit the specific playback state changes below
 
     // If action was successful, emit appropriate events
     if (success) {
@@ -155,7 +146,7 @@ directActionRouter.post('/song', requireValidTokens, async (req: any, res) => {
       response = error.message || `Failed to ${action} track`;
     }
 
-    // Update dialog state in Redis if successful
+    // Update dialog state in Redis if successful (but don't add to conversation)
     if (success && conversationManager && userId) {
       const dialogState: any = {
         mode: 'music',
@@ -324,7 +315,7 @@ directActionRouter.post('/playlist-uri', requireValidTokens, async (req: any, re
       response = error.message || `Failed to ${action} playlist`;
     }
 
-    // Update dialog state in Redis if successful
+    // Update dialog state in Redis if successful (but don't add to conversation)
     if (success && conversationManager && userId) {
       const dialogState: any = {
         mode: 'music',
@@ -455,23 +446,16 @@ directActionRouter.post('/start-playback', requireValidTokens, async (req: any, 
     }
     
     if (result.success) {
-      // Add to conversation history
-      const conversationEntry: ConversationEntry = {
-        command: `[System] Started playback with ${playType} tracks`,
-        interpretation: {
-          intent: 'play',
-          confidence: 100,
-          query: `${playType} tracks`
-        },
-        timestamp: Date.now(),
-        response: {
-          success: true,
-          message: result.message,
-          trackCount: trackUris.length
-        }
-      };
-      
-      await conversationManager.addConversationEntry(userId, conversationEntry);
+      // Don't add to conversation history for direct actions
+      // Just update dialog state if needed
+      if (conversationManager && userId) {
+        const dialogState: any = {
+          mode: 'music',
+          last_action: 'start_playback_direct',
+          timestamp: Date.now()
+        };
+        await conversationManager.updateDialogState(userId, dialogState);
+      }
 
       const responseData = {
         success: true,
