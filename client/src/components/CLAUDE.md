@@ -76,15 +76,16 @@ This directory contains reusable React components for the Spotify Claude Control
 - Integrates multiple subcomponents from `playback/` directory
 - State management for playback, volume, and view modes
 - WebSocket integration for real-time updates
-- View modes: minimized, normal, fullscreen
+- **Enhanced View Modes**: minimized, normal, fullscreen with improved mobile support
+- **Safari Compatibility**: Fixed progress bar seeking and playback state synchronization
 - Custom hooks integration:
   - `useTrackLibrary` - Save/unsave track functionality
   - `useMusicWebSocket` - Real-time WebSocket events
   - `useVinylAnimation` - Vinyl rotation animations
-  - `useProgressTracking` - Local progress state
-  - `usePlaybackPolling` - Smart polling intervals
+  - `useProgressTracking` - Local progress state with Safari fixes
+  - `usePlaybackPolling` - Smart polling intervals with rate limiting
 - Renders different layouts based on view mode
-- Device selector integration for Spotify Connect
+- **Device Selector Integration**: Enhanced Spotify Connect with fixed compact mode JSX wrapping
 
 ### WeatherDisplay.tsx
 - Fetches and displays weather information
@@ -110,14 +111,15 @@ This directory contains reusable React components for the Spotify Claude Control
 ### playback/ (Directory)
 - Refactored subcomponents from PlaybackControls
 - Modular playback interface components
+- **Recent Enhancements**: Safari compatibility fixes and fullscreen improvements
 - Components include:
   - `ControlButtons.tsx` - Play/pause, skip, previous, shuffle, repeat controls
   - `SecondaryControls.tsx` - Save/unsave, queue, clear queue buttons
-  - `ProgressBar.tsx` - Seek bar with time display and progress tracking
+  - `ProgressBar.tsx` - **Enhanced**: Fixed Safari seeking behavior and smooth progress tracking
   - `TrackInfo.tsx` - Track name, artist, album display
   - `VinylDisplay.tsx` - Animated vinyl record visualization
   - `MinimizedView.tsx` - Compact playback controls layout
-  - `FullscreenView.tsx` - Immersive fullscreen playback experience
+  - `FullscreenView.tsx` - **Enhanced**: Immersive fullscreen with ambient album art glow and optimized mobile layout
 - See `playback/CLAUDE.md` for implementation details
 
 ### playlist-search/ (Directory)

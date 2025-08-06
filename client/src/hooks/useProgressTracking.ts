@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { PlaybackState } from '../types/playback.types';
 import { api } from '../utils/api';
 
@@ -20,14 +20,14 @@ export const useProgressTracking = (
   fetchPlaybackState: (immediate?: boolean) => Promise<void>
 ) => {
   const [localPosition, setLocalPosition] = useState(0);
-  const [animationFrameId, setAnimationFrameId] = useState<number | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
   const [isTrackChanging, setIsTrackChanging] = useState(false);
 
   // Update local position with animation frame
   const startProgressAnimation = useCallback((startPosition?: number) => {
-    if (animationFrameId) {
-      cancelAnimationFrame(animationFrameId);
-      setAnimationFrameId(null);
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
     }
     
     // CRITICAL: Use the provided startPosition, NOT localPosition (which may be stale)
@@ -47,20 +47,22 @@ export const useProgressTracking = (
         const elapsed = Date.now() - animationStartTime;
         const newPosition = Math.min(
           basePosition + elapsed,
-          playbackState.track.duration
+          playbackState.track.duration * 1000  // Convert seconds to milliseconds
         );
         setLocalPosition(newPosition);
         
         // Continue animation only if still playing
         if (playbackState.isPlaying) {
           const frameId = requestAnimationFrame(animate);
-          setAnimationFrameId(frameId);
+          animationFrameRef.current = frameId;
         }
       }
     };
     
     animate();
-  }, [playbackState.isPlaying, playbackState.track, animationFrameId]);
+  }, [playbackState.isPlaying, playbackState.track]);
+  // Note: animationFrameId is intentionally omitted from dependencies
+  // to prevent infinite recreation of this function
 
   // Handle seeking functionality
   const handleSeek = useCallback(async (e: React.MouseEvent<HTMLDivElement>) => {
@@ -69,12 +71,12 @@ export const useProgressTracking = (
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const percentage = x / rect.width;
-    const newPosition = Math.floor(playbackState.track.duration * percentage);
+    const newPosition = Math.floor(playbackState.track.duration * 1000 * percentage); // Convert to milliseconds
     
     // Stop any existing animation first
-    if (animationFrameId) {
-      cancelAnimationFrame(animationFrameId);
-      setAnimationFrameId(null);
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
     }
     
     // Disable CSS transition for instant jump
@@ -105,13 +107,13 @@ export const useProgressTracking = (
       setLocalPosition(playbackState.track?.position ?? 0);
       setIsTrackChanging(false);
     }
-  }, [playbackState.track, animationFrameId, startProgressAnimation, fetchPlaybackState]);
+  }, [playbackState.track, startProgressAnimation, fetchPlaybackState]);
+  // Note: animationFrameId omitted to prevent dependency issues
 
   return {
     localPosition,
     setLocalPosition,
-    animationFrameId,
-    setAnimationFrameId,
+    animationFrameId: animationFrameRef.current,
     isTrackChanging,
     setIsTrackChanging,
     handleSeek,

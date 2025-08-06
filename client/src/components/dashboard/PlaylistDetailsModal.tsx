@@ -134,10 +134,18 @@ export default function PlaylistDetailsModal({
 
   // Handle track actions
   const handlePlayTrack = useCallback((trackId: string) => {
+    if (!trackId) {
+      console.error('Cannot play track: missing track ID');
+      return;
+    }
     onPlayTrack(trackId);
   }, [onPlayTrack]);
 
   const handleQueueTrack = useCallback((trackId: string) => {
+    if (!trackId) {
+      console.error('Cannot queue track: missing track ID');
+      return;
+    }
     onQueueTrack(trackId);
   }, [onQueueTrack]);
 

@@ -134,6 +134,14 @@ OPENROUTER_API_KEY=your_openrouter_key
 GEMINI_API_KEY=your_gemini_key
 ```
 
+### Production Configuration
+
+**Health Check Improvements** (Recent Updates):
+- HTTP health checks: 30s grace period (increased from previous shorter period)
+- WebSocket health checks: 30s grace period with 60s intervals
+- Enhanced Fly.io configuration for deployment stability
+- Reduced false positive health check failures during deployments
+
 ### Build and Test Commands
 
 ```bash
@@ -180,6 +188,7 @@ npx tsc --noEmit
 3. **Session Handling**: Uses express-session with Redis for persistence
 4. **CORS Configuration**: Configured for development client on port 5173
 5. **Model Routing**: Gemini is preferred for speed; OpenRouter for fallback
+6. **Deployment Configuration**: Enhanced health check reliability with increased grace periods for production stability
 
 ### Troubleshooting
 

@@ -101,7 +101,14 @@ cd client && npx tsc --noEmit
   - Fixed header navigation bar with device/model selectors
   - Fixed bottom input area with floating send button
   - Responsive design with mobile hamburger menu
-  - Minimizable horizontal playback controls
+  - Minimizable horizontal playback controls with fullscreen mode
+- **Enhanced Playback Controls**: 
+  - **Fullscreen Mode**: Immersive playback experience with ambient album art glow and optimized mobile support
+  - **Progress Bar Improvements**: Fixed Safari compatibility and smooth seeking behavior
+  - **Device Selector**: Fixed React error in compact mode with proper JSX element wrapping
+- **Browser Compatibility**: 
+  - **Safari Optimizations**: Aggressive cache-busting for HTML to prevent stale content issues
+  - **Cross-browser Support**: Enhanced compatibility across all major browsers
 - **Skeleton Loading System**: Zero layout shift with motion-safe animations  
   See `/client/src/components/skeletons/CLAUDE.md` for implementation details
 - **AI Feedback System**: Learning from user preferences  
@@ -230,6 +237,10 @@ fly deploy
 - **Redis**: Session storage and caching
 - **Server**: Node.js backend on port 3001
 - **Client**: Nginx serving React app on port 80
+
+### Deployment Configuration Updates
+- **Health Check Improvements**: Increased grace periods for both HTTP and WebSocket health checks (30s grace period for HTTP, 30s for WebSocket)
+- **Reliability Enhancements**: Enhanced Fly.io configuration for better deployment stability and reduced false positive health check failures
 
 ## Testing Strategy
 

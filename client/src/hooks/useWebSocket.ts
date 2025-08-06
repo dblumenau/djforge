@@ -252,12 +252,23 @@ export function useWebSocket(): UseWebSocketReturn {
     };
   }, []); // Empty dependency array - set up once
 
-  // Auto-connect on mount (optional - can be controlled by component)
+  // Auto-connect on mount and reconnect on window focus
   useEffect(() => {
     connect();
     
-    // Cleanup: disconnect on unmount
+    // Reconnect on window focus if disconnected
+    const handleWindowFocus = () => {
+      if (!socket.connected) {
+        console.log('[useWebSocket] Window focused - reconnecting socket...');
+        connect();
+      }
+    };
+    
+    window.addEventListener('focus', handleWindowFocus);
+    
+    // Cleanup: disconnect on unmount and remove listener
     return () => {
+      window.removeEventListener('focus', handleWindowFocus);
       if (socket.connected) {
         disconnect();
       }

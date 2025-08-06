@@ -21,17 +21,22 @@ export const calculateNextPollTime = (track: any, isPlaying: boolean, localPosit
     return 60000; // 1 minute
   }
   
-  const timeRemaining = track.duration - localPosition;
+  // track.duration is in seconds, localPosition is in milliseconds
+  const durationMs = (track.duration || 0) * 1000;
+  const timeRemaining = durationMs - localPosition;
   
   if (timeRemaining <= 5000) {
-    // Track is about to end, poll soon
-    return Math.max(timeRemaining - 2000, 1000); // 2s before end, min 1s
+    // Track is about to end, poll soon to catch the transition
+    return Math.max(timeRemaining - 1000, 500); // 1s before end, min 500ms
   } else if (timeRemaining <= 30000) {
     // Last 30 seconds of track
-    return 10000; // 10 seconds
+    return 5000; // Poll every 5 seconds
+  } else if (timeRemaining <= 60000) {
+    // Last minute of track
+    return 10000; // Poll every 10 seconds
   } else {
     // Normal playback
-    return 30000; // 30 seconds
+    return 30000; // Poll every 30 seconds
   }
 };
 

@@ -40,16 +40,18 @@ The playback system is composed of modular components that work together to prov
 
 ### ProgressBar.tsx
 - Track progress display and seek functionality
+- **Recent Fixes**: Enhanced Safari compatibility and improved seeking behavior
 - Features:
   - Visual progress bar with smooth animations
-  - Click-to-seek interaction
+  - Click-to-seek interaction with Safari fixes
   - Current time and duration display
   - Handles track changes without visual jumps
+  - **Enhanced Browser Support**: Fixed Safari-specific seeking issues and progress synchronization
 - Props:
   - `localPosition` - Current playback position (ms)
   - `duration` - Track duration (ms)
   - `isTrackChanging` - Track change state for animation reset
-  - `onSeek` - Seek position handler
+  - `onSeek` - Seek position handler with Safari compatibility
 
 ### TrackInfo.tsx
 - Track metadata display component
@@ -89,16 +91,20 @@ The playback system is composed of modular components that work together to prov
 
 ### FullscreenView.tsx
 - Immersive fullscreen playback experience
+- **Recent Enhancements**: Improved mobile support and ambient album art glow
 - Features:
-  - Large vinyl visualization with rotation
-  - Full track information display
-  - Complete control set with volume
-  - Keyboard shortcut support (Space, Arrow keys)
-  - Exit fullscreen button
+  - **Enhanced Visuals**: Large album art with multi-layer ambient glow effects
+  - **Optimized Mobile Layout**: Responsive design with mobile viewport height optimization
+  - Full track information display with responsive text sizing
+  - Complete control set optimized for touch interaction
+  - **Improved Controls**: Touch-friendly button sizing (44px minimum) and better layout
+  - Keyboard shortcut support (Space, Arrow keys, Escape)
+  - **Performance Optimizations**: Reduced blur effects for better mobile performance
 - Props:
   - All playback state and control props
-  - `onExitFullscreen` - Exit handler
+  - `onClose` - Close handler (supports Escape key)
   - WebSocket integration for real-time updates
+  - Enhanced refresh functionality with visual feedback
 
 ## State Management
 

@@ -33,6 +33,9 @@ const PlaybackControls = forwardRef<PlaybackControlsRef, PlaybackControlsProps>(
   const [isRefreshing, setIsRefreshing] = useState(false);
   const previousTrackNameRef = useRef<string | null>(null);
   const previousPositionRef = useRef<number>(0);
+  const animationStartTimeRef = useRef<number>(0);
+  const animationBasePositionRef = useRef<number>(0);
+  const currentTrackIdRef = useRef<string | null>(null);
 
   // Custom hooks
   const currentTrackId = playbackState.track?.id || '';
@@ -40,8 +43,17 @@ const PlaybackControls = forwardRef<PlaybackControlsRef, PlaybackControlsProps>(
     trackIds: currentTrackId ? [currentTrackId] : []
   });
   
-  // Get apiCallCount first
-  const { apiCallCount, trackApiCall } = usePlaybackPolling(0); // Use 0 as default until localPosition is available
+  // Track local position state for polling calculations
+  const [, setLocalPositionForPolling] = useState(0);
+  
+  // Get polling functions
+  const { 
+    apiCallCount, 
+    trackApiCall, 
+    scheduleNextPoll, 
+    getSmartPollInterval,
+    cleanup: cleanupPolling 
+  } = usePlaybackPolling();
 
   // Declare fetchPlaybackState function after apiCallCount is available
   const fetchPlaybackState = React.useCallback(async (immediate = false) => {
@@ -77,10 +89,8 @@ const PlaybackControls = forwardRef<PlaybackControlsRef, PlaybackControlsProps>(
             // Reset the flag after a short delay to re-enable transitions
             setTimeout(() => setIsTrackChanging(false), 50);
             
-            // Reset local position for progress bar
-            setLocalPosition(currentPosition);
-            // Restart animation from beginning
-            startProgressAnimation(currentPosition);
+            // Position and animation will be handled by useProgressTracking hook
+            // through the useEffect watching playback state changes
           }
           
           previousTrackNameRef.current = currentTrackName;
@@ -95,6 +105,24 @@ const PlaybackControls = forwardRef<PlaybackControlsRef, PlaybackControlsProps>(
           });
           setVolume(data.volume);
           // Position will be handled by useProgressTracking hook
+          
+          // Schedule next poll based on track state
+          if (!immediate && data.isPlaying && data.track) {
+            // Calculate actual current position based on animation time
+            const now = Date.now();
+            const elapsed = animationStartTimeRef.current ? now - animationStartTimeRef.current : 0;
+            const currentAnimatedPos = animationBasePositionRef.current + elapsed; // This is already in milliseconds
+            
+            const pollInterval = getSmartPollInterval({
+              track: data.track,
+              isPlaying: data.isPlaying,
+              shuffleState: data.shuffleState,
+              repeatState: data.repeatState,
+              volume: data.volume
+            }, currentAnimatedPos);
+            console.log(`[PlaybackControls] Scheduling next poll in ${pollInterval}ms, calculated position: ${currentAnimatedPos}ms`);
+            scheduleNextPoll(pollInterval, () => fetchPlaybackState());
+          }
         } else {
           setPlaybackState(prev => ({
             ...prev,
@@ -110,7 +138,7 @@ const PlaybackControls = forwardRef<PlaybackControlsRef, PlaybackControlsProps>(
     } catch (error) {
       console.error('[PlaybackControls] Failed to fetch playback state:', error);
     }
-  }, [apiCallCount, trackApiCall]);
+  }, [apiCallCount, trackApiCall, getSmartPollInterval, scheduleNextPoll]);
 
   // Manual refresh function - defined after fetchPlaybackState
   const handleManualRefresh = useCallback(async () => {
@@ -135,7 +163,6 @@ const PlaybackControls = forwardRef<PlaybackControlsRef, PlaybackControlsProps>(
 
   const { 
     localPosition, 
-    setLocalPosition,
     isTrackChanging: progressTrackChanging, 
     startProgressAnimation,
     animationFrameId,
@@ -143,6 +170,11 @@ const PlaybackControls = forwardRef<PlaybackControlsRef, PlaybackControlsProps>(
   } = useProgressTracking(playbackState, fetchPlaybackState);
   
   const { vinylElementRef, vinylRotation } = useVinylAnimation(playbackState, previousTrackNameRef);
+  
+  // Update polling position when local position changes
+  useEffect(() => {
+    setLocalPositionForPolling(localPosition);
+  }, [localPosition]);
 
   // WebSocket handlers for real-time updates
   const handleWsPlaybackStateChange = useCallback((data: any) => {
@@ -200,17 +232,38 @@ const PlaybackControls = forwardRef<PlaybackControlsRef, PlaybackControlsProps>(
 
   // Manage progress animation based on playback state
   useEffect(() => {
+    const trackId = playbackState.track?.id;
+    const isNewTrack = trackId !== currentTrackIdRef.current;
+    
     if (playbackState.isPlaying && playbackState.track) {
-      const startPosition = playbackState.track.position || 0;
-      // Start the animation from the current track position
-      startProgressAnimation(startPosition);
+      const startPosition = (playbackState.track.position || 0) * 1000; // Convert seconds to milliseconds
+      
+      if (isNewTrack || !animationFrameId) {
+        // New track or resuming from pause - restart animation
+        animationStartTimeRef.current = Date.now();
+        animationBasePositionRef.current = startPosition;
+        startProgressAnimation(startPosition);
+        currentTrackIdRef.current = trackId ?? null;
+      } else {
+        // Same track still playing - update the animation base to sync with server
+        // Calculate how much time has passed since last update
+        const elapsed = Date.now() - animationStartTimeRef.current;
+        const expectedPosition = animationBasePositionRef.current + elapsed;
+        
+        // If server position differs significantly from expected, resync
+        if (Math.abs(startPosition - expectedPosition) > 2000) { // More than 2 seconds off
+          animationStartTimeRef.current = Date.now();
+          animationBasePositionRef.current = startPosition;
+          // Don't restart animation, just update the reference points
+        }
+      }
     } else if (!playbackState.isPlaying && animationFrameId) {
       // Stop the animation when playback pauses
       if (animationFrameId) {
         cancelAnimationFrame(animationFrameId);
       }
     }
-  }, [playbackState.isPlaying, playbackState.track?.id]); // React to play/pause and track changes
+  }, [playbackState.isPlaying, playbackState.track?.id, playbackState.track?.position, animationFrameId, startProgressAnimation]); // React to play/pause, track changes, and position updates
 
   // Cleanup animation on unmount
   useEffect(() => {
@@ -224,7 +277,24 @@ const PlaybackControls = forwardRef<PlaybackControlsRef, PlaybackControlsProps>(
   // Initial fetch and setup
   useEffect(() => {
     fetchPlaybackState();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  
+  // Start polling when playback starts (initial trigger)
+  useEffect(() => {
+    if (playbackState.isPlaying && playbackState.track) {
+      // Trigger an immediate fetch which will set up its own polling chain
+      console.log('[PlaybackControls] Playback started, initiating polling chain');
+      fetchPlaybackState();
+    } else if (!playbackState.isPlaying) {
+      // Stop polling when not playing
+      cleanupPolling();
+    }
+    return () => {
+      cleanupPolling();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playbackState.isPlaying, playbackState.track?.id]);
 
 
   // Handle escape key for fullscreen mode
@@ -381,7 +451,7 @@ const PlaybackControls = forwardRef<PlaybackControlsRef, PlaybackControlsProps>(
 
   const progressProps = {
     currentPosition: localPosition,
-    duration: playbackState.track?.duration || 0,
+    duration: (playbackState.track?.duration || 0) * 1000, // Convert seconds to milliseconds for progress bar
     isTrackChanging: isTrackChanging || progressTrackChanging,
     onSeek: handleSeek
   };

@@ -351,7 +351,8 @@ export class SpotifyControl {
       console.log(`[DEBUG] Queuing playlist with ID: ${playlistId}`);
       
       // Get ALL tracks from the playlist directly from API (not limited to 20)
-      const allTracks = await this.webAPI.getPlaylistTracks(playlistId);
+      const playlistResponse = await this.webAPI.getPlaylistTracks(playlistId);
+      const allTracks = playlistResponse.items || [];
       console.log(`[DEBUG] Got ${allTracks.length} tracks from playlist API`);
       
       if (allTracks.length === 0) {
@@ -1352,8 +1353,8 @@ controlRouter.get('/current-track', requireValidTokens, async (req, res) => {
           albumUri: track.album.uri,
           albumArt: track.album.images?.[0]?.url || null,
           releaseDate: track.album.release_date,
-          duration: track.duration_ms,
-          position: playback.progress_ms || 0,
+          duration: Math.floor(track.duration_ms / 1000),
+          position: Math.floor(playback.progress_ms / 1000),
           id: track.id,
           uri: track.uri,
           external_urls: track.external_urls,

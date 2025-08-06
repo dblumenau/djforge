@@ -326,7 +326,8 @@ export class LLMOrchestrator {
         };
       } catch (error) {
         console.error(`Google AI Direct failed for ${model}:`, error);
-        // Fall through to OpenRouter if direct API fails
+        // Don't fall back to OpenRouter - throw the error immediately
+        throw new Error(`Gemini API failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }
 

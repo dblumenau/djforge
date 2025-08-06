@@ -10,10 +10,9 @@ import { calculateNextPollTime, trackApiCall } from '../utils/playback';
  * - API call rate limiting protection
  * - Timeout management for scheduled polls
  * 
- * @param localPosition - Current local playback position
  * @returns Object containing rate limit state and polling functions
  */
-export const usePlaybackPolling = (localPosition: number) => {
+export const usePlaybackPolling = () => {
   const [apiCallCount, setApiCallCount] = useState<number[]>([]);
   const [pollTimeoutId, setPollTimeoutId] = useState<number | null>(null);
 
@@ -41,9 +40,10 @@ export const usePlaybackPolling = (localPosition: number) => {
   }, [pollTimeoutId]);
 
   // Calculate smart poll interval based on playback state
-  const getSmartPollInterval = useCallback((playbackState: PlaybackState): number => {
-    return calculateNextPollTime(playbackState.track, playbackState.isPlaying, localPosition);
-  }, [localPosition]);
+  // Accept position as parameter to avoid dependency issues
+  const getSmartPollInterval = useCallback((playbackState: PlaybackState, currentPosition: number): number => {
+    return calculateNextPollTime(playbackState.track, playbackState.isPlaying, currentPosition);
+  }, []);
 
   // Cleanup function for timeouts
   const cleanup = useCallback(() => {

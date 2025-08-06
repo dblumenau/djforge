@@ -62,11 +62,12 @@ client/
 - Real-time playback controls with WebSocket events
 - Queue management
 - Volume control
-- **Refactored PlaybackControls**: Modular components with three view modes
+- **Enhanced PlaybackControls**: Modular components with three view modes
   - Minimized: Compact horizontal bar
   - Normal: Full controls with medium visuals
-  - Fullscreen: Immersive experience with vinyl animation
-- Keyboard shortcuts (Space, Arrow keys) in fullscreen mode
+  - **Fullscreen**: Immersive experience with ambient album art glow and optimized mobile support
+- **Device Selector Improvements**: Fixed JSX element wrapping in compact mode to prevent React errors
+- Keyboard shortcuts (Space, Arrow keys, Escape) in fullscreen mode
 
 ### Data Visualization
 - Comprehensive dashboard with listening insights
@@ -85,6 +86,10 @@ client/
 - Dark theme optimized for music
 - Responsive design for all devices
 - **Skeleton Loading States**: Zero layout shift loading with motion-safe animations
+- **Enhanced Browser Compatibility**: 
+  - **Safari Optimizations**: Aggressive HTML cache-busting to prevent stale content issues
+  - Fixed Safari-specific seeking and progress bar issues
+  - Cross-browser playback control compatibility
 - Command history with confidence scores
 - Optimistic UI updates for instant feedback
 - Smooth fade-out transitions with Tailwind v4
