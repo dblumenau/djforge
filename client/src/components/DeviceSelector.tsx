@@ -77,9 +77,15 @@ const DeviceSelector: React.FC<DeviceSelectorProps> = ({ onDeviceChange, compact
         
         setDevices(filteredDevices);
         
-        // Find the active device to show as current
-        const active = filteredDevices.find((d: SpotifyDevice) => d.is_active);
-        setCurrentDevice(active || data.currentDevice || null);
+        // Set current device - prioritize data.currentDevice which includes web player
+        // If web player is active, data.currentDevice will contain it
+        if (data.currentDevice) {
+          setCurrentDevice(data.currentDevice);
+        } else {
+          // Fallback to finding active device in filtered list
+          const active = filteredDevices.find((d: SpotifyDevice) => d.is_active);
+          setCurrentDevice(active || null);
+        }
       } else {
         const errorData = await response.json().catch(() => ({}));
         console.error('[DeviceSelector] Error response:', response.status, errorData);
@@ -305,6 +311,10 @@ const DeviceSelector: React.FC<DeviceSelectorProps> = ({ onDeviceChange, compact
                   <div className="flex items-center gap-2">
                     <Radio className="w-4 h-4 text-green-500" />
                     <span className="text-white">Built In Player</span>
+                    {/* Show active indicator if web player is the current device */}
+                    {currentDevice && currentDevice.name.includes('DJForge Web Player') && (
+                      <span className="text-xs text-green-500">(Active)</span>
+                    )}
                   </div>
                   {selectedDevice === 'web-player' && (
                     <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
@@ -365,6 +375,10 @@ const DeviceSelector: React.FC<DeviceSelectorProps> = ({ onDeviceChange, compact
                       </div>
                       <div className="flex items-center gap-2">
                         {device.is_active && (
+                          <span className="text-xs text-green-500">Active</span>
+                        )}
+                        {/* Also check if this device matches the current device by ID */}
+                        {!device.is_active && currentDevice && currentDevice.id === device.id && !currentDevice.name.includes('DJForge Web Player') && (
                           <span className="text-xs text-green-500">Active</span>
                         )}
                         {selectedDevice === device.id && (
