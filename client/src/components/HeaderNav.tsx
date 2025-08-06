@@ -5,6 +5,7 @@ import DeviceSelector from './DeviceSelector';
 import WeatherDisplay from './WeatherDisplay';
 import HeaderPlaybackControls from './HeaderPlaybackControls';
 import { MessageSquare, BarChart3, Target, ClipboardList, RefreshCw, LogOut, MoreVertical, Wifi, Music2 } from 'lucide-react';
+import { getVersionString } from '../utils/version';
 
 interface HeaderNavProps {
   onModelChange: (model: string) => void;
@@ -208,6 +209,13 @@ const HeaderNav: React.FC<HeaderNavProps> = ({
                           <LogOut className="w-4 h-4" />
                           Logout
                         </button>
+                        
+                        {/* Version Display */}
+                        <div className="mt-2 pt-2 border-t border-zinc-800">
+                          <div className="px-3 py-1 text-xs text-zinc-500">
+                            Build: {getVersionString()}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
