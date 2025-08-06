@@ -41,16 +41,18 @@ kill_timeout = '5s'
   [[services.tcp_checks]]
     interval = '15s'
     timeout = '2s'
-    grace_period = '1s'
+    grace_period = '5s'
+    restart_limit = 0
 
   [[services.http_checks]]
     interval = '30s'
     timeout = '5s'
-    grace_period = '5s'
+    grace_period = '20s'
     method = 'get'
     path = '/health'
     protocol = 'http'
     tls_skip_verify = false
+    restart_limit = 0
 
 [[vm]]
   memory = '256mb'
