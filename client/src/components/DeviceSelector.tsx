@@ -209,7 +209,11 @@ const DeviceSelector: React.FC<DeviceSelectorProps> = ({ onDeviceChange, compact
       return compact ? 'Remote' : 'Auto - Remote Control';
     }
     if (selectedDevice === 'web-player') {
-      return compact ? <Radio className="w-4 h-4 text-green-500" /> : (
+      return compact ? (
+        <span className="flex items-center">
+          <Radio className="w-4 h-4 text-green-500" />
+        </span>
+      ) : (
         <span className="flex items-center gap-2">
           <Radio className="w-4 h-4 text-green-500" />
           <span>Built In Player</span>
@@ -218,7 +222,11 @@ const DeviceSelector: React.FC<DeviceSelectorProps> = ({ onDeviceChange, compact
     }
     const device = devices.find(d => d.id === selectedDevice);
     if (compact && device) {
-      return getDeviceIcon(device.type);
+      return (
+        <span className="flex items-center">
+          {getDeviceIcon(device.type)}
+        </span>
+      );
     }
     return device ? (
       <span className="flex items-center gap-2">
