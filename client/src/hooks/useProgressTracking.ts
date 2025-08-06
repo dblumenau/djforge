@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { PlaybackState } from '../types/playback.types';
 import { api } from '../utils/api';
 
@@ -19,50 +19,72 @@ export const useProgressTracking = (
   playbackState: PlaybackState,
   fetchPlaybackState: (immediate?: boolean) => Promise<void>
 ) => {
-  const [localPosition, setLocalPosition] = useState(0);
+  const [localPosition, setLocalPosition] = useState(0); // Now in SECONDS
   const animationFrameRef = useRef<number | null>(null);
+  const animationStartTimeRef = useRef<number>(0);
+  const basePositionRef = useRef<number>(0);
   const [isTrackChanging, setIsTrackChanging] = useState(false);
+  
+  // Store playback state in a ref so animation always has current value
+  const playbackStateRef = useRef(playbackState);
+  useEffect(() => {
+    playbackStateRef.current = playbackState;
+  }, [playbackState]);
 
-  // Update local position with animation frame
+  // Stop the animation - stable function with no dependencies
+  const stopProgressAnimation = useCallback(() => {
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+  }, []); // Empty deps = stable function
+
+  // Update local position with animation frame - stable function
   const startProgressAnimation = useCallback((startPosition?: number) => {
+    // Stop any existing animation first
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = null;
     }
     
-    // CRITICAL: Use the provided startPosition, NOT localPosition (which may be stale)
+    // All positions are now in SECONDS
     const basePosition = startPosition !== undefined 
       ? startPosition 
-      : playbackState.track?.position ?? 0;
+      : playbackStateRef.current.track?.position ?? 0;
     
-    // If we have a start position, immediately set it
-    if (startPosition !== undefined) {
-      setLocalPosition(startPosition);
-    }
+    // Store base position and start time in refs
+    basePositionRef.current = basePosition;
+    animationStartTimeRef.current = Date.now();
     
-    const animationStartTime = Date.now();
+    // Set initial position
+    setLocalPosition(basePosition);
     
     const animate = () => {
-      if (playbackState.isPlaying && playbackState.track) {
-        const elapsed = Date.now() - animationStartTime;
+      // Always use current playback state from ref
+      const currentState = playbackStateRef.current;
+      if (currentState.isPlaying && currentState.track) {
+        const elapsedMs = Date.now() - animationStartTimeRef.current;
+        const elapsedSeconds = elapsedMs / 1000; // Convert to seconds
         const newPosition = Math.min(
-          basePosition + elapsed,
-          playbackState.track.duration * 1000  // Convert seconds to milliseconds
+          basePositionRef.current + elapsedSeconds,
+          currentState.track.duration // Both in seconds now
         );
+        
         setLocalPosition(newPosition);
         
         // Continue animation only if still playing
-        if (playbackState.isPlaying) {
-          const frameId = requestAnimationFrame(animate);
-          animationFrameRef.current = frameId;
+        if (currentState.isPlaying) {
+          animationFrameRef.current = requestAnimationFrame(animate);
+        } else {
+          animationFrameRef.current = null;
         }
+      } else {
+        animationFrameRef.current = null;
       }
     };
     
-    animate();
-  }, [playbackState.isPlaying, playbackState.track]);
-  // Note: animationFrameId is intentionally omitted from dependencies
-  // to prevent infinite recreation of this function
+    animationFrameRef.current = requestAnimationFrame(animate);
+  }, []); // Empty deps = stable function
 
   // Handle seeking functionality
   const handleSeek = useCallback(async (e: React.MouseEvent<HTMLDivElement>) => {
@@ -71,7 +93,7 @@ export const useProgressTracking = (
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const percentage = x / rect.width;
-    const newPosition = Math.floor(playbackState.track.duration * 1000 * percentage); // Convert to milliseconds
+    const newPosition = playbackState.track.duration * percentage; // Now in seconds
     
     // Stop any existing animation first
     if (animationFrameRef.current) {
@@ -86,8 +108,8 @@ export const useProgressTracking = (
     setLocalPosition(newPosition);
     
     try {
-      // Convert milliseconds to seconds for API
-      await api.post('/api/control/seek', { position: Math.floor(newPosition / 1000) });
+      // Position is already in seconds for API
+      await api.post('/api/control/seek', { position: Math.floor(newPosition) });
       
       // Restart animation from the new position if playing
       if (playbackState.isPlaying) {
@@ -114,9 +136,11 @@ export const useProgressTracking = (
     localPosition,
     setLocalPosition,
     animationFrameId: animationFrameRef.current,
+    animationFrameRef, // Expose the ref itself
     isTrackChanging,
     setIsTrackChanging,
     handleSeek,
-    startProgressAnimation
+    startProgressAnimation,
+    stopProgressAnimation
   };
 };

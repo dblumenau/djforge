@@ -33,18 +33,14 @@ const PlaybackControls = forwardRef<PlaybackControlsRef, PlaybackControlsProps>(
   const [isRefreshing, setIsRefreshing] = useState(false);
   const previousTrackNameRef = useRef<string | null>(null);
   const previousPositionRef = useRef<number>(0);
-  const animationStartTimeRef = useRef<number>(0);
-  const animationBasePositionRef = useRef<number>(0);
   const currentTrackIdRef = useRef<string | null>(null);
+  const localPositionRef = useRef<number>(0);
 
   // Custom hooks
   const currentTrackId = playbackState.track?.id || '';
   const { savedStatus, loading: libraryLoading, toggleSave } = useTrackLibrary({
     trackIds: currentTrackId ? [currentTrackId] : []
   });
-  
-  // Track local position state for polling calculations
-  const [, setLocalPositionForPolling] = useState(0);
   
   // Get polling functions
   const { 
@@ -76,11 +72,12 @@ const PlaybackControls = forwardRef<PlaybackControlsRef, PlaybackControlsProps>(
           const currentPosition = data.track.position || 0;
           
           // Check for track name change OR significant position jump backwards (track repeat)
+          // Note: currentPosition is in SECONDS from the server
           const isNewTrack = previousTrackNameRef.current !== null && 
                            previousTrackNameRef.current !== currentTrackName;
           const isTrackRepeat = previousTrackNameRef.current === currentTrackName &&
-                              previousPositionRef.current > 10000 && // Was past 10 seconds
-                              currentPosition < 5000; // Now near the beginning
+                              previousPositionRef.current > 10 && // Was past 10 seconds (position is in seconds!)
+                              currentPosition < 5; // Now near the beginning (position is in seconds!)
           
           if (isNewTrack || isTrackRepeat) {
             console.log('[PlaybackControls] Track changed/repeated:', currentTrackName, 
@@ -108,10 +105,8 @@ const PlaybackControls = forwardRef<PlaybackControlsRef, PlaybackControlsProps>(
           
           // Schedule next poll based on track state
           if (!immediate && data.isPlaying && data.track) {
-            // Calculate actual current position based on animation time
-            const now = Date.now();
-            const elapsed = animationStartTimeRef.current ? now - animationStartTimeRef.current : 0;
-            const currentAnimatedPos = animationBasePositionRef.current + elapsed; // This is already in milliseconds
+            // Use the local position for smart polling
+            const currentPosMs = localPositionRef.current * 1000; // Convert to ms for polling function
             
             const pollInterval = getSmartPollInterval({
               track: data.track,
@@ -119,8 +114,8 @@ const PlaybackControls = forwardRef<PlaybackControlsRef, PlaybackControlsProps>(
               shuffleState: data.shuffleState,
               repeatState: data.repeatState,
               volume: data.volume
-            }, currentAnimatedPos);
-            console.log(`[PlaybackControls] Scheduling next poll in ${pollInterval}ms, calculated position: ${currentAnimatedPos}ms`);
+            }, currentPosMs);
+            console.log(`[PlaybackControls] Scheduling next poll in ${pollInterval}ms, calculated position: ${currentPosMs}ms`);
             scheduleNextPoll(pollInterval, () => fetchPlaybackState());
           }
         } else {
@@ -165,16 +160,17 @@ const PlaybackControls = forwardRef<PlaybackControlsRef, PlaybackControlsProps>(
     localPosition, 
     isTrackChanging: progressTrackChanging, 
     startProgressAnimation,
-    animationFrameId,
+    stopProgressAnimation,
+    animationFrameRef,
     handleSeek: handleSeekFromHook
   } = useProgressTracking(playbackState, fetchPlaybackState);
   
-  const { vinylElementRef, vinylRotation } = useVinylAnimation(playbackState, previousTrackNameRef);
-  
-  // Update polling position when local position changes
+  // Keep ref in sync with localPosition
   useEffect(() => {
-    setLocalPositionForPolling(localPosition);
+    localPositionRef.current = localPosition;
   }, [localPosition]);
+  
+  const { vinylElementRef, vinylRotation } = useVinylAnimation(playbackState, previousTrackNameRef);
 
   // WebSocket handlers for real-time updates
   const handleWsPlaybackStateChange = useCallback((data: any) => {
@@ -236,43 +232,29 @@ const PlaybackControls = forwardRef<PlaybackControlsRef, PlaybackControlsProps>(
     const isNewTrack = trackId !== currentTrackIdRef.current;
     
     if (playbackState.isPlaying && playbackState.track) {
-      const startPosition = (playbackState.track.position || 0) * 1000; // Convert seconds to milliseconds
-      
-      if (isNewTrack || !animationFrameId) {
-        // New track or resuming from pause - restart animation
-        animationStartTimeRef.current = Date.now();
-        animationBasePositionRef.current = startPosition;
+      if (isNewTrack) {
+        // New track - restart animation
+        const startPosition = playbackState.track.position || 0;
         startProgressAnimation(startPosition);
         currentTrackIdRef.current = trackId ?? null;
-      } else {
-        // Same track still playing - update the animation base to sync with server
-        // Calculate how much time has passed since last update
-        const elapsed = Date.now() - animationStartTimeRef.current;
-        const expectedPosition = animationBasePositionRef.current + elapsed;
-        
-        // If server position differs significantly from expected, resync
-        if (Math.abs(startPosition - expectedPosition) > 2000) { // More than 2 seconds off
-          animationStartTimeRef.current = Date.now();
-          animationBasePositionRef.current = startPosition;
-          // Don't restart animation, just update the reference points
-        }
+      } else if (!animationFrameRef.current) {
+        // Same track but animation not running (e.g., resuming from pause)
+        const startPosition = playbackState.track.position || 0;
+        startProgressAnimation(startPosition);
       }
-    } else if (!playbackState.isPlaying && animationFrameId) {
+      // Don't restart animation if it's already running for the same track
+    } else if (!playbackState.isPlaying) {
       // Stop the animation when playback pauses
-      if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId);
-      }
+      stopProgressAnimation();
     }
-  }, [playbackState.isPlaying, playbackState.track?.id, playbackState.track?.position, animationFrameId, startProgressAnimation]); // React to play/pause, track changes, and position updates
+  }, [playbackState.isPlaying, playbackState.track?.id, startProgressAnimation, stopProgressAnimation]); // Depend on functions too
 
   // Cleanup animation on unmount
   useEffect(() => {
     return () => {
-      if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId);
-      }
+      stopProgressAnimation();
     };
-  }, [animationFrameId]);
+  }, [stopProgressAnimation]); // Only run on unmount
 
   // Initial fetch and setup
   useEffect(() => {
@@ -450,8 +432,8 @@ const PlaybackControls = forwardRef<PlaybackControlsRef, PlaybackControlsProps>(
   // Props are now passed individually to components
 
   const progressProps = {
-    currentPosition: localPosition,
-    duration: (playbackState.track?.duration || 0) * 1000, // Convert seconds to milliseconds for progress bar
+    currentPosition: localPosition, // Already in seconds
+    duration: playbackState.track?.duration || 0, // Already in seconds
     isTrackChanging: isTrackChanging || progressTrackChanging,
     onSeek: handleSeek
   };

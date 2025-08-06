@@ -2,8 +2,8 @@ import React from 'react';
 import { formatTime } from '../../utils/playback';
 
 interface ProgressBarProps {
-  currentPosition: number;
-  duration: number;
+  currentPosition: number; // In seconds
+  duration: number; // In seconds
   onSeek: (e: React.MouseEvent<HTMLDivElement>) => void;
   isTrackChanging: boolean;
   variant?: 'mobile' | 'desktop';
@@ -38,14 +38,13 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
               isTrackChanging ? '' : 'transition-all duration-300'
             }`}
             style={{ width: `${(currentPosition / duration) * 100}%` }}
-            data-debug={`pos:${currentPosition}ms dur:${duration}ms pct:${((currentPosition / duration) * 100).toFixed(1)}%`}
           >
             <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity" />
           </div>
         </div>
         <div className={`flex justify-between text-xs ${timeClassName || 'text-gray-400'}`}>
-          <span>{formatTime(Math.floor(currentPosition))}</span>
-          <span>{formatTime(Math.floor(duration))}</span>
+          <span>{formatTime(currentPosition * 1000)}</span>
+          <span>{formatTime(duration * 1000)}</span>
         </div>
       </div>
     );
@@ -68,8 +67,8 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
         </div>
       </div>
       <div className={`flex justify-between text-sm font-medium ${timeClassName || 'text-gray-400'}`}>
-        <span>{formatTime(Math.floor(currentPosition))}</span>
-        <span>{formatTime(duration)}</span>
+        <span>{formatTime(currentPosition * 1000)}</span>
+        <span>{formatTime(duration * 1000)}</span>
       </div>
     </div>
   );
