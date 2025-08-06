@@ -75,11 +75,8 @@ const HeaderPlaybackControls: React.FC<HeaderPlaybackControlsProps> = ({ classNa
     return () => clearInterval(interval);
   }, []);
 
-  // Don't render anything if no device preference is set or it's auto
-  // This prevents the header from showing controls when the main playback area is handling it
-  if (devicePreference === 'auto') {
-    return null;
-  }
+  // Note: We now show controls for 'auto' mode as well since it's a valid preference
+  // 'auto' means remote control - control whatever device is currently playing
 
   const toggleExpanded = () => {
     setIsExpanded(!isExpanded);

@@ -16,21 +16,17 @@ interface PlaybackContextType {
 const PlaybackContext = createContext<PlaybackContextType | undefined>(undefined);
 
 export const PlaybackProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [devicePreference, setDevicePreferenceState] = useState<DevicePreference>('auto');
+  // Initialize with localStorage value immediately to prevent race condition
+  const [devicePreference, setDevicePreferenceState] = useState<DevicePreference>(() => {
+    const saved = localStorage.getItem('spotifyDevicePreference');
+    return (saved as DevicePreference) || 'auto';
+  });
   const [webPlayerReady, setWebPlayerReady] = useState(false);
   const [webPlayerDeviceId, setWebPlayerDeviceId] = useState<string | null>(null);
   const [webPlayerInitialized, setWebPlayerInitialized] = useState(false);
 
   // Derived state
   const showWebPlayer = devicePreference === 'web-player';
-
-  // Load device preference from localStorage on mount
-  useEffect(() => {
-    const saved = localStorage.getItem('spotifyDevicePreference');
-    if (saved) {
-      setDevicePreferenceState(saved as DevicePreference);
-    }
-  }, []);
 
   // Listen for storage events (changes from other tabs)
   useEffect(() => {
