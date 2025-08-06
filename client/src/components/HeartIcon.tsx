@@ -6,6 +6,7 @@ interface HeartIconProps {
   size?: 'sm' | 'md' | 'lg';
   onClick?: () => void;
   className?: string;
+  filledColor?: string;
 }
 
 const HeartIcon: React.FC<HeartIconProps> = ({ 
@@ -13,7 +14,8 @@ const HeartIcon: React.FC<HeartIconProps> = ({
   loading = false, 
   size = 'md', 
   onClick,
-  className = '' 
+  className = '',
+  filledColor = 'text-green-500'
 }) => {
   const sizeClasses = {
     sm: 'w-4 h-4',
@@ -42,7 +44,7 @@ const HeartIcon: React.FC<HeartIconProps> = ({
     >
       {filled ? (
         <svg 
-          className={`${sizeClasses[size]} text-green-500`} 
+          className={`${sizeClasses[size]} ${filledColor}`} 
           fill="currentColor" 
           viewBox="0 0 24 24"
         >

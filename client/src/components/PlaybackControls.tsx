@@ -32,6 +32,7 @@ const PlaybackControls = forwardRef<PlaybackControlsRef, PlaybackControlsProps>(
   const [viewMode, setViewMode] = useState<'minimized' | 'normal' | 'fullscreen'>('normal');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const previousTrackNameRef = useRef<string | null>(null);
+  const previousPositionRef = useRef<number>(0);
 
   // Custom hooks
   const currentTrackId = playbackState.track?.id || '';
@@ -58,19 +59,32 @@ const PlaybackControls = forwardRef<PlaybackControlsRef, PlaybackControlsProps>(
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.track) {
-          // Detect track change
+          // Detect track change or repeat
           const currentTrackName = data.track.name;
+          const currentPosition = data.track.position || 0;
+          
+          // Check for track name change OR significant position jump backwards (track repeat)
           const isNewTrack = previousTrackNameRef.current !== null && 
                            previousTrackNameRef.current !== currentTrackName;
+          const isTrackRepeat = previousTrackNameRef.current === currentTrackName &&
+                              previousPositionRef.current > 10000 && // Was past 10 seconds
+                              currentPosition < 5000; // Now near the beginning
           
-          if (isNewTrack) {
-            console.log('[PlaybackControls] Track changed:', currentTrackName);
+          if (isNewTrack || isTrackRepeat) {
+            console.log('[PlaybackControls] Track changed/repeated:', currentTrackName, 
+                       'Position jump:', previousPositionRef.current, '->', currentPosition);
             setIsTrackChanging(true);
             // Reset the flag after a short delay to re-enable transitions
             setTimeout(() => setIsTrackChanging(false), 50);
+            
+            // Reset local position for progress bar
+            setLocalPosition(currentPosition);
+            // Restart animation from beginning
+            startProgressAnimation(currentPosition);
           }
           
           previousTrackNameRef.current = currentTrackName;
+          previousPositionRef.current = currentPosition;
           
           setPlaybackState({
             track: data.track,
@@ -121,6 +135,7 @@ const PlaybackControls = forwardRef<PlaybackControlsRef, PlaybackControlsProps>(
 
   const { 
     localPosition, 
+    setLocalPosition,
     isTrackChanging: progressTrackChanging, 
     startProgressAnimation,
     animationFrameId,
@@ -160,7 +175,7 @@ const PlaybackControls = forwardRef<PlaybackControlsRef, PlaybackControlsProps>(
       // Position tracking is handled by useProgressTracking hook
       
       // Clear animation after fade completes
-      setTimeout(() => setIsTrackChanging(false), 500);
+      setTimeout(() => setIsTrackChanging(false), 50);
     }
   }, []);
 
@@ -403,6 +418,7 @@ const PlaybackControls = forwardRef<PlaybackControlsRef, PlaybackControlsProps>(
       onSeek={handleSeek}
       onShowQueue={onShowQueue}
       onToggleSave={toggleSave}
+      onRefresh={handleManualRefresh}
     />,
     document.body
   );

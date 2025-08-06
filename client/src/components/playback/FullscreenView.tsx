@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom';
-import { X, Music } from 'lucide-react';
+import { X, Music, RefreshCw } from 'lucide-react';
 import { PlaybackState } from '../../types/playback.types';
 import ControlButtons from './ControlButtons';
 import SecondaryControls from './SecondaryControls';
@@ -24,6 +24,7 @@ interface FullscreenViewProps {
   onSeek: (e: React.MouseEvent<HTMLDivElement>) => void;
   onShowQueue?: () => void;
   onToggleSave: (trackId: string) => void;
+  onRefresh?: () => void;
 }
 
 const FullscreenView: React.FC<FullscreenViewProps> = ({
@@ -43,7 +44,21 @@ const FullscreenView: React.FC<FullscreenViewProps> = ({
   onSeek,
   onShowQueue,
   onToggleSave,
+  onRefresh,
 }) => {
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    if (!onRefresh || isRefreshing) return;
+    
+    setIsRefreshing(true);
+    await onRefresh();
+    
+    // Keep spinning for at least 500ms for visual feedback
+    setTimeout(() => {
+      setIsRefreshing(false);
+    }, 500);
+  };
   // Handle escape key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -65,13 +80,28 @@ const FullscreenView: React.FC<FullscreenViewProps> = ({
       
       {/* Content container - Mobile viewport height optimization */}
       <div className="relative h-full w-full flex items-center justify-center min-h-screen sm:min-h-0 overflow-hidden">
-        {/* Close button - responsive positioning */}
-        <button
-          onClick={onClose}
-          className="absolute top-3 right-3 sm:top-6 sm:right-6 p-2 bg-white/10 rounded-full hover:bg-white/20 transition-all z-20"
-        >
-          <X className="w-5 h-5 text-white" />
-        </button>
+        {/* Top controls - refresh and close buttons */}
+        <div className="absolute top-3 right-3 sm:top-6 sm:right-6 flex gap-2 z-20">
+          {/* Refresh button */}
+          {onRefresh && (
+            <button
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Refresh playback state"
+            >
+              <RefreshCw className={`w-5 h-5 text-white ${isRefreshing ? 'animate-spin' : ''}`} />
+            </button>
+          )}
+          
+          {/* Close button */}
+          <button
+            onClick={onClose}
+            className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition-all"
+          >
+            <X className="w-5 h-5 text-white" />
+          </button>
+        </div>
         
         {playbackState.track ? (
           <>
@@ -154,11 +184,14 @@ const FullscreenView: React.FC<FullscreenViewProps> = ({
               <p className="text-xs sm:text-sm md:text-base lg:text-lg text-gray-300 drop-shadow-lg line-clamp-1">{playbackState.track.album}</p>
             </div>
             
-            {/* Compact controls - Responsive positioning with safe area */}
-            <div className="fixed sm:absolute bottom-0 sm:bottom-6 left-0 sm:left-auto right-0 sm:right-6 sm:max-w-2xl bg-black/70 rounded-t-2xl sm:rounded-2xl px-3 py-3 sm:px-6 sm:py-4 md:px-8 md:py-4 lg:px-12 lg:py-4 shadow-2xl border border-white/10 overflow-hidden" 
+            {/* Compact controls - Positioned at bottom right with frosted glass effect */}
+            <div className="fixed bottom-8 right-8 z-30 bg-black/40 backdrop-blur-xl rounded-2xl px-4 py-4 sm:px-6 sm:py-4 shadow-2xl border border-white/20" 
                  style={{ 
-                   paddingBottom: `calc(12px + env(safe-area-inset-bottom, 0px))`,
-                   maxHeight: 'calc(40vh - env(safe-area-inset-bottom, 0px))'
+                   backdropFilter: 'blur(20px) saturate(180%)',
+                   WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+                   background: 'rgba(0, 0, 0, 0.5)',
+                   minWidth: '400px',
+                   maxWidth: '500px'
                  }}>              
               {/* Content wrapper to ensure everything stays clickable */}
               <div className="relative z-10">
@@ -183,10 +216,7 @@ const FullscreenView: React.FC<FullscreenViewProps> = ({
                     onPlayPause={onPlayPause}
                     onSkip={onSkip}
                     onPrevious={onPrevious}
-                    shuffleState={playbackState.shuffleState}
-                    repeatState={playbackState.repeatState}
-                    onShuffle={onShuffle}
-                    onRepeat={onRepeat}
+                    // Removed shuffle and repeat from here - they're in SecondaryControls
                     size="sm"
                     variant="mobile"
                     isMobile={true}
@@ -208,22 +238,30 @@ const FullscreenView: React.FC<FullscreenViewProps> = ({
                         size="sm"
                         onClick={() => playbackState.track?.id && onToggleSave(playbackState.track.id)}
                         className="min-w-[44px] min-h-[44px] flex items-center justify-center"
+                        filledColor="text-red-500"
                       />
                     )}
                   </div>
                   
-                  {/* Volume and queue controls - mobile-optimized */}
+                  {/* Queue, shuffle and repeat controls - mobile-optimized (no volume in fullscreen) */}
                   <div className="flex items-center gap-3 sm:gap-2">
                     <SecondaryControls
+                      shuffleState={playbackState.shuffleState}
+                      repeatState={playbackState.repeatState}
+                      onShuffle={onShuffle}
+                      onRepeat={onRepeat}
                       volume={volume}
                       onVolumeChange={onVolumeChange}
                       onShowQueue={onShowQueue}
                       compact={true}
                       variant="mobile"
                       isMobile={true}
-                      volumeClassName="w-20 sm:w-16 h-1.5 sm:h-1 accent-red-500"
+                      hideVolume={true}  // Hide volume in fullscreen - you should be vibing not fiddling!
                       queueIconClassName="w-5 h-5 sm:w-4 sm:h-4"
                       buttonClassName="p-2 sm:p-1.5 text-gray-400 hover:text-white transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-white/10"
+                      activeColor="text-red-400"
+                      activeBgColor="bg-red-400/20"
+                      indicatorBgColor="bg-red-500"
                     />
                   </div>
                 </div>

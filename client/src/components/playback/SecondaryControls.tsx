@@ -24,6 +24,10 @@ interface SecondaryControlsProps {
   volumeClassName?: string;
   queueIconClassName?: string;
   buttonClassName?: string;
+  activeColor?: string; // For active state color customization
+  activeBgColor?: string; // For active state background color
+  indicatorBgColor?: string; // For the "1" indicator on repeat
+  hideVolume?: boolean; // Hide volume control entirely
 }
 
 const SecondaryControls: React.FC<SecondaryControlsProps> = ({
@@ -48,7 +52,11 @@ const SecondaryControls: React.FC<SecondaryControlsProps> = ({
   compact = false,
   volumeClassName,
   queueIconClassName,
-  buttonClassName
+  buttonClassName,
+  activeColor = 'text-green-400',
+  activeBgColor = 'bg-green-400/20',
+  indicatorBgColor = 'bg-green-500',
+  hideVolume = false
 }) => {
   const isMobile = isMobileProp ?? variant === 'mobile';
   const actualOnVolumeToggle = onVolumeToggle || (() => setShowVolume?.(!showVolume));
@@ -63,7 +71,7 @@ const SecondaryControls: React.FC<SecondaryControlsProps> = ({
             onClick={onShuffle}
             className={`p-1.5 rounded-full transition-all hover:scale-110 ${
               shuffleState 
-                ? 'text-green-400 bg-green-400/20' 
+                ? `${activeColor} ${activeBgColor}` 
                 : 'text-gray-400 hover:text-white'
             }`}
             title="Shuffle"
@@ -78,7 +86,7 @@ const SecondaryControls: React.FC<SecondaryControlsProps> = ({
             onClick={onRepeat}
             className={`p-1.5 rounded-full transition-all hover:scale-110 relative ${
               repeatState !== 'off' 
-                ? 'text-green-400 bg-green-400/20' 
+                ? `${activeColor} ${activeBgColor}` 
                 : 'text-gray-400 hover:text-white'
             }`}
             title={`Repeat: ${repeatState}`}
@@ -87,7 +95,7 @@ const SecondaryControls: React.FC<SecondaryControlsProps> = ({
               <path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/>
             </svg>
             {repeatState === 'track' && (
-              <span className="absolute -top-1 -right-1 text-xs bg-green-500 text-black rounded-full w-3 h-3 flex items-center justify-center font-bold">
+              <span className={`absolute -top-1 -right-1 text-xs ${indicatorBgColor} text-black rounded-full w-3 h-3 flex items-center justify-center font-bold`}>
                 1
               </span>
             )}
@@ -111,30 +119,34 @@ const SecondaryControls: React.FC<SecondaryControlsProps> = ({
           {/* Right side - Volume and Queue */}
           <div className="flex items-center gap-1 relative">
             {/* Volume */}
-            <button
-              onClick={actualOnVolumeToggle}
-              className="p-2 rounded text-gray-400 hover:text-white transition-colors"
-              title="Volume"
-            >
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
-              </svg>
-            </button>
-            
-            {/* Volume modal for mobile */}
-            {showVolume && (
-              <div className="absolute bottom-full mb-2 right-0 bg-black/80 backdrop-blur-sm border border-white/20 rounded-lg p-3 z-10">
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={volume}
-                  onChange={(e) => onVolumeChange(Number(e.target.value))}
-                  className="w-24 accent-green-500"
-                  title={`Volume: ${volume}%`}
-                />
-                <div className="text-center text-xs text-gray-300 mt-1">{volume}%</div>
-              </div>
+            {!hideVolume && (
+              <>
+                <button
+                  onClick={actualOnVolumeToggle}
+                  className="p-2 rounded text-gray-400 hover:text-white transition-colors"
+                  title="Volume"
+                >
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+                  </svg>
+                </button>
+                
+                {/* Volume modal for mobile */}
+                {showVolume && (
+                  <div className="absolute bottom-full mb-2 right-0 bg-black/80 backdrop-blur-sm border border-white/20 rounded-lg p-3 z-10">
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={volume}
+                      onChange={(e) => onVolumeChange(Number(e.target.value))}
+                      className="w-24 accent-green-500"
+                      title={`Volume: ${volume}%`}
+                    />
+                    <div className="text-center text-xs text-gray-300 mt-1">{volume}%</div>
+                  </div>
+                )}
+              </>
             )}
 
             {/* Queue */}

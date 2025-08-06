@@ -1048,7 +1048,9 @@ controlRouter.get('/current', requireValidTokens, async (req, res) => {
   }
 });
 
-// Shuffle and repeat controls
+// Shuffle and repeat controls - COMMENTED OUT: Using the implementation at lines 1238-1273 instead
+// which expects { state } instead of { enabled } to match the client
+/*
 controlRouter.post('/shuffle', requireValidTokens, async (req: any, res) => {
   const { enabled } = req.body;
   
@@ -1089,6 +1091,7 @@ controlRouter.post('/repeat', requireValidTokens, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+*/
 
 // Get available devices
 controlRouter.get('/devices', requireValidTokens, async (req, res) => {
@@ -1235,7 +1238,7 @@ controlRouter.get('/queue', requireValidTokens, async (req, res) => {
 });
 
 // Shuffle control
-controlRouter.post('/shuffle', requireValidTokens, async (req, res) => {
+controlRouter.post('/shuffle', requireValidTokens, async (req: any, res) => {
   const { state } = req.body;
   
   if (typeof state !== 'boolean') {
@@ -1246,6 +1249,19 @@ controlRouter.post('/shuffle', requireValidTokens, async (req, res) => {
     const webAPI = getWebAPI(req);
     await webAPI.setShuffle(state);
     
+    // Emit WebSocket event for UI update
+    const wsService = getWebSocketService();
+    const musicService = wsService?.getMusicService();
+    if (musicService && req.userId) {
+      musicService.emitCommandExecuted(req.userId, {
+        command: 'shuffle',
+        intent: 'set_shuffle',
+        success: true,
+        metadata: { state },
+        source: req.body?.source || 'control_endpoint',
+        endpoint: '/shuffle'
+      });
+    }
     
     res.json({ success: true, message: `Shuffle ${state ? 'on' : 'off'}` });
   } catch (error: any) {
@@ -1254,7 +1270,7 @@ controlRouter.post('/shuffle', requireValidTokens, async (req, res) => {
 });
 
 // Repeat control
-controlRouter.post('/repeat', requireValidTokens, async (req, res) => {
+controlRouter.post('/repeat', requireValidTokens, async (req: any, res) => {
   const { state } = req.body;
   
   if (!['off', 'track', 'context'].includes(state)) {
@@ -1265,6 +1281,19 @@ controlRouter.post('/repeat', requireValidTokens, async (req, res) => {
     const webAPI = getWebAPI(req);
     await webAPI.setRepeat(state);
     
+    // Emit WebSocket event for UI update
+    const wsService = getWebSocketService();
+    const musicService = wsService?.getMusicService();
+    if (musicService && req.userId) {
+      musicService.emitCommandExecuted(req.userId, {
+        command: 'repeat',
+        intent: 'set_repeat',
+        success: true,
+        metadata: { state },
+        source: req.body?.source || 'control_endpoint',
+        endpoint: '/repeat'
+      });
+    }
     
     res.json({ success: true, message: `Repeat set to ${state}` });
   } catch (error: any) {
