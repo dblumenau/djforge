@@ -76,7 +76,14 @@ export interface MusicCommandIntent {
   modifiers?: MusicModifiers;
   confidence: number;
   reasoning: string;
-  alternatives?: string[];
+  alternatives?: (string | {
+    intent?: string;
+    query?: string;
+    theme?: string;
+    enhancedQuery?: string;
+    isAIDiscovery?: boolean;
+    aiReasoning?: string;
+  })[];
   enhancedQuery?: string;
 }
 

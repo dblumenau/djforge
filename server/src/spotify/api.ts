@@ -168,15 +168,6 @@ export class SpotifyWebAPI {
     });
   }
 
-  async getQueue() {
-    try {
-      const response = await this.api.get('/me/player/queue');
-      return response.data;
-    } catch (error: any) {
-      console.error('Failed to get queue:', error);
-      throw error;
-    }
-  }
 
   async getPlaylists() {
     const response = await this.api.get('/me/playlists', {

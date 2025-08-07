@@ -153,7 +153,14 @@ export class ConversationManager {
   updateDialogStateFromAction(
     dialogState: DialogState,
     interpretation: any,
-    alternatives: string[] = []
+    alternatives: (string | {
+      intent?: string;
+      query?: string;
+      theme?: string;
+      enhancedQuery?: string;
+      isAIDiscovery?: boolean;
+      aiReasoning?: string;
+    })[] = []
   ): DialogState {
     if (!this.redisConversation) return dialogState;
     return this.redisConversation.updateDialogStateFromAction(dialogState, interpretation, alternatives);

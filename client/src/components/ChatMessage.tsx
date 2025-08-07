@@ -269,7 +269,6 @@ const ChatMessage: React.FC<MessageProps> = ({
                       
                       // Handle both formats: converted alternatives (with name/artists) and raw GPT-5 format (with query)
                       const displayName = alt.name || (alt as any).query || 'Unknown Track';
-                      const displayArtists = alt.artists || '';
                       
                       // Extract song info from query if it's in the GPT-5 format
                       let extractedName = displayName;

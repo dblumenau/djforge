@@ -14,7 +14,14 @@ export interface ConversationEntry {
     query?: string;
     confidence: number;
     reasoning?: string;
-    alternatives?: string[];
+    alternatives?: (string | {
+      intent?: string;
+      query?: string;
+      theme?: string;
+      enhancedQuery?: string;
+      isAIDiscovery?: boolean;
+      aiReasoning?: string;
+    })[];
     searchQuery?: string;
   };
   timestamp: number;
@@ -30,9 +37,23 @@ export interface DialogState {
     album?: string;
     query?: string;
     timestamp: number;
-    alternatives?: string[];
+    alternatives?: (string | {
+      intent?: string;
+      query?: string;
+      theme?: string;
+      enhancedQuery?: string;
+      isAIDiscovery?: boolean;
+      aiReasoning?: string;
+    })[];
   } | null;
-  last_candidates: string[]; // alternatives from last response
+  last_candidates: (string | {
+    intent?: string;
+    query?: string;
+    theme?: string;
+    enhancedQuery?: string;
+    isAIDiscovery?: boolean;
+    aiReasoning?: string;
+  })[]; // alternatives from last response
   interaction_mode: 'music' | 'chat';
   updated_at: number;
 }
@@ -365,7 +386,14 @@ export class RedisConversation {
   updateDialogStateFromAction(
     dialogState: DialogState,
     interpretation: any,
-    alternatives: string[] = []
+    alternatives: (string | {
+      intent?: string;
+      query?: string;
+      theme?: string;
+      enhancedQuery?: string;
+      isAIDiscovery?: boolean;
+      aiReasoning?: string;
+    })[] = []
   ): DialogState {
     const intent = interpretation.intent;
     
@@ -422,7 +450,9 @@ export class RedisConversation {
       if (entry.interpretation.alternatives && entry.interpretation.alternatives.length > 0) {
         // Check each alternative for matches
         for (const alternative of entry.interpretation.alternatives) {
-          const lowerAlt = alternative.toLowerCase();
+          // Handle both string and object alternatives
+          const altText = typeof alternative === 'string' ? alternative : alternative.query || '';
+          const lowerAlt = altText.toLowerCase();
           
           // Extract key terms from the command
           const searchTerms = lowerCommand
@@ -443,7 +473,7 @@ export class RedisConversation {
           
           if (matches) {
             // Parse the alternative format "Artist - Song"
-            const parts = alternative.split(' - ');
+            const parts = altText.split(' - ');
             if (parts.length >= 2) {
               return {
                 artist: parts[0].trim(),

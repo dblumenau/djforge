@@ -190,18 +190,9 @@ export class LLMOrchestrator {
       });
     }
 
-    // Direct OpenAI API (if available)
-    if (process.env.OPENAI_API_KEY) {
-      this.providers.push({
-        name: 'openai',
-        baseURL: 'https://api.openai.com/v1',
-        apiKey: process.env.OPENAI_API_KEY,
-        models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo'],
-        supportsJSON: true,
-        maxRetries: 2,
-        timeout: 30000,
-      });
-    }
+    // OpenAI models are handled by OpenAI Direct Provider above
+    // Do NOT add OpenAI models to the generic providers array
+    // They should ONLY go through OpenAI Direct API
   }
 
   async complete(request: LLMRequest): Promise<LLMResponse> {
@@ -317,6 +308,7 @@ export class LLMOrchestrator {
     }
 
     // Check if this is a GPT 4.1 model that should use OpenAI direct API
+    console.log(`🔍 Checking if ${model} should use OpenAI Direct: isOpenAIDirectModel=${this.isOpenAIDirectModel(model)}, hasService=${!!this.openaiService}`);
     if (this.isOpenAIDirectModel(model) && this.openaiService) {
       console.log(`🔄 Routing ${model} to OpenAI Direct API (Native Structured Output)`);
       try {
@@ -717,8 +709,9 @@ export class LLMOrchestrator {
     return model.includes('gemini') || model.includes('google/gemini');
   }
 
-  // Check if a model is a GPT 4.1/5 model that should use OpenAI Direct API
+  // Check if a model is an OpenAI model that should use OpenAI Direct API
   private isOpenAIDirectModel(model: string): boolean {
+    // All OpenAI models should go through OpenAI Direct, never OpenRouter
     return model === OPENAI_MODELS.GPT_4_1 ||
            model === OPENAI_MODELS.GPT_5 ||
            model === OPENAI_MODELS.GPT_5_MINI ||
@@ -726,7 +719,13 @@ export class LLMOrchestrator {
            model === 'gpt-5' ||
            model === 'gpt-5-mini' ||
            model === 'gpt-5-nano' ||
-           model === 'gpt-4.1-2025-04-14';
+           model === 'gpt-4.1-2025-04-14' ||
+           model === 'gpt-4o' ||
+           model === 'gpt-4o-mini' ||
+           model === 'gpt-4-turbo' ||
+           model === 'gpt-4' ||
+           model === 'gpt-3.5-turbo' ||
+           model.startsWith('gpt-');  // Catch any GPT model
   }
 
   /**
