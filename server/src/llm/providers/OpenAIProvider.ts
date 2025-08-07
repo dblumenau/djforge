@@ -27,7 +27,8 @@ import { LLMRequest, LLMResponse } from '../orchestrator';
 import { 
   getOpenAISchemaForIntent,
   getRawZodSchemaForIntent,
-  getOpenAISystemPromptForIntent
+  getOpenAISystemPromptForIntent,
+  OpenAIUnifiedSchema
 } from '../openai-schemas';
 import { validateIntent, ValidationOptions } from '../intent-validator';
 
@@ -65,12 +66,22 @@ export class OpenAIProvider {
 
   async complete(request: LLMRequest): Promise<LLMResponse> {
     try {
-      // Check for explicit intent type in request
-      let intentType = (request as any).intentType || this.determineIntentType(request);
+      // Always use unified schema for JSON requests - let the model determine the intent
+      // This is more robust than trying to pre-determine the intent type
+      let openaiSchema = null;
+      let systemPrompt = getOpenAISystemPromptForIntent('music_command'); // Default comprehensive prompt
       
-      // Determine schema based on request context
-      const openaiSchema = getOpenAISchemaForIntent(intentType);
-      let systemPrompt = getOpenAISystemPromptForIntent(intentType);
+      if (request.response_format?.type === 'json_object') {
+        // Use the unified schema that includes all possible intents
+        openaiSchema = OpenAIUnifiedSchema;
+      }
+      
+      // Check if there's an explicit intent type override (for specialized cases like playlist discovery)
+      const explicitIntent = (request as any).intentType;
+      if (explicitIntent && explicitIntent !== 'music_command') {
+        // Override with specific prompt if explicitly requested
+        systemPrompt = getOpenAISystemPromptForIntent(explicitIntent);
+      }
       
       // Handle conversation context
       if (request.conversationContext) {
@@ -118,7 +129,7 @@ export class OpenAIProvider {
         systemPrompt += contextSections;
       }
       
-      console.log(`🎯 Using OpenAI Direct API with structured output for intent: ${intentType}`);
+      console.log(`🎯 Using OpenAI Direct API with unified structured output`);
       
       // Convert messages to OpenAI format
       const requiresJSON = request.response_format?.type === 'json_object';
@@ -336,29 +347,33 @@ export class OpenAIProvider {
     
     // Simple heuristic based on request content
     const content = request.messages[request.messages.length - 1]?.content || '';
+    const contentLower = content.toLowerCase();
     
     // Check for playlist discovery intents
     if (content.includes('selectedPlaylistIds') || content.includes('select') && content.includes('playlist')) {
       return 'playlist_selection';
     }
     
-    if (content.includes('summarize') || content.includes('summary') || content.includes('characteristics')) {
+    if (contentLower.includes('summarize') || contentLower.includes('summary') || contentLower.includes('characteristics')) {
       return 'playlist_summarization';
     }
     
     // Most music commands should use the default MusicCommandIntent schema
-    if (content.includes('play') || content.includes('queue') || content.includes('music') || 
-        content.includes('pause') || content.includes('skip') || content.includes('volume')) {
+    // Use case-insensitive matching for reliability
+    if (contentLower.includes('play') || contentLower.includes('queue') || contentLower.includes('music') || 
+        contentLower.includes('pause') || contentLower.includes('skip') || contentLower.includes('volume')) {
       return 'music_command'; // Use default schema
     }
     
     // Only use music_knowledge for specific knowledge questions
-    if (content.includes('who') || content.includes('what') || content.includes('when') || 
-        content.includes('where') || content.includes('why') || content.includes('how')) {
+    if (contentLower.includes('who') || contentLower.includes('what') || contentLower.includes('when') || 
+        contentLower.includes('where') || contentLower.includes('why') || contentLower.includes('how')) {
       return 'music_knowledge';
     }
     
-    return 'conversational';
+    // Default to music_command instead of conversational since we don't have a conversational schema
+    // This ensures we always have a valid schema for structured output
+    return 'music_command';
   }
 
   // Note: Schema and system prompt logic has been moved to openai-schemas.ts

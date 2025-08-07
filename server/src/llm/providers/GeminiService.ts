@@ -155,20 +155,24 @@ export class GeminiService {
   private determineIntentType(request: LLMRequest): string {
     // Simple heuristic based on request content
     const content = request.messages[request.messages.length - 1]?.content || '';
+    const contentLower = content.toLowerCase();
     
     // Most music commands should use the default MusicCommandIntent schema
-    if (content.includes('play') || content.includes('queue') || content.includes('music') || 
-        content.includes('pause') || content.includes('skip') || content.includes('volume')) {
+    // Use case-insensitive matching for reliability
+    if (contentLower.includes('play') || contentLower.includes('queue') || contentLower.includes('music') || 
+        contentLower.includes('pause') || contentLower.includes('skip') || contentLower.includes('volume')) {
       return 'music_command'; // Use default schema
     }
     
     // Only use music_knowledge for specific knowledge questions
-    if (content.includes('who') || content.includes('what') || content.includes('when') || 
-        content.includes('where') || content.includes('why') || content.includes('how')) {
+    if (contentLower.includes('who') || contentLower.includes('what') || contentLower.includes('when') || 
+        contentLower.includes('where') || contentLower.includes('why') || contentLower.includes('how')) {
       return 'music_knowledge';
     }
     
-    return 'conversational';
+    // Default to music_command instead of conversational since we don't have a conversational schema
+    // This ensures we always have a valid schema for structured output
+    return 'music_command';
   }
 
 
