@@ -157,11 +157,18 @@ export class LLMOrchestrator {
 
     // OpenAI Direct (for GPT 4.1 models with native structured output)
     if (process.env.OPENAI_API_KEY) {
-      this.openaiService = new OpenAIProvider({
-        apiKey: process.env.OPENAI_API_KEY,
-        timeout: 300000,  // 5 minutes for GPT-5
-        maxRetries: 2
-      });
+      try {
+        this.openaiService = new OpenAIProvider({
+          apiKey: process.env.OPENAI_API_KEY,
+          timeout: 300000,  // 5 minutes for GPT-5
+          maxRetries: 2
+        });
+        console.log('✅ OpenAI Provider initialized successfully');
+      } catch (error) {
+        console.error('❌ Failed to initialize OpenAI Provider:', error);
+        // Don't throw - just continue without OpenAI support
+        this.openaiService = null;
+      }
     }
 
     // OpenRouter (supports all models)
