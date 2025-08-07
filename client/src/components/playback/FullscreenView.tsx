@@ -189,13 +189,13 @@ const FullscreenView: React.FC<FullscreenViewProps> = ({
               
               {/* Context display with badge - responsive wrapping at 350px */}
               {context && context.external_urls?.spotify && (
-                <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 max-w-[350px]">
-                  <span className="text-xs sm:text-sm text-gray-300 drop-shadow-md">Playing from</span>
+                <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1" style={{ maxWidth: '350px' }}>
+                  <span className="text-xs sm:text-sm text-gray-300 drop-shadow-md whitespace-nowrap">Playing from</span>
                   <a 
                     href={context.external_urls.spotify}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs sm:text-sm text-red-500 hover:text-red-400 transition-colors font-medium drop-shadow-md break-words"
+                    className="text-xs sm:text-sm text-red-500 hover:text-red-400 transition-colors font-medium drop-shadow-md break-words min-w-0"
                   >
                     {context.name || (context.type === 'playlist' ? 'Playlist' : 
                      context.type === 'album' ? 'Album' : 
@@ -203,7 +203,7 @@ const FullscreenView: React.FC<FullscreenViewProps> = ({
                      context.type === 'show' ? 'Podcast' : 
                      context.type.charAt(0).toUpperCase() + context.type.slice(1))}
                   </a>
-                  <span className="px-2 py-0.5 text-xs bg-white/20 backdrop-blur-sm text-white/80 rounded-full drop-shadow-md">
+                  <span className="px-2 py-0.5 text-xs bg-white/20 backdrop-blur-sm text-white/80 rounded-full drop-shadow-md whitespace-nowrap">
                     {context.type === 'playlist' ? 'Playlist' : 
                      context.type === 'album' ? 'Album' : 
                      context.type === 'artist' ? 'Artist Radio' : 
