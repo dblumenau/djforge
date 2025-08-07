@@ -7,6 +7,7 @@ import PlaybackControls from './PlaybackControls';
 import { PlaybackControlsRef } from '../types/playback.types';
 import WebPlayerControls from './WebPlayerControls';
 import DeviceSelector from './DeviceSelector';
+import { ProgressBarJS } from './playback';
 
 interface HeaderPlaybackControlsProps {
   className?: string;
@@ -237,10 +238,9 @@ const HeaderCompactView: React.FC<HeaderCompactViewProps> = ({ onExpand }) => {
   const currentTrack = showWebPlayer ? webPlayer.playerState.currentTrack : remoteState.track;
   const isPlaying = showWebPlayer ? !webPlayer.playerState.isPaused : remoteState.isPlaying;
   const position = showWebPlayer 
-    ? webPlayer.getCurrentPosition() 
-    : remoteState.position * 1000; // Convert to ms for consistency
-  const duration = currentTrack?.duration || 0;
-  const progressPercent = duration > 0 ? (position / duration) * 100 : 0;
+    ? webPlayer.getCurrentPosition() / 1000 // Convert ms to seconds
+    : remoteState.position; // Already in seconds
+  const duration = (currentTrack?.duration || 0) / 1000; // Convert ms to seconds
 
   // Handle play/pause
   const handlePlayPause = async (e: React.MouseEvent) => {
@@ -317,10 +317,22 @@ const HeaderCompactView: React.FC<HeaderCompactViewProps> = ({ onExpand }) => {
         
         {/* Progress bar - inside the pill */}
         {currentTrack && (
-          <div className="absolute bottom-1 left-3 right-3 h-0.5 bg-white/10 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-green-500/70 transition-all duration-300"
-              style={{ width: `${Math.min(progressPercent, 100)}%` }}
+          <div className="absolute bottom-0 left-0 right-0" style={{ height: '4px' }}>
+            <ProgressBarJS
+              currentPosition={position}
+              duration={duration}
+              onSeek={async (newPosition) => {
+                const positionMs = newPosition * 1000; // Convert seconds to ms
+                if (showWebPlayer) {
+                  webPlayer.seek(positionMs);
+                } else {
+                  // For remote playback, send seek command to API
+                  await api.post('/api/control/seek', { position_ms: positionMs });
+                }
+              }}
+              variant="compact"
+              showTime={false}
+              containerId="progressbar-header"
             />
           </div>
         )}

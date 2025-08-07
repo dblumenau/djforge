@@ -4,7 +4,7 @@ import { X, Music, RefreshCw } from 'lucide-react';
 import { PlaybackState } from '../../types/playback.types';
 import ControlButtons from './ControlButtons';
 import SecondaryControls from './SecondaryControls';
-import ProgressBar from './ProgressBar';
+import ProgressBarJS from './ProgressBarJS';
 import HeartIcon from '../HeartIcon';
 
 interface FullscreenViewProps {
@@ -197,14 +197,22 @@ const FullscreenView: React.FC<FullscreenViewProps> = ({
               <div className="relative z-10">
                 {/* Progress bar */}
                 <div className="mb-3">
-                  <ProgressBar
+                  <ProgressBarJS
                     currentPosition={localPosition}
                     duration={playbackState.track.duration}
                     isTrackChanging={isTrackChanging}
-                    onSeek={onSeek}
-                    className="h-1.5 bg-gray-700/80"
-                    progressClassName="bg-gradient-to-r from-red-500 to-red-400"
-                    timeClassName="text-xs text-gray-400"
+                    onSeek={(position) => {
+                      // Create a synthetic mouse event for compatibility
+                      const duration = playbackState.track?.duration || 1;
+                      const fakeEvent = {
+                        currentTarget: { offsetWidth: 1 },
+                        nativeEvent: { offsetX: position / duration }
+                      } as React.MouseEvent<HTMLDivElement>;
+                      onSeek(fakeEvent);
+                    }}
+                    variant="fullscreen"
+                    showTime={true}
+                    containerId="progressbar-fullscreen"
                   />
                 </div>
                 

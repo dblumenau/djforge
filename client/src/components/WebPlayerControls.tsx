@@ -3,6 +3,7 @@ import { useWebPlayer } from '../hooks/useWebPlayer';
 import { useTrackLibrary } from '../hooks/useTrackLibrary';
 import HeartIcon from './HeartIcon';
 import { api } from '../utils/api';
+import { ProgressBarJS } from './playback';
 
 interface WebPlayerControlsProps {
   className?: string;
@@ -70,7 +71,6 @@ const WebPlayerControls: React.FC<WebPlayerControlsProps> = ({ className }) => {
   const [isMobile] = useState(() => /iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
   const [needsActivation, setNeedsActivation] = useState(isMobile);
   const [isStartingPlayback, setIsStartingPlayback] = useState(false);
-  const [seekCounter, setSeekCounter] = useState(0); // Force animation restart
   const [isCollapsed, setIsCollapsed] = useState(true); // Start collapsed by default
   
   // Refs for position tracking
@@ -197,7 +197,7 @@ const WebPlayerControls: React.FC<WebPlayerControlsProps> = ({ className }) => {
         animationFrameRef.current = undefined;
       }
     };
-  }, [playerState.currentTrack?.uri, playerState.isPaused, getCurrentPosition, seekCounter]);
+  }, [playerState.currentTrack?.uri, playerState.isPaused, getCurrentPosition]);
   
   // Handle vinyl rotation with pure JavaScript animation
   useEffect(() => {
@@ -293,52 +293,6 @@ const WebPlayerControls: React.FC<WebPlayerControlsProps> = ({ className }) => {
       console.error('Volume change failed:', err);
     }
   };
-
-  // Handle seek with mouse and keyboard support
-  const handleSeek = useCallback(async (e: React.MouseEvent<HTMLDivElement> | React.KeyboardEvent<HTMLDivElement>) => {
-    if (!playerState.currentTrack) return;
-    
-    let percentage: number;
-    
-    if ('key' in e) {
-      // Keyboard navigation
-      const currentPercent = currentPosition / playerState.currentTrack.duration;
-      const step = 0.01; // 1% steps
-      
-      switch (e.key) {
-        case 'ArrowLeft':
-          percentage = Math.max(0, currentPercent - step);
-          break;
-        case 'ArrowRight':
-          percentage = Math.min(1, currentPercent + step);
-          break;
-        default:
-          return;
-      }
-    } else {
-      // Mouse click
-      const rect = e.currentTarget.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      percentage = x / rect.width;
-    }
-    
-    const newPosition = Math.floor(playerState.currentTrack.duration * percentage);
-    
-    // Update position immediately for responsive UI
-    setCurrentPosition(newPosition);
-    lastUpdateTimeRef.current = Date.now();
-    seekTimeRef.current = Date.now(); // Track when we seeked
-    
-    try {
-      await seek(newPosition);
-      // Force animation restart by updating counter
-      setSeekCounter(prev => prev + 1);
-    } catch (err) {
-      console.error('Seek failed:', err);
-      // Revert position on error
-      setCurrentPosition(playerState.currentTrack.position);
-    }
-  }, [playerState.currentTrack, currentPosition, seek]);
 
   // Handle volume change with keyboard support
   const handleVolumeKeyboard = useCallback((e: React.KeyboardEvent) => {
@@ -655,10 +609,6 @@ const WebPlayerControls: React.FC<WebPlayerControlsProps> = ({ className }) => {
     );
   }
 
-  const progressPercent = playerState.currentTrack 
-    ? (currentPosition / playerState.currentTrack.duration) * 100 
-    : 0;
-
   // Collapsed view
   if (isCollapsed) {
     return (
@@ -690,10 +640,14 @@ const WebPlayerControls: React.FC<WebPlayerControlsProps> = ({ className }) => {
                 </p>
               </div>
               {/* Mini progress bar */}
-              <div className="mt-1 h-1 bg-white/20 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-gradient-to-r from-green-400 to-green-500 transition-all duration-300"
-                  style={{ width: `${progressPercent}%` }}
+              <div className="mt-1">
+                <ProgressBarJS
+                  currentPosition={currentPosition / 1000}
+                  duration={playerState.currentTrack.duration / 1000}
+                  onSeek={(position) => seek(position * 1000)}
+                  variant="compact"
+                  showTime={false}
+                  containerId="progressbar-webplayer-mini"
                 />
               </div>
             </div>
@@ -958,34 +912,15 @@ const WebPlayerControls: React.FC<WebPlayerControlsProps> = ({ className }) => {
           </div>
 
           {/* Progress Bar - Full width below */}
-          <div className="mt-4 space-y-2">
-            <div 
-              className="w-full h-6 bg-white/20 rounded-full cursor-pointer group relative overflow-hidden"
-              onClick={handleSeek}
-              onKeyDown={handleSeek}
-              tabIndex={0}
-              role="slider"
-              aria-label="Seek position"
-              aria-valuemin={0}
-              aria-valuemax={playerState.currentTrack.duration}
-              aria-valuenow={currentPosition}
-              aria-valuetext={`${formatTime(currentPosition)} of ${formatTime(playerState.currentTrack.duration)}`}
-            >
-              <div 
-                className="h-full bg-gradient-to-r from-green-400 to-green-500 rounded-full transition-all duration-300 relative"
-                style={{ width: `${progressPercent}%` }}
-              >
-                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity" />
-              </div>
-              
-              {/* Waveform effect */}
-              <WaveformVisualization isPlaying={!playerState.isPaused} />
-            </div>
-            
-            <div className="flex justify-between text-xs text-gray-400">
-              <span>{formatTime(currentPosition)}</span>
-              <span>{formatTime(playerState.currentTrack.duration)}</span>
-            </div>
+          <div className="mt-4">
+            <ProgressBarJS
+              currentPosition={currentPosition / 1000}
+              duration={playerState.currentTrack.duration / 1000}
+              onSeek={(position) => seek(position * 1000)}
+              variant="normal"
+              showTime={true}
+              containerId="progressbar-webplayer-main"
+            />
           </div>
 
           {/* Queue Section */}

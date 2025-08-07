@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useWebPlayer } from '../hooks/useWebPlayer';
 import { webPlayerService } from '../services/webPlayer.service';
+import { ProgressBarJS } from './playback';
 
 interface SpotifyPlayerProps {
   onDeviceReady?: (deviceId: string) => void;
@@ -70,18 +71,6 @@ const SpotifyPlayer: React.FC<SpotifyPlayerProps> = ({ onDeviceReady }) => {
     }
   };
 
-  // Format time from milliseconds to MM:SS
-  const formatTime = (ms: number) => {
-    const seconds = Math.floor(ms / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-  };
-
-  // Progress percentage using local position for smooth updates
-  const progressPercent = playerState.currentTrack 
-    ? (currentPosition / playerState.currentTrack.duration) * 100
-    : 0;
 
   if (error) {
     return (
@@ -148,17 +137,18 @@ const SpotifyPlayer: React.FC<SpotifyPlayerProps> = ({ onDeviceReady }) => {
           
           {/* Progress Bar */}
           <div className="mt-3">
-            <div className="flex items-center text-xs text-gray-400 mb-1">
-              <span>{formatTime(currentPosition)}</span>
-              <span className="mx-2">·</span>
-              <span>{formatTime(playerState.currentTrack.duration)}</span>
-            </div>
-            <div className="w-full bg-gray-700 rounded-full h-1.5">
-              <div 
-                className="bg-green-500 h-1.5 rounded-full transition-all duration-1000"
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
+            <ProgressBarJS
+              currentPosition={currentPosition / 1000}
+              duration={playerState.currentTrack.duration / 1000}
+              onSeek={(position) => {
+                const positionMs = position * 1000;
+                webPlayerService.seek(positionMs);
+                setCurrentPosition(positionMs);
+              }}
+              variant="compact"
+              showTime={true}
+              containerId="progressbar-spotify-player"
+            />
           </div>
         </div>
         

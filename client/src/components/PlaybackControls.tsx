@@ -10,7 +10,6 @@ import { usePlaybackPolling } from '../hooks/usePlaybackPolling';
 import DeviceSelector from './DeviceSelector';
 import ControlButtons from './playback/ControlButtons';
 import SecondaryControls from './playback/SecondaryControls';
-import ProgressBar from './playback/ProgressBar';
 import TrackInfo from './playback/TrackInfo';
 import VinylDisplay from './playback/VinylDisplay';
 import MinimizedView from './playback/MinimizedView';
@@ -24,7 +23,8 @@ const PlaybackControls = forwardRef<PlaybackControlsRef, PlaybackControlsProps>(
     track: null,
     shuffleState: false,
     repeatState: 'off',
-    volume: 50
+    volume: 50,
+    context: null
   });
   const [loading, setLoading] = useState(false);
   const [volume, setVolume] = useState(50);
@@ -100,7 +100,8 @@ const PlaybackControls = forwardRef<PlaybackControlsRef, PlaybackControlsProps>(
             isPlaying: data.isPlaying,
             shuffleState: data.shuffleState,
             repeatState: data.repeatState,
-            volume: data.volume
+            volume: data.volume,
+            context: data.context || null
           });
           setVolume(data.volume);
           // Position will be handled by useProgressTracking hook
@@ -504,16 +505,9 @@ const PlaybackControls = forwardRef<PlaybackControlsRef, PlaybackControlsProps>(
 
   // Props are now passed individually to components
 
-  const progressProps = {
-    currentPosition: localPosition, // Already in seconds
-    duration: playbackState.track?.duration || 0, // Already in seconds
-    isTrackChanging: isTrackChanging || progressTrackChanging,
-    onSeek: handleSeek
-  };
-  
-
   const trackInfoProps = {
-    track: playbackState.track
+    track: playbackState.track,
+    context: playbackState.context
   };
 
   const vinylProps = {
@@ -778,12 +772,6 @@ const PlaybackControls = forwardRef<PlaybackControlsRef, PlaybackControlsProps>(
                 </div>
               )}
               
-              {playbackState.track && (
-                <div style={{ display: 'none' }}>
-                  <ProgressBar {...progressProps} isMobile={true} />
-                </div>
-              )}
-              
               <SecondaryControls 
                 shuffleState={playbackState.shuffleState}
                 repeatState={playbackState.repeatState}
@@ -852,12 +840,6 @@ const PlaybackControls = forwardRef<PlaybackControlsRef, PlaybackControlsProps>(
                 >
                   {Math.round((localPosition / playbackState.track.duration) * 100)}%
                 </progress>
-              </div>
-            )}
-            
-            {playbackState.track && (
-              <div style={{ display: 'none' }}>
-                <ProgressBar {...progressProps} />
               </div>
             )}
             
