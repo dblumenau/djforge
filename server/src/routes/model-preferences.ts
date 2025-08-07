@@ -18,7 +18,10 @@ function getUserIdFromRequest(req: any): string | null {
 
 // Get model preference from Redis
 async function getUserModelPreference(userId: string): Promise<string | null> {
-  if (!redisClient) return null;
+  if (!redisClient) {
+    console.warn('Redis client not available for model preferences, using default');
+    return null;
+  }
   
   try {
     const key = `user:${userId}:model_preference`;
@@ -243,7 +246,7 @@ modelPreferencesRouter.get('/models', requireValidTokens, async (req: any, res) 
       defaultModel: OPENAI_MODELS.GPT_5
     });
   } catch (error) {
-    console.error('Error fetching model preferences:', error);
+    console.error('Error fetching model preferences:', error instanceof Error ? error.message : error);
     res.status(500).json({ 
       error: 'Failed to fetch model preferences',
       details: error instanceof Error ? error.message : 'Unknown error'
@@ -276,7 +279,7 @@ modelPreferencesRouter.post('/models', requireValidTokens, async (req: any, res)
       modelInfo: MODEL_DISPLAY_INFO[modelId]
     });
   } catch (error) {
-    console.error('Error updating model preference:', error);
+    console.error('Error updating model preference:', error instanceof Error ? error.message : error);
     res.status(500).json({ 
       error: 'Failed to update model preference',
       details: error instanceof Error ? error.message : 'Unknown error'
@@ -309,7 +312,7 @@ modelPreferencesRouter.get('/models/:modelId/capabilities', requireValidTokens, 
       providerInfo
     });
   } catch (error) {
-    console.error('Error fetching model capabilities:', error);
+    console.error('Error fetching model capabilities:', error instanceof Error ? error.message : error);
     res.status(500).json({ 
       error: 'Failed to fetch model capabilities',
       details: error instanceof Error ? error.message : 'Unknown error'

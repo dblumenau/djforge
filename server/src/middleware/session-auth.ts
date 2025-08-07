@@ -18,7 +18,10 @@ export async function requireValidTokens(
   try {
     if (!redisClient) {
       console.error('❌ Redis client not initialized in middleware');
-      throw new Error('Redis client not initialized');
+      return res.status(503).json({ 
+        error: 'Service temporarily unavailable - Redis connection failed',
+        requiresReauth: false 
+      });
     }
     
     const sessionId = req.headers['x-session-id'] as string;
@@ -90,7 +93,11 @@ export async function requireSession(
 ) {
   try {
     if (!redisClient) {
-      throw new Error('Redis client not initialized');
+      console.error('❌ Redis client not initialized in session middleware');
+      return res.status(503).json({ 
+        error: 'Service temporarily unavailable - Redis connection failed',
+        requiresReauth: false 
+      });
     }
     
     const sessionId = req.headers['x-session-id'] as string;
