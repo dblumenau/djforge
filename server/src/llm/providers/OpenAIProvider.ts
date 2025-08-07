@@ -22,11 +22,9 @@
  * - Only override when specific behavior is needed
  */
 
-import * as OpenAIModule from 'openai';
+// Use named export for compatibility with both dev and production
+import { OpenAI } from 'openai';
 import { LLMRequest, LLMResponse } from '../orchestrator';
-
-// Handle both CommonJS and ESM exports
-const OpenAI = (OpenAIModule as any).default || OpenAIModule;
 import { 
   getOpenAISchemaForIntent,
   getRawZodSchemaForIntent,
@@ -49,7 +47,7 @@ export const OPENAI_MODELS = {
 };
 
 export class OpenAIProvider {
-  private client: any; // OpenAI client instance
+  private client: OpenAI;
   private timeout: number;
   private maxRetries: number;
 
