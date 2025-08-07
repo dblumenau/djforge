@@ -3,13 +3,11 @@ import ReactDOM from 'react-dom';
 import { X, Music, RefreshCw, Calendar, Star, Hash, ExternalLink } from 'lucide-react';
 import { PlaybackState } from '../../types/playback.types';
 import ControlButtons from './ControlButtons';
-import SecondaryControls from './SecondaryControls';
 import ProgressBarJS from './ProgressBarJS';
 import HeartIcon from '../HeartIcon';
 
 interface FullscreenViewProps {
   playbackState: PlaybackState;
-  volume: number;
   savedStatus: Map<string, boolean>;
   libraryLoading: Map<string, boolean>;
   localPosition: number;
@@ -21,7 +19,6 @@ interface FullscreenViewProps {
   onPrevious: () => void;
   onShuffle: () => void;
   onRepeat: () => void;
-  onVolumeChange: (volume: number) => void;
   onSeek: (e: React.MouseEvent<HTMLDivElement>) => void;
   onShowQueue?: () => void;
   onToggleSave: (trackId: string) => void;
@@ -30,7 +27,6 @@ interface FullscreenViewProps {
 
 const FullscreenView: React.FC<FullscreenViewProps> = ({
   playbackState,
-  volume,
   savedStatus,
   libraryLoading,
   localPosition,
@@ -42,7 +38,6 @@ const FullscreenView: React.FC<FullscreenViewProps> = ({
   onPrevious,
   onShuffle,
   onRepeat,
-  onVolumeChange,
   onSeek,
   onShowQueue,
   onToggleSave,
@@ -192,15 +187,15 @@ const FullscreenView: React.FC<FullscreenViewProps> = ({
                 {playbackState.track.album}
               </p>
               
-              {/* Context display with badge */}
+              {/* Context display with badge - responsive wrapping at 350px */}
               {context && context.external_urls?.spotify && (
-                <div className="mt-2 flex items-center gap-2">
+                <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 max-w-[350px]">
                   <span className="text-xs sm:text-sm text-gray-300 drop-shadow-md">Playing from</span>
                   <a 
                     href={context.external_urls.spotify}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs sm:text-sm text-red-500 hover:text-red-400 transition-colors font-medium drop-shadow-md"
+                    className="text-xs sm:text-sm text-red-500 hover:text-red-400 transition-colors font-medium drop-shadow-md break-words"
                   >
                     {context.name || (context.type === 'playlist' ? 'Playlist' : 
                      context.type === 'album' ? 'Album' : 
@@ -257,13 +252,13 @@ const FullscreenView: React.FC<FullscreenViewProps> = ({
             </div>
             
             {/* Compact controls - Positioned at bottom right with frosted glass effect */}
-            <div className="fixed bottom-8 right-8 z-30 bg-black/40 backdrop-blur-xl rounded-2xl px-4 py-4 sm:px-6 sm:py-4 shadow-2xl border border-white/20" 
+            <div className="fixed bottom-8 right-8 z-30 bg-black/40 backdrop-blur-xl rounded-2xl px-6 py-3 pt-0 sm:px-8 sm:py-3 shadow-2xl border border-white/20" 
                  style={{ 
                    backdropFilter: 'blur(20px) saturate(180%)',
                    WebkitBackdropFilter: 'blur(20px) saturate(180%)',
                    background: 'rgba(0, 0, 0, 0.5)',
-                   minWidth: '400px',
-                   maxWidth: '500px'
+                   minWidth: '480px',
+                   maxWidth: '580px'
                  }}>              
               {/* Content wrapper to ensure everything stays clickable */}
               <div className="relative z-10">
@@ -288,29 +283,11 @@ const FullscreenView: React.FC<FullscreenViewProps> = ({
                   />
                 </div>
                 
-                {/* Main controls - responsive layout */}
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-2 mb-3">
-                  <ControlButtons
-                    isPlaying={playbackState.isPlaying}
-                    loading={false}
-                    onPlayPause={onPlayPause}
-                    onSkip={onSkip}
-                    onPrevious={onPrevious}
-                    // Removed shuffle and repeat from here - they're in SecondaryControls
-                    size="sm"
-                    variant="mobile"
-                    isMobile={true}
-                    playButtonClassName="p-3 sm:p-4 bg-red-500 rounded-full text-white hover:bg-red-400 shadow-lg transition-all"
-                    otherButtonClassName="p-2 sm:p-2.5 rounded-lg transition-all min-w-[44px] min-h-[44px] flex items-center justify-center"
-                    activeClassName="text-red-400 bg-red-400/20"
-                    inactiveClassName="text-gray-400 hover:bg-white/10 hover:text-white"
-                  />
-                </div>
-                
-                {/* Secondary controls - responsive layout */}
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-0">
-                  {/* Heart icon - touch-friendly sizing */}
-                  <div className="flex items-center justify-center sm:justify-start">
+                {/* Single row controls layout with perfect center alignment */}
+                <div className="relative flex items-center justify-between">
+                  {/* Left group: Heart icon only */}
+                  <div className="flex items-center gap-2">
+                    {/* Heart icon */}
                     {playbackState.track?.id && (
                       <HeartIcon
                         filled={savedStatus.get(playbackState.track.id) || false}
@@ -323,26 +300,76 @@ const FullscreenView: React.FC<FullscreenViewProps> = ({
                     )}
                   </div>
                   
-                  {/* Queue, shuffle and repeat controls - mobile-optimized (no volume in fullscreen) */}
-                  <div className="flex items-center gap-3 sm:gap-2">
-                    <SecondaryControls
-                      shuffleState={playbackState.shuffleState}
-                      repeatState={playbackState.repeatState}
-                      onShuffle={onShuffle}
-                      onRepeat={onRepeat}
-                      volume={volume}
-                      onVolumeChange={onVolumeChange}
-                      onShowQueue={onShowQueue}
-                      compact={true}
+                  {/* Center group: Main playback controls - perfectly centered */}
+                  <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center">
+                    <ControlButtons
+                      isPlaying={playbackState.isPlaying}
+                      loading={false}
+                      onPlayPause={onPlayPause}
+                      onSkip={onSkip}
+                      onPrevious={onPrevious}
+                      size="sm"
                       variant="mobile"
                       isMobile={true}
-                      hideVolume={true}  // Hide volume in fullscreen - you should be vibing not fiddling!
-                      queueIconClassName="w-5 h-5 sm:w-4 sm:h-4"
-                      buttonClassName="p-2 sm:p-1.5 text-gray-400 hover:text-white transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-white/10"
-                      activeColor="text-red-400"
-                      activeBgColor="bg-red-400/20"
-                      indicatorBgColor="bg-red-500"
+                      playButtonClassName="p-3 sm:p-4 bg-red-500 rounded-full text-white hover:bg-red-400 shadow-lg transition-all"
+                      otherButtonClassName="p-2 sm:p-2.5 rounded-lg transition-all min-w-[44px] min-h-[44px] flex items-center justify-center"
+                      activeClassName="text-red-400 bg-red-400/20"
+                      inactiveClassName="text-gray-400 hover:bg-white/10 hover:text-white"
                     />
+                  </div>
+                  
+                  {/* Right group: Shuffle, Repeat, Queue - with much more separation */}
+                  <div className="flex items-center">
+                    {/* Shuffle and Repeat grouped tightly together */}
+                    <div className="flex items-center gap-1">
+                      {/* Shuffle button */}
+                      <button
+                        onClick={onShuffle}
+                        className={`p-2 sm:p-2.5 rounded-lg transition-all min-w-[44px] min-h-[44px] flex items-center justify-center ${
+                          playbackState.shuffleState 
+                            ? 'text-red-400 bg-red-400/20' 
+                            : 'text-gray-400 hover:bg-white/10 hover:text-white'
+                        }`}
+                        title="Shuffle"
+                      >
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/>
+                        </svg>
+                      </button>
+
+                      {/* Repeat button */}
+                      <button
+                        onClick={onRepeat}
+                        className={`p-2 sm:p-2.5 rounded-lg transition-all min-w-[44px] min-h-[44px] flex items-center justify-center relative ${
+                          playbackState.repeatState !== 'off' 
+                            ? 'text-red-400 bg-red-400/20' 
+                            : 'text-gray-400 hover:bg-white/10 hover:text-white'
+                        }`}
+                        title={`Repeat: ${playbackState.repeatState}`}
+                      >
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/>
+                        </svg>
+                        {playbackState.repeatState === 'track' && (
+                          <span className="absolute -top-1 -right-1 text-xs bg-red-500 text-black rounded-full w-3 h-3 flex items-center justify-center font-bold">
+                            1
+                          </span>
+                        )}
+                      </button>
+                    </div>
+                    
+                    {/* Queue button with extra separation */}
+                    {onShowQueue && (
+                      <button
+                        onClick={onShowQueue}
+                        className="p-2 sm:p-1.5 text-gray-400 hover:text-white transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-white/10 ml-3 sm:ml-4"
+                        title="View queue"
+                      >
+                        <svg className="w-5 h-5 sm:w-4 sm:h-4" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/>
+                        </svg>
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
