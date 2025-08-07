@@ -1372,6 +1372,26 @@ controlRouter.get('/current-track', requireValidTokens, async (req, res) => {
         context: await (async () => {
           if (!playback.context) return null;
           
+          // Known Spotify API issue: When tracks are queued individually (not from a playlist/album),
+          // the context sometimes persists from the previous playlist/album that was playing.
+          // We need to detect if the current track is likely playing from queue vs actual context.
+          
+          try {
+            // Get the queue to check if we're actually playing from queue
+            const queueResponse = await webAPI.getQueue();
+            
+            // If we have a queue with items but no currently_playing in the queue response,
+            // or if the queue is empty but we have a context, we might be in a stale context situation
+            if (queueResponse && Array.isArray(queueResponse.queue) && queueResponse.queue.length > 0) {
+              // We have queued items, so the current track might be from the queue
+              // In this case, we should not show the context as it's misleading
+              return null;
+            }
+          } catch (error) {
+            // If we can't get queue info, continue with context detection
+            console.log('Failed to fetch queue for context validation:', error);
+          }
+          
           let contextWithName = {
             type: playback.context.type,
             uri: playback.context.uri,

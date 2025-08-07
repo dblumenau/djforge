@@ -735,4 +735,14 @@ export class SpotifyWebAPI {
       throw new Error('Failed to get artist');
     }
   }
+
+  async getQueue(): Promise<any> {
+    try {
+      const response = await this.api.get('/me/player/queue');
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to get queue:', error.response?.data || error.message);
+      throw new Error('Failed to get queue');
+    }
+  }
 }
