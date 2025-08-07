@@ -35,6 +35,15 @@ export interface PlaybackState {
   shuffleState: boolean;
   repeatState: 'off' | 'track' | 'context';
   volume: number;
+  context?: {
+    type: string;  // 'playlist', 'album', 'artist', 'show'
+    uri: string;
+    href?: string;
+    name?: string | null;  // Add this line
+    external_urls?: {
+      spotify: string;
+    };
+  } | null;
 }
 
 export interface PlaybackControlsProps {

@@ -1367,7 +1367,42 @@ controlRouter.get('/current-track', requireValidTokens, async (req, res) => {
         shuffleState: playback.shuffle_state,
         repeatState: playback.repeat_state,
         volume: playback.device?.volume_percent || 50,
-        device: playback.device
+        device: playback.device,
+        // Fetch context name if available
+        context: await (async () => {
+          if (!playback.context) return null;
+          
+          let contextWithName = {
+            type: playback.context.type,
+            uri: playback.context.uri,
+            href: playback.context.href,
+            external_urls: playback.context.external_urls,
+            name: null as string | null
+          };
+          
+          // Extract ID from URI (format: spotify:type:id)
+          const uriParts = playback.context.uri.split(':');
+          const contextId = uriParts[uriParts.length - 1];
+          
+          try {
+            // Fetch name based on context type
+            if (playback.context.type === 'playlist' && contextId) {
+              const playlist = await webAPI.getPlaylist(contextId);
+              contextWithName.name = playlist.name;
+            } else if (playback.context.type === 'album' && contextId) {
+              const album = await webAPI.getAlbum(contextId);
+              contextWithName.name = album.name;
+            } else if (playback.context.type === 'artist' && contextId) {
+              const artist = await webAPI.getArtist(contextId);
+              contextWithName.name = artist.name;
+            }
+          } catch (error) {
+            console.log(`Failed to fetch context name for ${playback.context.type}:`, error);
+            // Continue without name on error
+          }
+          
+          return contextWithName;
+        })()
       });
     }
   } catch (error: any) {

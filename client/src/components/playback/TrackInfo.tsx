@@ -4,10 +4,11 @@ import { PlaybackState } from '../../types/playback.types';
 
 interface TrackInfoProps {
   track: PlaybackState['track'];
+  context?: PlaybackState['context'];
   className?: string;
 }
 
-const TrackInfo: React.FC<TrackInfoProps> = ({ track, className = '' }) => {
+const TrackInfo: React.FC<TrackInfoProps> = ({ track, context, className = '' }) => {
   if (!track) {
     return null;
   }
@@ -58,6 +59,33 @@ const TrackInfo: React.FC<TrackInfoProps> = ({ track, className = '' }) => {
             track.album
           )}
         </p>
+        
+        {/* Playback Context (Playlist/Album source) */}
+        {context && context.external_urls?.spotify && (
+          <p className="text-sm text-gray-500 mt-1 flex items-center gap-2">
+            <span>Playing from</span>
+            <a 
+              href={context.external_urls.spotify}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-green-500 hover:text-green-400 transition-colors font-medium"
+              title={`Open ${context.type} in Spotify`}
+            >
+              {context.name || (context.type === 'playlist' ? 'Playlist' : 
+               context.type === 'album' ? 'Album' : 
+               context.type === 'artist' ? 'Artist Radio' : 
+               context.type === 'show' ? 'Podcast' : 
+               context.type.charAt(0).toUpperCase() + context.type.slice(1))}
+            </a>
+            <span className="px-2 py-0.5 text-xs bg-gray-700/50 text-gray-400 rounded-full">
+              {context.type === 'playlist' ? 'Playlist' : 
+               context.type === 'album' ? 'Album' : 
+               context.type === 'artist' ? 'Artist Radio' : 
+               context.type === 'show' ? 'Podcast' : 
+               context.type.charAt(0).toUpperCase() + context.type.slice(1)}
+            </span>
+          </p>
+        )}
       </div>
       
       {/* Additional metadata - cleaner layout */}

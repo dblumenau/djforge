@@ -527,6 +527,7 @@ const PlaybackControls = forwardRef<PlaybackControlsRef, PlaybackControlsProps>(
       libraryLoading={libraryLoading}
       localPosition={localPosition}
       isTrackChanging={isTrackChanging || progressTrackChanging}
+      context={playbackState.context}
       onClose={() => setViewMode('normal')}
       onPlayPause={handlePlayPause}
       onSkip={handleSkip}

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom';
-import { X, Music, RefreshCw } from 'lucide-react';
+import { X, Music, RefreshCw, Calendar, Star, Hash, ExternalLink } from 'lucide-react';
 import { PlaybackState } from '../../types/playback.types';
 import ControlButtons from './ControlButtons';
 import SecondaryControls from './SecondaryControls';
@@ -14,6 +14,7 @@ interface FullscreenViewProps {
   libraryLoading: Map<string, boolean>;
   localPosition: number;
   isTrackChanging: boolean;
+  context?: PlaybackState['context'];
   onClose: () => void;
   onPlayPause: () => void;
   onSkip: () => void;
@@ -34,6 +35,7 @@ const FullscreenView: React.FC<FullscreenViewProps> = ({
   libraryLoading,
   localPosition,
   isTrackChanging,
+  context,
   onClose,
   onPlayPause,
   onSkip,
@@ -177,11 +179,81 @@ const FullscreenView: React.FC<FullscreenViewProps> = ({
               </div>
             </div>
             
-            {/* Track info - responsive positioning and sizing */}
-            <div className="absolute top-3 left-3 sm:top-6 sm:left-6 max-w-[calc(100%-6rem)] sm:max-w-md z-20">
-              <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-white mb-0.5 sm:mb-1 drop-shadow-lg line-clamp-2">{playbackState.track.name}</h1>
-              <p className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-200 drop-shadow-lg line-clamp-1">{playbackState.track.artist}</p>
-              <p className="text-xs sm:text-sm md:text-base lg:text-lg text-gray-300 drop-shadow-lg line-clamp-1">{playbackState.track.album}</p>
+            {/* Track info with enhanced metadata - responsive positioning and sizing */}
+            <div className="absolute top-3 left-3 sm:top-6 sm:left-6 max-w-[calc(100%-6rem)] sm:max-w-lg z-20">
+              {/* Main track info */}
+              <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-white mb-0.5 sm:mb-1 drop-shadow-lg line-clamp-2">
+                {playbackState.track.name}
+              </h1>
+              <p className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-200 drop-shadow-lg line-clamp-1">
+                {playbackState.track.artist}
+              </p>
+              <p className="text-xs sm:text-sm md:text-base lg:text-lg text-gray-300 drop-shadow-lg line-clamp-1">
+                {playbackState.track.album}
+              </p>
+              
+              {/* Context display with badge */}
+              {context && context.external_urls?.spotify && (
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="text-xs sm:text-sm text-gray-300 drop-shadow-md">Playing from</span>
+                  <a 
+                    href={context.external_urls.spotify}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs sm:text-sm text-red-500 hover:text-red-400 transition-colors font-medium drop-shadow-md"
+                  >
+                    {context.name || (context.type === 'playlist' ? 'Playlist' : 
+                     context.type === 'album' ? 'Album' : 
+                     context.type === 'artist' ? 'Artist Radio' : 
+                     context.type === 'show' ? 'Podcast' : 
+                     context.type.charAt(0).toUpperCase() + context.type.slice(1))}
+                  </a>
+                  <span className="px-2 py-0.5 text-xs bg-white/20 backdrop-blur-sm text-white/80 rounded-full drop-shadow-md">
+                    {context.type === 'playlist' ? 'Playlist' : 
+                     context.type === 'album' ? 'Album' : 
+                     context.type === 'artist' ? 'Artist Radio' : 
+                     context.type === 'show' ? 'Podcast' : 
+                     context.type.charAt(0).toUpperCase() + context.type.slice(1)}
+                  </span>
+                </div>
+              )}
+              
+              {/* Additional metadata */}
+              <div className="mt-2 flex flex-wrap items-center gap-3 text-xs sm:text-sm">
+                {playbackState.track.releaseDate && (
+                  <span className="flex items-center gap-1 text-gray-300 drop-shadow-md">
+                    <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <span>{new Date(playbackState.track.releaseDate).getFullYear()}</span>
+                  </span>
+                )}
+                {playbackState.track.popularity !== undefined && (
+                  <span className="flex items-center gap-1 text-gray-300 drop-shadow-md">
+                    <Star className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <span>{playbackState.track.popularity}/100</span>
+                  </span>
+                )}
+                {playbackState.track.track_number && (
+                  <span className="flex items-center gap-1 text-gray-300 drop-shadow-md">
+                    <Hash className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <span>Track {playbackState.track.track_number}</span>
+                  </span>
+                )}
+              </div>
+              
+              {/* Open in Spotify link on its own line */}
+              {playbackState.track.external_urls?.spotify && (
+                <div className="mt-2">
+                  <a 
+                    href={playbackState.track.external_urls.spotify}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs sm:text-sm text-red-500 hover:text-red-400 transition-colors drop-shadow-md"
+                  >
+                    <ExternalLink className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <span>Open in Spotify</span>
+                  </a>
+                </div>
+              )}
             </div>
             
             {/* Compact controls - Positioned at bottom right with frosted glass effect */}

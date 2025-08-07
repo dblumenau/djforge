@@ -711,4 +711,28 @@ export class SpotifyWebAPI {
       throw new Error('Failed to get playlist');
     }
   }
+
+  async getAlbum(albumId: string): Promise<any> {
+    try {
+      const response = await this.api.get(`/albums/${albumId}`, {
+        params: {
+          market: 'from_token'
+        }
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to get album:', error.response?.data || error.message);
+      throw new Error('Failed to get album');
+    }
+  }
+
+  async getArtist(artistId: string): Promise<any> {
+    try {
+      const response = await this.api.get(`/artists/${artistId}`);
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to get artist:', error.response?.data || error.message);
+      throw new Error('Failed to get artist');
+    }
+  }
 }
