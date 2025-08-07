@@ -52,7 +52,7 @@ const MODEL_DISPLAY_INFO: Record<string, { name: string; provider: string; descr
   [OPENAI_MODELS.GPT_5]: { 
     name: 'GPT 5 (Direct)', 
     provider: 'OpenAI',
-    description: 'GPT 5 - Latest model with advanced capabilities and JSON schema support (Default)'
+    description: 'GPT 5 - Latest model with advanced capabilities and JSON schema support'
   },
   [OPENAI_MODELS.GPT_5_MINI]: { 
     name: 'GPT 5 Mini (Direct)', 
@@ -231,7 +231,7 @@ modelPreferencesRouter.get('/models', requireValidTokens, async (req: any, res) 
     
     // Get user preference from Redis
     const userId = getUserIdFromRequest(req);
-    let currentPreference = OPENAI_MODELS.GPT_5;
+    let currentPreference = 'google/gemini-2.5-flash';  // Default to Gemini Flash
     
     if (userId) {
       const savedPreference = await getUserModelPreference(userId);
@@ -243,7 +243,7 @@ modelPreferencesRouter.get('/models', requireValidTokens, async (req: any, res) 
     res.json({
       models: availableModels,
       currentModel: currentPreference,
-      defaultModel: OPENAI_MODELS.GPT_5
+      defaultModel: 'google/gemini-2.5-flash'
     });
   } catch (error) {
     console.error('Error fetching model preferences:', error instanceof Error ? error.message : error);

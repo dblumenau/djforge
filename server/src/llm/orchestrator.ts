@@ -134,7 +134,7 @@ export class LLMOrchestrator {
   private loggingService: LLMLoggingService | null = null;
   
   constructor() {
-    this.defaultModel = OPENAI_MODELS.GPT_5;
+    this.defaultModel = OPENROUTER_MODELS.GEMINI_2_5_FLASH;
   }
 
   private ensureInitialized() {
