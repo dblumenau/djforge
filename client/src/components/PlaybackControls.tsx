@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
 import ReactDOM from 'react-dom';
+import ProgressBarJS from 'progressbar.js';
 import { api } from '../utils/api';
 import { useTrackLibrary } from '../hooks/useTrackLibrary';
 import { useMusicWebSocket } from '../hooks/useMusicWebSocket';
@@ -35,6 +36,7 @@ const PlaybackControls = forwardRef<PlaybackControlsRef, PlaybackControlsProps>(
   const previousPositionRef = useRef<number>(0);
   const currentTrackIdRef = useRef<string | null>(null);
   const localPositionRef = useRef<number>(0);
+  const progressBarJSRef = useRef<any>(null);
 
   // Custom hooks
   const currentTrackId = playbackState.track?.id || '';
@@ -158,6 +160,7 @@ const PlaybackControls = forwardRef<PlaybackControlsRef, PlaybackControlsProps>(
 
   const { 
     localPosition, 
+    setLocalPosition,
     isTrackChanging: progressTrackChanging, 
     startProgressAnimation,
     stopProgressAnimation,
@@ -255,6 +258,43 @@ const PlaybackControls = forwardRef<PlaybackControlsRef, PlaybackControlsProps>(
       stopProgressAnimation();
     };
   }, [stopProgressAnimation]); // Only run on unmount
+
+  // Initialize and manage ProgressBar.js
+  useEffect(() => {
+    // Initialize the progress bar if it doesn't exist and we have a track
+    if (!progressBarJSRef.current && playbackState.track) {
+      const containerEl = document.getElementById(isMobile ? 'progressbar-container-mobile' : 'progressbar-container');
+      if (containerEl) {
+        progressBarJSRef.current = new ProgressBarJS.Line(containerEl, {
+          strokeWidth: 8,
+          color: '#1db954', // Spotify green
+          trailColor: 'rgba(64, 64, 64, 0.5)',
+          duration: 0, // No animation for instant updates
+          svgStyle: {
+            width: '100%',
+            height: '100%'
+          },
+          trailWidth: 8
+        });
+      }
+    }
+    
+    // Cleanup on unmount or when track is removed
+    return () => {
+      if (progressBarJSRef.current) {
+        progressBarJSRef.current.destroy();
+        progressBarJSRef.current = null;
+      }
+    };
+  }, [playbackState.track, isMobile]);
+
+  // Update ProgressBar.js when localPosition changes
+  useEffect(() => {
+    if (progressBarJSRef.current && playbackState.track && playbackState.track.duration > 0) {
+      const progress = Math.min(localPosition / playbackState.track.duration, 1);
+      progressBarJSRef.current.set(progress); // Use set() for instant update
+    }
+  }, [localPosition, playbackState.track]);
 
   // Initial fetch and setup
   useEffect(() => {
@@ -427,6 +467,39 @@ const PlaybackControls = forwardRef<PlaybackControlsRef, PlaybackControlsProps>(
 
   // Use handleSeek from the hook which properly manages animation
   const handleSeek = handleSeekFromHook;
+
+  // Handle click on progress bar to seek
+  const handleProgressBarClick = useCallback(async (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!playbackState.track) return;
+    
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const percentage = x / rect.width;
+    const newPosition = playbackState.track.duration * percentage; // In seconds
+    
+    // Stop any existing animation first
+    stopProgressAnimation();
+    
+    // Immediately update the visual position
+    setLocalPosition(newPosition);
+    
+    try {
+      // Position is in seconds for API
+      await api.post('/api/control/seek', { position: Math.floor(newPosition) });
+      
+      // Restart animation from the new position if playing
+      if (playbackState.isPlaying) {
+        startProgressAnimation(newPosition);
+      }
+      
+      // Fetch new state after a short delay to confirm
+      setTimeout(() => fetchPlaybackState(true), 500);
+    } catch (error) {
+      console.error('Seek failed:', error);
+      // Revert position on error
+      setLocalPosition(playbackState.track?.position ?? 0);
+    }
+  }, [playbackState.track, playbackState.isPlaying, startProgressAnimation, stopProgressAnimation, fetchPlaybackState]);
 
 
   // Props are now passed individually to components
@@ -664,8 +737,51 @@ const PlaybackControls = forwardRef<PlaybackControlsRef, PlaybackControlsProps>(
                 isMobile={true}
               />
               
+              {/* Simple percentage display - bypassing the progress bar issues */}
               {playbackState.track && (
-                <ProgressBar {...progressProps} isMobile={true} />
+                <div className="text-center text-sm text-gray-400" style={{ display: 'none' }}>
+                  <span>
+                    {Math.round((localPosition / playbackState.track.duration) * 100)}%
+                  </span>
+                </div>
+              )}
+              
+              {/* ProgressBar.js container */}
+              {playbackState.track && (
+                <div 
+                  id="progressbar-container-mobile" 
+                  onClick={handleProgressBarClick}
+                  style={{ 
+                    height: '12px', 
+                    marginBottom: '10px',
+                    borderRadius: '6px',
+                    overflow: 'hidden',
+                    background: 'linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.3) 100%)',
+                    boxShadow: '0 0 20px rgba(29, 185, 84, 0.15), inset 0 1px 2px rgba(0,0,0,0.5)',
+                    position: 'relative',
+                    cursor: 'pointer'
+                  }}
+                ></div>
+              )}
+              
+              {/* HTML progress element - no styling */}
+              {playbackState.track && (
+                <div style={{ display: 'none' }}>
+                  <progress 
+                    id="file-mobile" 
+                    max="100" 
+                    value={Math.round((localPosition / playbackState.track.duration) * 100)}
+                    style={{ width: '100%' }}
+                  >
+                    {Math.round((localPosition / playbackState.track.duration) * 100)}%
+                  </progress>
+                </div>
+              )}
+              
+              {playbackState.track && (
+                <div style={{ display: 'none' }}>
+                  <ProgressBar {...progressProps} isMobile={true} />
+                </div>
               )}
               
               <SecondaryControls 
@@ -698,8 +814,51 @@ const PlaybackControls = forwardRef<PlaybackControlsRef, PlaybackControlsProps>(
               onPrevious={handlePrevious}
             />
             
+            {/* Simple percentage display - bypassing the progress bar issues */}
             {playbackState.track && (
-              <ProgressBar {...progressProps} />
+              <div className="text-center text-sm text-gray-400" style={{ display: 'none' }}>
+                <span>
+                  {Math.round((localPosition / playbackState.track.duration) * 100)}%
+                </span>
+              </div>
+            )}
+            
+            {/* ProgressBar.js container */}
+            {playbackState.track && (
+              <div 
+                id="progressbar-container" 
+                onClick={handleProgressBarClick}
+                style={{ 
+                  height: '12px', 
+                  marginBottom: '10px',
+                  borderRadius: '6px',
+                  overflow: 'hidden',
+                  background: 'linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.3) 100%)',
+                  boxShadow: '0 0 20px rgba(29, 185, 84, 0.15), inset 0 1px 2px rgba(0,0,0,0.5)',
+                  position: 'relative',
+                  cursor: 'pointer'
+                }}
+              ></div>
+            )}
+            
+            {/* HTML progress element - no styling */}
+            {playbackState.track && (
+              <div style={{ display: 'none' }}>
+                <progress 
+                  id="file" 
+                  max="100" 
+                  value={Math.round((localPosition / playbackState.track.duration) * 100)}
+                  style={{ width: '100%' }}
+                >
+                  {Math.round((localPosition / playbackState.track.duration) * 100)}%
+                </progress>
+              </div>
+            )}
+            
+            {playbackState.track && (
+              <div style={{ display: 'none' }}>
+                <ProgressBar {...progressProps} />
+              </div>
             )}
             
             <SecondaryControls 
