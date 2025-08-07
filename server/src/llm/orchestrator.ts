@@ -158,6 +158,7 @@ export class LLMOrchestrator {
     // OpenAI Direct (for GPT 4.1 models with native structured output)
     if (process.env.OPENAI_API_KEY) {
       try {
+        console.log('🔧 Attempting to initialize OpenAI Provider...');
         this.openaiService = new OpenAIProvider({
           apiKey: process.env.OPENAI_API_KEY,
           timeout: 300000,  // 5 minutes for GPT-5
@@ -166,9 +167,15 @@ export class LLMOrchestrator {
         console.log('✅ OpenAI Provider initialized successfully');
       } catch (error) {
         console.error('❌ Failed to initialize OpenAI Provider:', error);
+        console.error('Error details:', {
+          message: error instanceof Error ? error.message : 'Unknown',
+          stack: error instanceof Error ? error.stack : 'No stack trace'
+        });
         // Don't throw - just continue without OpenAI support
         this.openaiService = null;
       }
+    } else {
+      console.log('⚠️ OPENAI_API_KEY not set, OpenAI Provider disabled');
     }
 
     // OpenRouter (supports all models)
