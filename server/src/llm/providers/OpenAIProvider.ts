@@ -22,8 +22,11 @@
  * - Only override when specific behavior is needed
  */
 
-import OpenAI from 'openai';
+import * as OpenAIModule from 'openai';
 import { LLMRequest, LLMResponse } from '../orchestrator';
+
+// Handle both CommonJS and ESM exports
+const OpenAI = (OpenAIModule as any).default || OpenAIModule;
 import { 
   getOpenAISchemaForIntent,
   getRawZodSchemaForIntent,
@@ -46,7 +49,7 @@ export const OPENAI_MODELS = {
 };
 
 export class OpenAIProvider {
-  private client: OpenAI;
+  private client: any; // OpenAI client instance
   private timeout: number;
   private maxRetries: number;
 
@@ -284,15 +287,16 @@ export class OpenAIProvider {
       console.error('OpenAI Provider error:', error);
       
       // Handle specific OpenAI errors
-      if (error instanceof OpenAI.APIError) {
-        if (error.status === 429) {
+      const errorObj = error as any;
+      if (errorObj && errorObj.status) {
+        if (errorObj.status === 429) {
           throw new Error('OpenAI API rate limit exceeded');
-        } else if (error.status === 401) {
+        } else if (errorObj.status === 401) {
           throw new Error('Invalid OpenAI API key');
-        } else if (error.status === 400) {
-          throw new Error(`OpenAI API bad request: ${error.message}`);
+        } else if (errorObj.status === 400) {
+          throw new Error(`OpenAI API bad request: ${errorObj.message}`);
         }
-        throw new Error(`OpenAI API error (${error.status}): ${error.message}`);
+        throw new Error(`OpenAI API error (${errorObj.status}): ${errorObj.message}`);
       }
       
       throw new Error(`OpenAI Provider error: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -383,8 +387,8 @@ export class OpenAIProvider {
   /**
    * Convert LLMRequest messages to OpenAI format
    */
-  private formatMessagesForOpenAI(messages: LLMRequest['messages'], systemPrompt?: string, requiresJSON?: boolean): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
-    const formattedMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [];
+  private formatMessagesForOpenAI(messages: LLMRequest['messages'], systemPrompt?: string, requiresJSON?: boolean): any[] {
+    const formattedMessages: any[] = [];
     
     // Add system message if provided
     if (systemPrompt) {
