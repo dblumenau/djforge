@@ -4,13 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This repository contains the **Spotify Claude Controller** - a natural language Spotify controller that allows users to control their Spotify desktop app using conversational commands powered by multiple LLM providers.
+This repository contains the **DJ Forge** - an app that interacts with Gemini LLM, Openrouter LLM's and the Spotify API to enable users to control their Spotify using conversational commands. It also includes playlist discovery feautures where users can explore new playlists found and summarised by the AI. The app also contains a player in the header which can expand to a web player and a full screen mode, all of which are vastly better than Spotify's own app and web player.
 
 **Architecture**: Monorepo with TypeScript throughout
 - **Frontend**: React + TypeScript + Vite + Tailwind CSS v4 + React Router
 - **Backend**: Node.js + Express + TypeScript + Redis + Socket.IO v4
-- **Control**: Hybrid approach using AppleScript (instant control) + Spotify Web API (search/queue/playback)
-- **AI**: Multi-LLM architecture with OpenRouter (30+ models) and Google Gemini Direct API
+- **Control**: Spotify Web API (search/queue/playback)
+- **AI**: Multi-LLM architecture with OpenRouter (selected) and Google Gemini Direct API
 - **Real-time**: Authenticated WebSocket with Socket.IO for secure bidirectional communication
 - **Deployment**: Docker + Fly.io ready with production configurations
 
@@ -146,7 +146,7 @@ SPOTIFY_REDIRECT_URI=http://127.0.0.1:4001/callback
 
 # Server Configuration
 PORT=4001
-SESSION_SECRET=your_session_secret_here
+SESSION_SECRET=your_session_secret_here  # Generate with: openssl rand -base64 32
 JWT_SECRET=your_jwt_secret_here
 
 # Redis Configuration (optional)
@@ -155,6 +155,7 @@ REDIS_URL=redis://localhost:6379
 # LLM API Keys
 OPENROUTER_API_KEY=your_openrouter_key_here
 GEMINI_API_KEY=your_gemini_key_here
+OPENAI_API_KEY=your_openai_api_key_here  # For GPT 4.1 models direct access
 
 # Weather API (optional)
 DMI_WEATHER_LATITUDE=55.6761

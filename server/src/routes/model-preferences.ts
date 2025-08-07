@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { requireValidTokens } from '../middleware/session-auth';
-import { llmOrchestrator, OPENROUTER_MODELS } from '../llm/orchestrator';
+import { llmOrchestrator, OPENROUTER_MODELS, OPENAI_MODELS } from '../llm/orchestrator';
 
 export const modelPreferencesRouter = Router();
 
@@ -45,6 +45,23 @@ async function setUserModelPreference(userId: string, modelId: string): Promise<
 
 // Model display information
 const MODEL_DISPLAY_INFO: Record<string, { name: string; provider: string; description: string }> = {
+  // Direct OpenAI API models (only available when OPENAI_API_KEY is set)
+  [OPENAI_MODELS.GPT_5]: { 
+    name: 'GPT 5 (Direct)', 
+    provider: 'OpenAI',
+    description: 'GPT 5 - Latest model with advanced capabilities and JSON schema support (Default)'
+  },
+  [OPENAI_MODELS.GPT_5_MINI]: { 
+    name: 'GPT 5 Mini (Direct)', 
+    provider: 'OpenAI',
+    description: 'GPT 5 Mini - Faster, cost-effective variant with excellent performance'
+  },
+  [OPENAI_MODELS.GPT_5_NANO]: { 
+    name: 'GPT 5 Nano (Direct)', 
+    provider: 'OpenAI',
+    description: 'GPT 5 Nano - Ultra-fast responses for simple tasks'
+  },
+  
   // Claude Models
   [OPENROUTER_MODELS.CLAUDE_OPUS_4]: { 
     name: 'Claude Opus 4', 
@@ -54,7 +71,7 @@ const MODEL_DISPLAY_INFO: Record<string, { name: string; provider: string; descr
   [OPENROUTER_MODELS.CLAUDE_SONNET_4]: { 
     name: 'Claude Sonnet 4', 
     provider: 'Anthropic',
-    description: 'Balanced performance and speed (Default, JSON via tool calling)'
+    description: 'Balanced performance and speed (JSON via tool calling)'
   },
   [OPENROUTER_MODELS.CLAUDE_HAIKU_4]: { 
     name: 'Claude Haiku 4', 
@@ -62,54 +79,6 @@ const MODEL_DISPLAY_INFO: Record<string, { name: string; provider: string; descr
     description: 'Fast and efficient (JSON via tool calling)'
   },
 
-  [OPENROUTER_MODELS.GPT_4O]: { 
-    name: 'GPT-4 Omni', 
-    provider: 'OpenAI',
-    description: 'Multimodal model with vision and JSON support'
-  },
-  [OPENROUTER_MODELS.GPT_4O_MINI]: { 
-    name: 'GPT-4 Omni Mini', 
-    provider: 'OpenAI',
-    description: 'Efficient multimodal model with fast responses'
-  },
-  [OPENROUTER_MODELS.O3_PRO]: { 
-    name: 'O3 Pro', 
-    provider: 'OpenAI',
-    description: 'Most intelligent reasoning model with extended thinking'
-  },
-  [OPENROUTER_MODELS.O3]: { 
-    name: 'O3', 
-    provider: 'OpenAI',
-    description: 'Advanced reasoning with tool use capabilities'
-  },
-  // [OPENROUTER_MODELS.O3_DEEP_RESEARCH]: { 
-  //   name: 'O3 Deep Research', 
-  //   provider: 'OpenAI',
-  //   description: 'Optimized for complex research and analysis tasks'
-  // },
-  [OPENROUTER_MODELS.O3_PRO_2025_06_10]: { 
-    name: 'O3 Pro (2025-06-10)', 
-    provider: 'OpenAI',
-    description: 'Latest O3 Pro with enhanced capabilities'
-  },
-  [OPENROUTER_MODELS.O4_MINI]: { 
-    name: 'O4 Mini', 
-    provider: 'OpenAI',
-    description: 'Fast reasoning optimized for math, coding, and visual tasks'
-  },
-  
-  // Google Models
-  [OPENROUTER_MODELS.GEMINI_2_5_PRO]: { 
-    name: 'Gemini 2.5 Pro', 
-    provider: 'Google',
-    description: 'Google\'s most capable model with native search grounding (Direct API when available)'
-  },
-  [OPENROUTER_MODELS.GEMINI_2_5_FLASH]: { 
-    name: 'Gemini 2.5 Flash', 
-    provider: 'Google',
-    description: 'Fast and reliable with native search grounding (Direct API when available)'
-  },
-  
   // Mistral Models
   [OPENROUTER_MODELS.MISTRAL_MEDIUM_3]: { 
     name: 'Mistral Medium 3', 
@@ -225,8 +194,8 @@ function getGroupedModels() {
     });
   });
   
-  // Reorder providers to put Google first (preferred due to grounding support)
-  const providerOrder = ['Google', 'Anthropic', 'OpenAI', 'Mistral', 'DeepSeek', 'X.AI', 'Meta', 'Qwen'];
+  // Reorder providers to put OpenAI first (GPT-5 is the default)
+  const providerOrder = ['OpenAI', 'Google', 'Anthropic', 'Mistral', 'DeepSeek', 'X.AI', 'Meta', 'Qwen'];
   const orderedGrouped: Record<string, Array<{ 
     id: string; 
     name: string; 
@@ -259,7 +228,7 @@ modelPreferencesRouter.get('/models', requireValidTokens, async (req: any, res) 
     
     // Get user preference from Redis
     const userId = getUserIdFromRequest(req);
-    let currentPreference = OPENROUTER_MODELS.GEMINI_2_5_FLASH;
+    let currentPreference = OPENAI_MODELS.GPT_5;
     
     if (userId) {
       const savedPreference = await getUserModelPreference(userId);
@@ -271,7 +240,7 @@ modelPreferencesRouter.get('/models', requireValidTokens, async (req: any, res) 
     res.json({
       models: availableModels,
       currentModel: currentPreference,
-      defaultModel: OPENROUTER_MODELS.GEMINI_2_5_FLASH
+      defaultModel: OPENAI_MODELS.GPT_5
     });
   } catch (error) {
     console.error('Error fetching model preferences:', error);

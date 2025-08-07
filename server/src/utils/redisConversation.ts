@@ -271,7 +271,22 @@ export class RedisConversation {
         ...entry.interpretation,
         reasoning: entry.interpretation.reasoning ? 
           sanitizeString(entry.interpretation.reasoning) : undefined,
-        alternatives: entry.interpretation.alternatives?.map(alt => sanitizeString(alt))
+        alternatives: entry.interpretation.alternatives?.map(alt => {
+          // Handle both string and object alternatives
+          if (typeof alt === 'string') {
+            return sanitizeString(alt);
+          } else if (typeof alt === 'object' && alt !== null) {
+            // For object alternatives (GPT-5 format), sanitize string fields
+            return {
+              ...alt,
+              query: alt.query ? sanitizeString(alt.query) : undefined,
+              enhancedQuery: alt.enhancedQuery ? sanitizeString(alt.enhancedQuery) : undefined,
+              aiReasoning: alt.aiReasoning ? sanitizeString(alt.aiReasoning) : undefined,
+              theme: alt.theme ? sanitizeString(alt.theme) : undefined
+            };
+          }
+          return alt;
+        })
       }
     };
   }

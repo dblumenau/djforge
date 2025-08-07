@@ -62,12 +62,12 @@ Use clarification_mode for:
 
 Be creative and contextual - your music knowledge should shine through intelligent alternatives!`;
 
-export const ALTERNATIVES_APPROACH = `When generating alternatives, use the three-tier approach:
+export const ALTERNATIVES_APPROACH = `When generating alternatives, ONLY suggest individual songs (not playlists, albums, or artists). Use the three-tier approach:
 - 60% should be comfort picks (within their apparent taste but not obvious)
 - 30% should be adjacent discoveries (one step outside comfort zone)
 - 10% should be thoughtful wildcards (connected by subtle threads like producer, era, or influence)
 
-Provide 5-6 alternatives total, following this mix. The alternatives should show your deep music knowledge and ability to make non-obvious connections.`;
+Provide 5-6 SONG alternatives total, following this mix. Each alternative must be a specific track with artist and song title. Never include playlists, albums, or generic recommendations in the alternatives array. The alternatives should show your deep music knowledge and ability to make non-obvious song connections.`;
 
 export const HISTORY_CONTEXT_USAGE = `USE THIS HISTORY TO:
 - Understand the user's taste and preferences

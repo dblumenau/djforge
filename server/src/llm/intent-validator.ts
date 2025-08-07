@@ -50,7 +50,7 @@ export interface ValidationResult {
 
 // Validation context for debugging
 export interface ValidationContext {
-  source: 'openrouter' | 'gemini-direct' | 'unknown';
+  source: 'openrouter' | 'gemini-direct' | 'openai-direct' | 'unknown';
   model: string;
   timestamp: number;
   rawResponse?: any;
@@ -255,8 +255,19 @@ export function validateMusicCommandIntent(
   if (intent.alternatives !== undefined) {
     if (!Array.isArray(intent.alternatives)) {
       result.errors.push('Optional field "alternatives" must be an array if provided');
-    } else if (!intent.alternatives.every((alt: any) => typeof alt === 'string')) {
-      result.errors.push('All items in "alternatives" array must be strings');
+    } else {
+      // Check each alternative - can be string or object
+      for (let i = 0; i < intent.alternatives.length; i++) {
+        const alt = intent.alternatives[i];
+        if (typeof alt !== 'string' && typeof alt !== 'object') {
+          result.errors.push(`Alternative at index ${i} must be a string or object`);
+        } else if (typeof alt === 'object' && alt !== null) {
+          // Validate object has at least one identifying field
+          if (!alt.intent && !alt.query && !alt.theme) {
+            result.errors.push(`Alternative object at index ${i} must have intent, query, or theme`);
+          }
+        }
+      }
     }
   }
 

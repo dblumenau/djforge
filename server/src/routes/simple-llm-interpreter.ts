@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { SpotifyControl } from '../spotify/control';
 import { requireValidTokens } from '../middleware/session-auth';
 import { SpotifyTrack, SpotifyAuthTokens } from '../types';
-import { llmOrchestrator, OPENROUTER_MODELS } from '../llm/orchestrator';
+import { llmOrchestrator, OPENROUTER_MODELS, OPENAI_MODELS } from '../llm/orchestrator';
 import { llmMonitor } from '../llm/monitoring';
 import { ConversationEntry, DialogState } from '../utils/redisConversation';
 import { ConversationManager, getConversationManager } from '../services/ConversationManager';
@@ -948,15 +948,48 @@ simpleLLMInterpreterRouter.get('/history', requireValidTokens, async (req: any, 
               
               // Convert string alternatives to objects with URIs
               const alternativesWithUris = [];
-              for (const altString of enrichedAlternatives.slice(0, 5)) {
+              for (const alt of enrichedAlternatives.slice(0, 5)) {
                 try {
-                  const parts = altString.split(' - ');
-                  if (parts.length >= 2) {
-                    const artist = parts[0].trim();
-                    const track = parts.slice(1).join(' - ').trim();
+                  let searchQuery = '';
+                  let additionalData = {};
+                  
+                  if (typeof alt === 'string') {
+                    // Legacy format: "Artist Name - Song Title"
+                    const parts = alt.split(' - ');
+                    if (parts.length >= 2) {
+                      const artist = parts[0].trim();
+                      const track = parts.slice(1).join(' - ').trim();
+                      searchQuery = `artist:"${artist}" track:"${track}"`;
+                    }
+                  } else if (typeof alt === 'object' && alt !== null) {
+                    // GPT-5 rich format or already enriched object
+                    if (alt.uri) {
+                      // Already enriched, keep as-is
+                      alternativesWithUris.push(alt);
+                      continue;
+                    }
                     
-                    const altSearchQuery = `artist:"${artist}" track:"${track}"`;
-                    const altTracks = await spotifyControl.search(altSearchQuery);
+                    if (alt.enhancedQuery) {
+                      searchQuery = alt.enhancedQuery;
+                    } else if (alt.query) {
+                      searchQuery = alt.query;
+                    } else if (alt.artist && alt.track) {
+                      searchQuery = `artist:"${alt.artist}" track:"${alt.track}"`;
+                    } else if (alt.theme) {
+                      searchQuery = alt.theme;
+                    }
+                    
+                    // Store additional metadata from GPT-5
+                    additionalData = {
+                      intent: alt.intent,
+                      isAIDiscovery: alt.isAIDiscovery,
+                      aiReasoning: alt.aiReasoning,
+                      theme: alt.theme
+                    };
+                  }
+                  
+                  if (searchQuery) {
+                    const altTracks = await spotifyControl.search(searchQuery);
                     
                     if (altTracks.length > 0) {
                       const altTrack = altTracks[0];
@@ -964,12 +997,13 @@ simpleLLMInterpreterRouter.get('/history', requireValidTokens, async (req: any, 
                         name: altTrack.name,
                         artists: altTrack.artists.map((a: any) => a.name).join(', '),
                         popularity: altTrack.popularity,
-                        uri: altTrack.uri
+                        uri: altTrack.uri,
+                        ...additionalData // Include GPT-5's rich metadata
                       });
                     }
                   }
                 } catch (error) {
-                  console.error('Error enriching alternative:', altString, error);
+                  console.error('Error enriching alternative:', alt, error);
                 }
               }
               
@@ -1471,17 +1505,43 @@ simpleLLMInterpreterRouter.post('/command', requireValidTokens, async (req: any,
             // Convert LLM-provided alternatives to proper format with URIs
             const alternativesWithUris = [];
             console.log(`[DEBUG] Converting ${interpretation.alternatives.length} alternatives to URI format`);
-            for (const altString of interpretation.alternatives.slice(0, 5)) {
+            for (const alt of interpretation.alternatives.slice(0, 5)) {
               try {
-                // Parse "Artist Name - Song Title" format
-                const parts = altString.split(' - ');
-                if (parts.length >= 2) {
-                  const artist = parts[0].trim();
-                  const track = parts.slice(1).join(' - ').trim();
+                let searchQuery = '';
+                let additionalData = {};
+                
+                if (typeof alt === 'string') {
+                  // Legacy format: "Artist Name - Song Title"
+                  const parts = alt.split(' - ');
+                  if (parts.length >= 2) {
+                    const artist = parts[0].trim();
+                    const track = parts.slice(1).join(' - ').trim();
+                    searchQuery = `artist:"${artist}" track:"${track}"`;
+                  }
+                } else if (typeof alt === 'object' && alt !== null) {
+                  // GPT-5 rich format with structured data
+                  if (alt.enhancedQuery) {
+                    searchQuery = alt.enhancedQuery;
+                  } else if (alt.query) {
+                    searchQuery = alt.query;
+                  } else if (alt.artist && alt.track) {
+                    searchQuery = `artist:"${alt.artist}" track:"${alt.track}"`;
+                  } else if (alt.theme) {
+                    searchQuery = alt.theme;
+                  }
                   
+                  // Store additional metadata from GPT-5
+                  additionalData = {
+                    intent: alt.intent,
+                    isAIDiscovery: alt.isAIDiscovery,
+                    aiReasoning: alt.aiReasoning,
+                    theme: alt.theme
+                  };
+                }
+                
+                if (searchQuery) {
                   // Search for this alternative on Spotify
-                  const altSearchQuery = `artist:"${artist}" track:"${track}"`;
-                  const altTracks = await spotifyControl.search(altSearchQuery);
+                  const altTracks = await spotifyControl.search(searchQuery);
                   
                   if (altTracks.length > 0) {
                     const altTrack = altTracks[0];
@@ -1489,12 +1549,13 @@ simpleLLMInterpreterRouter.post('/command', requireValidTokens, async (req: any,
                       name: altTrack.name,
                       artists: altTrack.artists.map((a: any) => a.name).join(', '),
                       popularity: altTrack.popularity,
-                      uri: altTrack.uri
+                      uri: altTrack.uri,
+                      ...additionalData // Include GPT-5's rich metadata
                     });
                   }
                 }
               } catch (error) {
-                console.error('Error processing alternative:', altString, error);
+                console.error('Error processing alternative:', alt, error);
               }
             }
             
@@ -2150,14 +2211,24 @@ simpleLLMInterpreterRouter.post('/command', requireValidTokens, async (req: any,
       console.log(`Dialog state updated: mode=${updatedDialogState.interaction_mode}, last_action=${updatedDialogState.last_action?.type || 'none'}`);
     }
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Command error:', error);
     
     // More specific error handling
     let errorMessage = 'Failed to process command';
     let statusCode = 500;
+    let errorDetails = 'Unknown error';
     
-    if (error instanceof Error) {
+    // Handle both Error objects and custom error objects from interpretCommand
+    if (error && typeof error === 'object' && 'error' in error) {
+      // This is the custom error object from interpretCommand
+      errorMessage = error.error || errorMessage;
+      errorDetails = error.error || 'LLM interpretation failed';
+      if (error.model) {
+        errorDetails += ` (model: ${error.model})`;
+      }
+    } else if (error instanceof Error) {
+      errorDetails = error.message;
       if (error.message.includes('No active device')) {
         errorMessage = 'No active Spotify device found. Please start playing music on a device first.';
         statusCode = 400;
@@ -2179,12 +2250,12 @@ simpleLLMInterpreterRouter.post('/command', requireValidTokens, async (req: any,
       null, 
       startTime, 
       false, 
-      error instanceof Error ? error.message : 'Unknown error'
+      errorDetails
     );
     
     res.status(statusCode).json({ 
       error: errorMessage,
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: errorDetails
     });
   }
 });

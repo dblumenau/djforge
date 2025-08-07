@@ -2,6 +2,7 @@ import axios, { AxiosError } from 'axios';
 import { z } from 'zod';
 import { normalizeLLMResponse } from './normalizer';
 import { GeminiService } from './providers/GeminiService';
+import { OpenAIProvider, OPENAI_MODELS } from './providers/OpenAIProvider';
 import { validateIntent, ValidationOptions } from './intent-validator';
 import { LLMLoggingService } from '../services/llm-logging.service';
 
@@ -29,6 +30,9 @@ export interface LLMRequest {
   schema?: z.ZodSchema;
   conversationContext?: string; // Added for conversation history integration
   skipValidation?: boolean; // Skip intent validation for non-command responses (e.g., playlist discovery)
+  // GPT-5 specific parameters
+  reasoning_effort?: 'minimal' | 'low' | 'medium' | 'high';
+  verbosity?: 'low' | 'medium' | 'high';
 }
 
 export interface LLMResponse {
@@ -40,7 +44,7 @@ export interface LLMResponse {
   };
   model: string;
   provider: string;
-  flow?: 'openrouter' | 'gemini-direct';
+  flow?: 'openrouter' | 'gemini-direct' | 'openai-direct';
   rawResponse?: any;  // Complete raw response before processing
   fullRequest?: any;  // Complete request object
   processingSteps?: Array<{
@@ -56,21 +60,6 @@ export const OPENROUTER_MODELS = {
   CLAUDE_OPUS_4: 'anthropic/claude-opus-4',
   CLAUDE_SONNET_4: 'anthropic/claude-sonnet-4',
   CLAUDE_HAIKU_4: 'anthropic/claude-4-haiku',
-
-  // OpenAI Models
-  O3_PRO: 'openai/o3-pro',
-  O3: 'openai/o3',
-  O3_DEEP_RESEARCH: 'openai/o3-deep-research',
-  O3_PRO_2025_06_10: 'openai/o3-pro-2025-06-10',
-  O4_MINI: 'openai/o4-mini',
-  O4_MINI_DEEP_RESEARCH: 'openai/o4-mini-deep-research',
-  O1: 'openai/o1',
-  O1_PRO: 'openai/o1-pro',
-  GPT_4_1: 'openai/gpt-4.1',
-  GPT_4_1_NANO: 'openai/gpt-4.1-nano',
-  GPT_4O: 'openai/gpt-4o',
-  GPT_4O_MINI: 'openai/gpt-4o-mini',
-  CODEX_MINI: 'openai/codex-mini',
   
   // Google Gemini Models
   GEMINI_2_5_PRO: 'google/gemini-2.5-pro',
@@ -116,20 +105,6 @@ export const OPENROUTER_MODELS = {
 // - Limited support from other providers (often silently ignored if unsupported)
 const JSON_CAPABLE_MODELS = new Set([
   // OpenAI models - confirmed JSON support
-  OPENROUTER_MODELS.O3_PRO,
-  OPENROUTER_MODELS.O3,
-  OPENROUTER_MODELS.O3_DEEP_RESEARCH,
-  OPENROUTER_MODELS.O3_PRO_2025_06_10,
-  OPENROUTER_MODELS.O4_MINI,
-  OPENROUTER_MODELS.O4_MINI_DEEP_RESEARCH,
-  OPENROUTER_MODELS.O1,
-  OPENROUTER_MODELS.O1_PRO,
-  OPENROUTER_MODELS.GPT_4_1,
-  OPENROUTER_MODELS.GPT_4_1_NANO,
-  OPENROUTER_MODELS.GPT_4O,
-  OPENROUTER_MODELS.GPT_4O_MINI,
-  OPENROUTER_MODELS.CODEX_MINI,
-  
   // Claude models - use tool calling for JSON, not native JSON mode
   // Keeping these as they work with JSON responses, though not native JSON mode
   OPENROUTER_MODELS.CLAUDE_OPUS_4,
@@ -155,10 +130,11 @@ export class LLMOrchestrator {
   private defaultModel: string;
   private initialized = false;
   private geminiService: GeminiService | null = null;
+  private openaiService: OpenAIProvider | null = null;
   private loggingService: LLMLoggingService | null = null;
   
   constructor() {
-    this.defaultModel = OPENROUTER_MODELS.GEMINI_2_5_FLASH;
+    this.defaultModel = OPENAI_MODELS.GPT_5;
   }
 
   private ensureInitialized() {
@@ -176,6 +152,15 @@ export class LLMOrchestrator {
         enableGrounding: process.env.GEMINI_SEARCH_GROUNDING === 'true',
         timeout: 30000,
         maxRetries: 3
+      });
+    }
+
+    // OpenAI Direct (for GPT 4.1 models with native structured output)
+    if (process.env.OPENAI_API_KEY) {
+      this.openaiService = new OpenAIProvider({
+        apiKey: process.env.OPENAI_API_KEY,
+        timeout: 300000,  // 5 minutes for GPT-5
+        maxRetries: 2
       });
     }
 
@@ -328,6 +313,100 @@ export class LLMOrchestrator {
         console.error(`Google AI Direct failed for ${model}:`, error);
         // Don't fall back to OpenRouter - throw the error immediately
         throw new Error(`Gemini API failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    }
+
+    // Check if this is a GPT 4.1 model that should use OpenAI direct API
+    if (this.isOpenAIDirectModel(model) && this.openaiService) {
+      console.log(`🔄 Routing ${model} to OpenAI Direct API (Native Structured Output)`);
+      try {
+        // Store the full request for logging
+        const fullRequest = {
+          ...request,
+          model,
+          provider: 'openai-direct'
+        };
+        
+        const response = await this.openaiService.complete(request);
+        
+        // Store raw response and processing steps
+        const processingSteps: Array<{ step: string; before: any; after: any }> = [];
+        
+        // Step 1: Record that we received a response from OpenAI
+        processingSteps.push({
+          step: 'openaiDirectResponse',
+          before: { model, provider: 'openai-direct' },
+          after: { 
+            contentType: typeof response.content,
+            hasContent: !!response.content,
+            contentLength: response.content?.length || 0,
+            model: response.model 
+          }
+        });
+        
+        // Check if we got an empty response
+        if (!response.content || response.content.trim() === '') {
+          console.error(`❌ OpenAI returned empty content for ${model}`);
+          throw new Error('OpenAI API returned empty response');
+        }
+        
+        // Step 2: OpenAI provides native structured output via zodResponseFormat
+        if (request.response_format?.type === 'json_object') {
+          processingSteps.push({
+            step: 'nativeStructuredOutput',
+            before: 'OpenAI native JSON mode via zodResponseFormat',
+            after: response.content
+          });
+          
+          // Try to parse JSON to ensure it's valid
+          try {
+            const parsed = JSON.parse(response.content);
+            if (!parsed || Object.keys(parsed).length === 0) {
+              throw new Error('OpenAI returned empty JSON object');
+            }
+          } catch (parseError) {
+            console.error(`❌ OpenAI JSON parsing failed:`, parseError);
+            throw new Error(`OpenAI returned invalid JSON: ${parseError}`);
+          }
+          
+          // Validate structured output (unless skipValidation is set)
+          if (!request.skipValidation) {
+            this.validateAndLogResponse(response, 'openai-direct', model);
+            processingSteps.push({
+              step: 'validateStructuredOutput',
+              before: response.content,
+              after: { status: 'validated', flow: 'openai-direct' }
+            });
+          } else {
+            processingSteps.push({
+              step: 'skipValidation',
+              before: response.content,
+              after: { status: 'skipped', reason: 'skipValidation flag set' }
+            });
+          }
+        } else {
+          processingSteps.push({
+            step: 'plainTextResponse',
+            before: 'No JSON processing required',
+            after: response.content
+          });
+        }
+        
+        // Log the actual model response
+        console.log(`📤 ${model} response:`, response.content?.substring(0, 200) || 'EMPTY');
+        
+        // Add flow information and enhanced logging data
+        return {
+          ...response,
+          flow: 'openai-direct',
+          rawResponse: response,
+          fullRequest,
+          processingSteps
+        };
+      } catch (error) {
+        console.error(`OpenAI Direct failed for ${model}:`, error);
+        // Don't fall back to OpenRouter - throw the error immediately
+        throw new Error(`OpenAI API failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }
 
@@ -599,6 +678,16 @@ export class LLMOrchestrator {
       models.add(OPENROUTER_MODELS.GEMINI_2_5_FLASH_LITE);
     }
     
+    // Add OpenAI models if direct API is available
+    if (this.openaiService) {
+      // Add the GPT 4.1 models that we support via direct API
+      models.add(OPENAI_MODELS.GPT_4_1);
+      // Add the GPT-5 models that we support via direct API
+      models.add(OPENAI_MODELS.GPT_5);
+      models.add(OPENAI_MODELS.GPT_5_MINI);
+      models.add(OPENAI_MODELS.GPT_5_NANO);
+    }
+    
     return Array.from(models);
   }
 
@@ -628,12 +717,24 @@ export class LLMOrchestrator {
     return model.includes('gemini') || model.includes('google/gemini');
   }
 
+  // Check if a model is a GPT 4.1/5 model that should use OpenAI Direct API
+  private isOpenAIDirectModel(model: string): boolean {
+    return model === OPENAI_MODELS.GPT_4_1 ||
+           model === OPENAI_MODELS.GPT_5 ||
+           model === OPENAI_MODELS.GPT_5_MINI ||
+           model === OPENAI_MODELS.GPT_5_NANO ||
+           model === 'gpt-5' ||
+           model === 'gpt-5-mini' ||
+           model === 'gpt-5-nano' ||
+           model === 'gpt-4.1-2025-04-14';
+  }
+
   /**
    * Validate and log structured output from both paths
    */
   private validateAndLogResponse(
     response: LLMResponse, 
-    source: 'openrouter' | 'gemini-direct',
+    source: 'openrouter' | 'gemini-direct' | 'openai-direct',
     model: string
   ): void {
     try {
@@ -685,6 +786,14 @@ export class LLMOrchestrator {
       };
     }
 
+    if (this.isOpenAIDirectModel(model) && this.openaiService) {
+      return {
+        provider: 'openai-direct',
+        isDirect: true,
+        supportsGrounding: false
+      };
+    }
+
     const provider = this.providers.find(p => 
       p.models.some(m => m === model || model.includes(m))
     );
@@ -699,3 +808,6 @@ export class LLMOrchestrator {
 
 // Singleton instance
 export const llmOrchestrator = new LLMOrchestrator();
+
+// Re-export model constants for convenience
+export { OPENAI_MODELS } from './providers/OpenAIProvider';

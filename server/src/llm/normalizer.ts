@@ -48,15 +48,28 @@ export function normalizeLLMResponse(response: any): any {
     };
   }
 
-  // Handle alternatives - ensure it's always an array of strings
+  // Handle alternatives - accept both strings and objects
   if (normalized.alternatives) {
     if (!Array.isArray(normalized.alternatives)) {
       normalized.alternatives = [];
     } else {
-      // Filter out any non-string values or objects
+      // Process each alternative - keep both strings and valid objects
       normalized.alternatives = normalized.alternatives
-        .filter((alt: any) => typeof alt === 'string' || (alt && typeof alt.name === 'string'))
-        .map((alt: any) => typeof alt === 'string' ? alt : alt.name);
+        .map((alt: any) => {
+          if (typeof alt === 'string') {
+            return alt; // Keep strings as-is
+          } else if (typeof alt === 'object' && alt !== null) {
+            // For objects, ensure they have valid structure
+            // If it has a name field (legacy), convert to string
+            if (alt.name && !alt.intent && !alt.query && !alt.theme) {
+              return alt.name;
+            }
+            // Otherwise keep the full object for GPT-5 style alternatives
+            return alt;
+          }
+          return null;
+        })
+        .filter(Boolean); // Remove null values
     }
   }
 

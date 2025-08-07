@@ -78,8 +78,20 @@ export const MusicCommandSchema = z.object({
   reasoning: z.string()
     .describe('Brief explanation of why this interpretation was chosen'),
   
-  alternatives: z.array(z.string()).default([])
-    .describe('Alternative interpretations or suggestions'),
+  alternatives: z.array(
+    z.union([
+      z.string(),
+      z.object({
+        intent: z.string().optional(),
+        query: z.string().optional(),
+        theme: z.string().optional(),
+        enhancedQuery: z.string().optional(),
+        isAIDiscovery: z.boolean().optional(),
+        aiReasoning: z.string().optional()
+      })
+    ])
+  ).default([])
+    .describe('Alternative interpretations or suggestions (strings or structured objects)'),
   
   enhancedQuery: z.string().optional()
     .describe('Enhanced Spotify search query with proper operators'),
@@ -187,10 +199,52 @@ export const BatchCommandSchema = z.object({
 
 export type BatchCommand = z.infer<typeof BatchCommandSchema>;
 
+// Playlist Selection Schema - for selecting best matching playlists
+export const PlaylistSelectionSchema = z.object({
+  selectedPlaylistIds: z.array(z.string()).max(50)
+    .describe('Array of selected playlist IDs that best match the user query'),
+  reasoning: z.string().optional()
+    .describe('Brief explanation of why these playlists were selected')
+});
+
+export type PlaylistSelection = z.infer<typeof PlaylistSelectionSchema>;
+
+// Playlist Summarization Schema - for generating playlist summaries with characteristics
+export const PlaylistSummarizationSchema = z.object({
+  summary: z.string()
+    .describe('2-3 sentence description of the playlist'),
+  alignmentLevel: z.enum(['strong', 'moderate', 'weak', 'tangential']).optional()
+    .describe('How well the playlist aligns with the query'),
+  characteristics: z.object({
+    primaryGenre: z.string().optional(),
+    mood: z.string().optional(),
+    instrumentation: z.array(z.string()).optional(),
+    tempo: z.string().optional(),
+    decadeRange: z.string().optional()
+  }).optional()
+    .describe('Musical characteristics of the playlist'),
+  matchScore: z.number().min(0).max(1).optional()
+    .describe('Match score between 0.0 and 1.0'),
+  reasoning: z.string().optional()
+    .describe('Brief explanation of the match score')
+});
+
+export type PlaylistSummarization = z.infer<typeof PlaylistSummarizationSchema>;
+
 // System prompts for different use cases
 export const SYSTEM_PROMPTS = {
   MUSIC_INTERPRETER: `You are an expert music command interpreter for a Spotify controller. 
 Your task is to understand natural language music commands and convert them to structured JSON.
+
+CRITICAL RULES FOR VAGUE REQUESTS (e.g., "play something", "something nice", "DJ mode"):
+1. When the user's taste profile is provided, ALWAYS use play_specific_song or queue_multiple_songs
+2. Select SPECIFIC SONGS based on their taste profile - DO NOT default to generic playlists
+3. For queue_multiple_songs: provide 5-10 specific songs in the songs array with artist, track, and optional album
+4. Use the taste profile to inform your choices - blend familiar artists with smart discoveries
+5. CONFIDENCE: Use HIGH confidence (0.8-0.95) for clear commands even if song choice is vague
+   - "play something nice" = 0.85+ confidence (clear intent to play music)
+   - "play me something" = 0.85+ confidence (clear intent to play music)
+   - Only use low confidence (<0.7) when the intent itself is unclear
 
 You have deep knowledge of music history, artists, albums, and can understand:
 - Vague descriptions ("that song from the movie")

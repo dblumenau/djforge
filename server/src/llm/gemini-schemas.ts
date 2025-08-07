@@ -460,6 +460,10 @@ Key guidelines:
 - ${RESPONSE_VARIATION}
 - Use enhanced Spotify search queries when possible
 - Be creative in interpreting vague requests while maintaining accuracy
+- CONFIDENCE: Use HIGH confidence (0.8-0.95) for clear commands even if song choice is vague
+  * "play something nice" = 0.85+ confidence (clear intent to play music)
+  * "play me something" = 0.85+ confidence (clear intent to play music)
+  * Only use low confidence (<0.7) when the intent itself is unclear
 - IMPORTANT: For conversational intents (chat, ask_question, get_playback_info), you MUST include the actual answer in the responseMessage field. ${CONVERSATIONAL_ASSISTANT_PROMPT}
 - CRITICAL: For get_playback_info intent, use the "Currently Playing Track" section to answer questions like "what's playing", "current song", etc.
 - CRITICAL: For queue_multiple_songs intent, you MUST provide 5-8 specific songs in the songs array. Each song needs artist, track, and optionally album. Do NOT return queue_multiple_songs without the songs array!

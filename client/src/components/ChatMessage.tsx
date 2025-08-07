@@ -8,6 +8,11 @@ interface Alternative {
   artists: string;
   popularity: number;
   uri: string;
+  // GPT-5 rich metadata (optional)
+  intent?: string;
+  isAIDiscovery?: boolean;
+  aiReasoning?: string;
+  theme?: string;
 }
 
 interface QueuedSong {
@@ -261,36 +266,68 @@ const ChatMessage: React.FC<MessageProps> = ({
                   <div className="space-y-1">
                     {(alternatives as Alternative[]).map((alt, altIndex) => {
                       const trackId = alt.uri ? alt.uri.split(':')[2] : '';
+                      
+                      // Handle both formats: converted alternatives (with name/artists) and raw GPT-5 format (with query)
+                      const displayName = alt.name || (alt as any).query || 'Unknown Track';
+                      const displayArtists = alt.artists || '';
+                      
+                      // Extract song info from query if it's in the GPT-5 format
+                      let extractedName = displayName;
+                      let extractedArtist = '';
+                      if (!alt.name && (alt as any).query) {
+                        // Try to parse "Song Name by Artist" format
+                        const byMatch = (alt as any).query.match(/^(.+?)\s+by\s+(.+)$/i);
+                        if (byMatch) {
+                          extractedName = byMatch[1].trim();
+                          extractedArtist = byMatch[2].trim();
+                        }
+                      }
+                      
+                      const finalName = alt.name || extractedName;
+                      const finalArtists = alt.artists || extractedArtist;
+                      
                       return (
-                        <div key={altIndex} className="flex items-center justify-between bg-zinc-900/50 rounded p-2 text-xs">
-                          <div className="flex-1 text-gray-300">
-                            <span className="font-medium">{alt.name}</span>
-                            <span className="text-gray-500"> by {alt.artists}</span>
+                        <div key={altIndex} className="bg-zinc-900/50 rounded p-2 text-xs">
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1 text-gray-300">
+                              <span className="font-medium">{finalName}</span>
+                              {finalArtists && (
+                                <span className="text-gray-500"> by {finalArtists}</span>
+                              )}
+                              {alt.theme && (
+                                <span className="ml-2 text-purple-400 italic">• {alt.theme}</span>
+                              )}
+                            </div>
+                            <div className="flex gap-1 items-center">
+                              {trackId && (
+                                <HeartIcon
+                                  filled={savedStatus.get(trackId) || false}
+                                  loading={libraryLoading.get(trackId) || false}
+                                  size="sm"
+                                  onClick={() => onToggleSave(trackId)}
+                                />
+                              )}
+                              <button
+                                onClick={() => onAlternativeClick(alt, 'play')}
+                                disabled={isProcessing}
+                                className="px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                              >
+                                Play
+                              </button>
+                              <button
+                                onClick={() => onAlternativeClick(alt, 'queue')}
+                                disabled={isProcessing}
+                                className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                              >
+                                Queue
+                              </button>
+                            </div>
                           </div>
-                          <div className="flex gap-1 items-center">
-                            {trackId && (
-                              <HeartIcon
-                                filled={savedStatus.get(trackId) || false}
-                                loading={libraryLoading.get(trackId) || false}
-                                size="sm"
-                                onClick={() => onToggleSave(trackId)}
-                              />
-                            )}
-                            <button
-                              onClick={() => onAlternativeClick(alt, 'play')}
-                              disabled={isProcessing}
-                              className="px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                            >
-                              Play
-                            </button>
-                            <button
-                              onClick={() => onAlternativeClick(alt, 'queue')}
-                              disabled={isProcessing}
-                              className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                            >
-                              Queue
-                            </button>
-                          </div>
+                          {(alt.aiReasoning || (alt as any).aiReasoning) && (
+                            <div className="mt-1 pl-2 text-[10px] text-gray-500 italic border-l border-gray-700">
+                              {alt.aiReasoning || (alt as any).aiReasoning}
+                            </div>
+                          )}
                         </div>
                       );
                     })}

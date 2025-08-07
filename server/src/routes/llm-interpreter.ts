@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { SpotifyControl } from '../spotify/control';
 import { requireValidTokens } from '../middleware/session-auth';
 import { SpotifyTrack } from '../types';
-import { llmOrchestrator, OPENROUTER_MODELS } from '../llm/orchestrator';
+import { llmOrchestrator, OPENROUTER_MODELS, OPENAI_MODELS } from '../llm/orchestrator';
 import { 
   MusicCommandSchema, 
   SpotifySearchEnhancementSchema,
@@ -179,7 +179,7 @@ async function interpretCommand(command: string, userId?: string, preferredModel
     SYSTEM_PROMPTS.MUSIC_INTERPRETER,
     command,
     MusicCommandSchema,
-    preferredModel || OPENROUTER_MODELS.GPT_4O // Use preferred model or default
+    preferredModel || OPENAI_MODELS.GPT_5 // Use preferred model or default
   );
   
   // Add combined context to request
@@ -225,14 +225,14 @@ Modifiers: ${JSON.stringify(interpretation.modifiers)}`;
     SYSTEM_PROMPTS.SEARCH_ENHANCER,
     prompt,
     SpotifySearchEnhancementSchema,
-    OPENROUTER_MODELS.GPT_4O
+    OPENAI_MODELS.GPT_5
   );
 
   try {
     const response = await llmOrchestrator.complete(request);
     return JSON.parse(response.content);
   } catch (error: any) {
-    console.error(`Search enhancement failed with model ${OPENROUTER_MODELS.GPT_4O}:`, error);
+    console.error(`Search enhancement failed with model ${OPENAI_MODELS.GPT_5}:`, error);
     return null;
   }
 }
@@ -327,7 +327,7 @@ llmInterpreterRouter.post('/command', requireValidTokens, async (req: any, res) 
   try {
     // Get user's preferred model from Redis
     const userId = getUserIdFromRequest(req);
-    let preferredModel = OPENROUTER_MODELS.GPT_4O;
+    let preferredModel = OPENAI_MODELS.GPT_5;
     
     if (userId) {
       const savedPreference = await getUserModelPreference(userId);
@@ -633,7 +633,7 @@ llmInterpreterRouter.post('/ask', requireValidTokens, async (req: any, res) => {
       SYSTEM_PROMPTS.MUSIC_KNOWLEDGE,
       question,
       MusicKnowledgeSchema,
-      OPENROUTER_MODELS.GPT_4O // Use better model for knowledge queries
+      OPENAI_MODELS.GPT_5 // Use better model for knowledge queries
     );
 
     const response = await llmOrchestrator.complete(request);
@@ -647,7 +647,7 @@ llmInterpreterRouter.post('/ask', requireValidTokens, async (req: any, res) => {
     console.error('Music knowledge query failed:', error);
     
     // Extract model information if available
-    const model = error.model || OPENROUTER_MODELS.GPT_4O;
+    const model = error.model || OPENAI_MODELS.GPT_5;
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     
     res.status(500).json({
@@ -663,9 +663,9 @@ llmInterpreterRouter.get('/models', (req, res) => {
   res.json({
     available: llmOrchestrator.getAvailableModels(),
     recommended: {
-      fast: OPENROUTER_MODELS.GPT_4O,
+      fast: OPENAI_MODELS.GPT_5,
       balanced: OPENROUTER_MODELS.CLAUDE_HAIKU_4,
-      quality: OPENROUTER_MODELS.GPT_4O,
+      quality: OPENAI_MODELS.GPT_5,
       knowledge: OPENROUTER_MODELS.GEMINI_2_5_FLASH
     }
   });
