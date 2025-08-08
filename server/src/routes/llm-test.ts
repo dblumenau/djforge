@@ -267,9 +267,40 @@ function generateResponse(interpretation: any): any {
   }
 }
 
-// POST / - Send a command and get interpretation
-llmTestRouter.post('/', async (req, res) => {
+// GET / - List all active test series
+llmTestRouter.get('/', async (req, res) => {
+  try {
+    const testSeries = await listAllTestSeries();
+
+    res.json({
+      success: true,
+      testSeries,
+      count: testSeries.length,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Error listing test series:', error);
+    
+    res.status(500).json({
+      success: false,
+      error: 'Failed to list test series',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// POST /:seriesId - Send a command and get interpretation for specific series
+llmTestRouter.post('/:seriesId', async (req, res) => {
+  const { seriesId } = req.params;
   const { command, model } = req.body;
+
+  // Validate seriesId
+  if (!validateSeriesId(seriesId)) {
+    return res.status(400).json({ 
+      error: 'Invalid series ID. Use only alphanumeric characters, underscores, and hyphens.' 
+    });
+  }
 
   if (!command || typeof command !== 'string') {
     return res.status(400).json({ 
@@ -284,8 +315,8 @@ llmTestRouter.post('/', async (req, res) => {
   }
 
   try {
-    // Load existing conversation
-    const conversation = await loadConversation();
+    // Load existing conversation for this series
+    const conversation = await loadConversation(seriesId);
     
     // Use provided model or default
     const requestModel = model || 'gpt-5-nano';
@@ -297,7 +328,7 @@ llmTestRouter.post('/', async (req, res) => {
       conversation.userId,
       requestModel,
       '', // Empty music context for test
-      'llm-test-session'
+      `llm-test-session-${seriesId}`
     );
 
     // Generate response based on interpretation
@@ -314,7 +345,7 @@ llmTestRouter.post('/', async (req, res) => {
     conversation.conversationHistory.push(conversationEntry);
 
     // Save updated conversation
-    await saveConversation(conversation);
+    await saveConversation(seriesId, conversation);
 
     // Return interpretation and response
     res.json({
@@ -322,6 +353,7 @@ llmTestRouter.post('/', async (req, res) => {
       interpretation,
       response,
       model: requestModel,
+      seriesId,
       timestamp: new Date().toISOString()
     });
 
@@ -335,27 +367,40 @@ llmTestRouter.post('/', async (req, res) => {
       success: false,
       error: `LLM interpretation failed: ${errorMessage}`,
       model: errorModel,
+      seriesId,
       timestamp: new Date().toISOString()
     });
   }
 });
 
-// DELETE / - Clear conversation history
-llmTestRouter.delete('/', async (req, res) => {
+// DELETE /:seriesId - Clear specific test series
+llmTestRouter.delete('/:seriesId', async (req, res) => {
+  const { seriesId } = req.params;
+
+  // Validate seriesId
+  if (!validateSeriesId(seriesId)) {
+    return res.status(400).json({ 
+      error: 'Invalid series ID. Use only alphanumeric characters, underscores, and hyphens.' 
+    });
+  }
+
   try {
     // Create empty conversation
     const emptyConversation: TestConversation = {
       conversationHistory: [],
       userId: 'test-user',
-      model: 'gpt-5-nano'
+      model: 'gpt-5-nano',
+      seriesId: seriesId,
+      lastUpdated: Date.now()
     };
 
     // Save empty conversation (or delete file)
-    await saveConversation(emptyConversation);
+    await saveConversation(seriesId, emptyConversation);
 
     res.json({
       success: true,
-      message: 'Conversation history cleared',
+      message: `Test series '${seriesId}' cleared`,
+      seriesId,
       timestamp: new Date().toISOString()
     });
 
@@ -365,21 +410,33 @@ llmTestRouter.delete('/', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to clear conversation history',
+      seriesId,
       timestamp: new Date().toISOString()
     });
   }
 });
 
-// GET / - View current conversation history
-llmTestRouter.get('/', async (req, res) => {
+// GET /:seriesId - View specific test series conversation history
+llmTestRouter.get('/:seriesId', async (req, res) => {
+  const { seriesId } = req.params;
+
+  // Validate seriesId
+  if (!validateSeriesId(seriesId)) {
+    return res.status(400).json({ 
+      error: 'Invalid series ID. Use only alphanumeric characters, underscores, and hyphens.' 
+    });
+  }
+
   try {
-    const conversation = await loadConversation();
+    const conversation = await loadConversation(seriesId);
 
     res.json({
       success: true,
       conversation: {
+        seriesId: conversation.seriesId,
         userId: conversation.userId,
         model: conversation.model,
+        lastUpdated: conversation.lastUpdated,
         historyCount: conversation.conversationHistory.length,
         history: conversation.conversationHistory.map(entry => ({
           command: entry.command,
@@ -400,6 +457,7 @@ llmTestRouter.get('/', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to fetch conversation history',
+      seriesId,
       timestamp: new Date().toISOString()
     });
   }

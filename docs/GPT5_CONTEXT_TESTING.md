@@ -1,5 +1,15 @@
 # GPT-5 Context Handling - Implementation & Testing Guide
 
+## Test Series Instructions
+
+The test endpoint now supports multiple test series running in parallel. Each test series has its own conversation history, allowing you to test different scenarios without interference.
+
+**URL Format**: `/api/llm/test/{test_series_id}`
+- Example: `/api/llm/test/taylor_swift_continuation`
+- Example: `/api/llm/test/ariana_grande_inspiration`
+
+Each test series maintains its own history file at `/tmp/llm-test-{test_series_id}.json`
+
 ## Overview
 
 This document describes the implementation of native message history support for GPT-5/OpenAI models and provides a comprehensive guide for testing and refining the context handling system.
@@ -50,13 +60,14 @@ Converted the system to use native message history (alternating user/assistant m
 
 - Created new test route for easy LLM testing without React app
 - **Endpoints**:
-  - `POST /api/llm/test` - Send command and get interpretation
-  - `DELETE /api/llm/test` - Clear conversation history
-  - `GET /api/llm/test` - View current conversation
+  - `GET /api/llm/test` - List all active test series
+  - `POST /api/llm/test/:seriesId` - Send command to specific test series
+  - `DELETE /api/llm/test/:seriesId` - Clear specific test series history
+  - `GET /api/llm/test/:seriesId` - View specific test series conversation
 - **Features**:
   - Uses actual `interpretCommand` function from server
-  - Stores conversation in `/tmp/llm-test-conversation.json`
-  - Maintains conversation state across requests
+  - Each test series stored in `/tmp/llm-test-{seriesId}.json`
+  - Multiple test series can run in parallel
   - Returns detailed interpretation results
 - **Mounted** in server.ts at `/api/llm/test`
 
