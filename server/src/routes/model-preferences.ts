@@ -64,6 +64,12 @@ const MODEL_DISPLAY_INFO: Record<string, { name: string; provider: string; descr
     provider: 'OpenAI',
     description: 'GPT 5 Nano - Ultra-fast responses for simple tasks'
   },
+    [OPENAI_MODELS.GPT_4_1]: {
+        name: 'GPT 4.1 (Direct)',
+        provider: 'OpenAI',
+        description: 'GPT 4.1 Previous Flagship model with JSON schema support'
+    },
+    
   
   // Claude Models
   [OPENROUTER_MODELS.CLAUDE_OPUS_4]: { 

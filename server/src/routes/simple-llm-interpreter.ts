@@ -14,8 +14,7 @@ import {
   FULL_CURATOR_GUIDELINES,
   ALTERNATIVES_APPROACH,
   RESPONSE_VARIATION,
-  CONVERSATIONAL_ASSISTANT_PROMPT,
-  formatMusicHistory 
+  CONVERSATIONAL_ASSISTANT_PROMPT
 } from '../llm/music-curator-prompts';
 import { detectRequestContextType } from '../utils/requestContext';
 import { validateAndRepair, validateMusicCommand } from '../llm/validation/command-validator';
@@ -257,8 +256,62 @@ function createConfirmationResponse(interpretation: any): any {
   };
 }
 
+// Build message history array from conversation entries
+function buildMessageHistory(conversationHistory: ConversationEntry[], currentCommand: string): Array<{role: 'system' | 'user' | 'assistant', content: string}> {
+  const messages: Array<{role: 'system' | 'user' | 'assistant', content: string}> = [];
+  
+  // Convert conversation entries to message pairs
+  for (const entry of conversationHistory) {
+    // Add user message
+    messages.push({
+      role: 'user',
+      content: entry.command
+    });
+    
+    // Add assistant message based on intent type
+    let assistantMessage = '';
+    const intent = entry.interpretation?.intent || 'unknown';
+    
+    if (intent === 'chat' || intent === 'ask_question' || intent === 'get_playback_info') {
+      // For conversational intents, use the response message
+      assistantMessage = entry.response?.message || 'I provided a response.';
+    } else if (intent === 'play_specific_song') {
+      // For play intents, create confirmation message
+      const track = entry.interpretation.track || 'Unknown track';
+      const artist = entry.interpretation.artist || 'Unknown artist';
+      assistantMessage = `I played "${track}" by ${artist}.`;
+    } else if (intent === 'queue_specific_song') {
+      // For queue intents, create confirmation message
+      const track = entry.interpretation.track || 'Unknown track';
+      const artist = entry.interpretation.artist || 'Unknown artist';
+      assistantMessage = `I queued "${track}" by ${artist}.`;
+    } else if (intent === 'queue_multiple_songs') {
+      // For multiple queue intents
+      assistantMessage = `I queued multiple songs for you.`;
+    } else if (intent === 'play_playlist') {
+      // For playlist play intents
+      const query = entry.interpretation.query || 'a playlist';
+      assistantMessage = `I played ${query}.`;
+    } else if (intent === 'queue_playlist') {
+      // For playlist queue intents
+      const query = entry.interpretation.query || 'a playlist';
+      assistantMessage = `I queued ${query}.`;
+    } else {
+      // For other intents, create generic confirmation
+      assistantMessage = `I performed the requested action.`;
+    }
+    
+    messages.push({
+      role: 'assistant',
+      content: assistantMessage
+    });
+  }
+  
+  return messages;
+}
+
 // Simple, flexible interpretation
-async function interpretCommand(command: string, userId?: string, preferredModel?: string, musicContext?: string, sessionId?: string): Promise<any> {
+export async function interpretCommand(command: string, userId?: string, preferredModel?: string, musicContext?: string, sessionId?: string): Promise<any> {
   let conversationHistory: ConversationEntry[] = [];
   let dialogState: DialogState | null = null;
   
@@ -318,8 +371,8 @@ async function interpretCommand(command: string, userId?: string, preferredModel
     });
   }
   
-  // Format conversation context for the LLM
-  const contextBlock = relevantContext.length > 0 ? formatMusicHistory(relevantContext) : '';
+  // Build message history array from conversation entries
+  const historyMessages = relevantContext.length > 0 ? buildMessageHistory(relevantContext, command) : [];
 
   try {
     // Add timeout to prevent hanging
@@ -338,36 +391,37 @@ async function interpretCommand(command: string, userId?: string, preferredModel
       tasteProfileText = tasteProfileLines.join('\n');
     }
     
-    // Build the prompt using the new adapter
+    // Build the prompt using the new adapter (only with taste profile, no conversation context)
     let systemPrompt: string;
     if (preferredModel?.includes('gemini')) {
       // Use Gemini adapter for Gemini models
       systemPrompt = PromptAdapter.forGemini(
         command,
         tasteProfileText,
-        contextBlock
+        '' // No conversation context - using native message history instead
       );
     } else {
       // Use OpenRouter adapter for other models
       systemPrompt = PromptAdapter.forOpenRouter(
         command,
         tasteProfileText,
-        contextBlock
+        '' // No conversation context - using native message history instead
       );
     }
     
+    // Build messages array with system prompt, conversation history, and current command
     const messages = [
       { role: 'system' as const, content: systemPrompt },
-      { role: 'user' as const, content: `Command: "${command}"` }
+      ...historyMessages, // Include conversation history as native messages
+      { role: 'user' as const, content: command } // Current command (no "Command:" prefix needed)
     ];
     
     const responsePromise = llmOrchestrator.complete({
       messages,
       model: requestModel,
       temperature: 0.7,
-      response_format: { type: 'json_object' },
-      // Pass the combined music context (taste profile + currently playing) and conversation history
-      conversationContext: musicContext ? `${musicContext}${contextBlock ? '\n\n' + contextBlock : ''}` : contextBlock || undefined
+      response_format: { type: 'json_object' }
+      // No conversationContext parameter - using native message history instead
     });
     
     const response = await Promise.race([responsePromise, timeoutPromise]) as any;

@@ -19,25 +19,25 @@ export const ModifiersSchema = z.object({
 export const AlternativeSchema = z.union([
   z.string(),
   z.object({
-    intent: z.string().optional(),
-    query: z.string().optional(),
-    theme: z.string().optional(),
-    enhancedQuery: z.string().optional(),
-    isAIDiscovery: z.boolean().optional(),
-    aiReasoning: z.string().optional()
+    intent: z.string().optional().nullable(),
+    query: z.string().optional().nullable(),
+    theme: z.string().optional().nullable(),
+    enhancedQuery: z.string().optional().nullable(),
+    isAIDiscovery: z.boolean().optional().nullable(),
+    aiReasoning: z.string().optional().nullable()
   })
 ]);
 
 export const BaseCommandSchema = z.object({
   confidence: z.number().min(0).max(1),
   reasoning: z.string(),
-  modifiers: ModifiersSchema.optional(),
-  isAIDiscovery: z.boolean().optional(),
-  aiReasoning: z.string().optional()
+  modifiers: ModifiersSchema.optional().nullable(),
+  isAIDiscovery: z.boolean().optional().nullable(),
+  aiReasoning: z.string().optional().nullable()
 });
 
 export const SongSchema = z.object({
   artist: z.string().min(1),
   track: z.string().min(1),
-  album: z.string().optional()
+  album: z.string().optional().nullable()
 });

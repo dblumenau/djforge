@@ -32,7 +32,7 @@ export const SetVolumeSchema = BaseCommandSchema.extend({
 
 export const VolumeSchema = BaseCommandSchema.extend({
   intent: z.literal('volume'),
-  value: z.number().optional() // Optional adjustment value
+  value: z.number().optional().nullable() // Optional adjustment value
 });
 
 export const SetShuffleSchema = BaseCommandSchema.extend({

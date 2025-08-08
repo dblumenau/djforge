@@ -24,6 +24,6 @@ export const GetPlaybackInfoSchema = BaseCommandSchema.extend({
 export const SearchSchema = BaseCommandSchema.extend({
   intent: z.literal('search'),
   query: z.string().min(1), // REQUIRED for search
-  enhancedQuery: z.string().optional(),
-  alternatives: z.array(AlternativeSchema).optional()
+  enhancedQuery: z.string().optional().nullable(),
+  alternatives: z.array(AlternativeSchema).optional().nullable()
 });

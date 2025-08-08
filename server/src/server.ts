@@ -32,6 +32,7 @@ import { webPlayerRouter } from './routes/web-player';
 import { websocketRouter } from './routes/websocket';
 import playlistSearchRouter from './routes/playlist-search';
 import playlistDiscoveryRouter, { setRedisClient as setPlaylistDiscoveryRedisClient, setLoggingService as setPlaylistDiscoveryLoggingService } from './routes/playlist-discovery';
+import llmTestRouter from './routes/llm-test';
 import { overrideConsole, logger } from './utils/logger';
 import { setSentryUserContext } from './middleware/sentry-auth';
 import { initializeWebSocket, getWebSocketService } from './services/websocket.service';
@@ -235,6 +236,8 @@ async function initializeAndStart() {
     app.use('/api/playlist-search', playlistSearchRouter);
     // LLM-powered playlist discovery endpoints
     app.use('/api/playlist-discovery', playlistDiscoveryRouter);
+    // LLM test endpoints
+    app.use('/api/llm/test', llmTestRouter);
 
 
     // IMPORTANT: The Sentry error handler must be registered before any other error middleware and after all controllers

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-// Music command interpretation schema
-export const MusicCommandSchema = z.object({
+// Music command interpretation schema (legacy - flat structure)
+const OldMusicCommandSchema = z.object({
   intent: z.enum([
     'play_specific_song',
     'queue_specific_song',
@@ -32,19 +32,19 @@ export const MusicCommandSchema = z.object({
     'unknown'
   ]),
   
-  query: z.string().optional().describe('The search query if searching for music'),
+  query: z.string().optional().nullable().describe('The search query if searching for music'),
   
-  artist: z.string().optional().describe('Artist name if specified'),
+  artist: z.string().optional().nullable().describe('Artist name if specified'),
   
-  track: z.string().optional().describe('Track/song name if specified'),
+  track: z.string().optional().nullable().describe('Track/song name if specified'),
   
-  album: z.string().optional().describe('Album name if specified'),
+  album: z.string().optional().nullable().describe('Album name if specified'),
   
-  value: z.number().optional().describe('Numeric value for volume commands'),
+  value: z.number().optional().nullable().describe('Numeric value for volume commands'),
   
-  volume_level: z.number().optional().describe('Volume level between 0-100'),
+  volume_level: z.number().optional().nullable().describe('Volume level between 0-100'),
   
-  enabled: z.boolean().optional().describe('Boolean flag for shuffle/repeat commands'),
+  enabled: z.boolean().optional().nullable().describe('Boolean flag for shuffle/repeat commands'),
   
   modifiers: z.object({
     obscurity: z.union([
@@ -82,41 +82,41 @@ export const MusicCommandSchema = z.object({
     z.union([
       z.string(),
       z.object({
-        intent: z.string().optional(),
-        query: z.string().optional(),
-        theme: z.string().optional(),
-        enhancedQuery: z.string().optional(),
-        isAIDiscovery: z.boolean().optional(),
-        aiReasoning: z.string().optional()
+        intent: z.string().optional().nullable(),
+        query: z.string().optional().nullable(),
+        theme: z.string().optional().nullable(),
+        enhancedQuery: z.string().optional().nullable(),
+        isAIDiscovery: z.boolean().optional().nullable(),
+        aiReasoning: z.string().optional().nullable()
       })
     ])
   ).default([])
     .describe('Alternative interpretations or suggestions (strings or structured objects)'),
   
-  enhancedQuery: z.string().optional()
+  enhancedQuery: z.string().optional().nullable()
     .describe('Enhanced Spotify search query with proper operators'),
     
   // For queue_multiple_songs intent
   songs: z.array(z.object({
     artist: z.string(),
     track: z.string(),
-    album: z.string().optional()
-  })).optional()
+    album: z.string().optional().nullable()
+  })).optional().nullable()
     .describe('Array of songs for queue_multiple_songs intent'),
     
   // For queue_multiple_songs theme
-  theme: z.string().optional()
+  theme: z.string().optional().nullable()
     .describe('Theme description for multiple queued songs'),
     
   // AI Discovery fields
-  isAIDiscovery: z.boolean().optional()
+  isAIDiscovery: z.boolean().optional().nullable()
     .describe('True when AI made creative choice (not following explicit user request)'),
     
-  aiReasoning: z.string().optional()
+  aiReasoning: z.string().optional().nullable()
     .describe('Explanation of why AI chose this when isAIDiscovery is true')
 });
 
-export type MusicCommand = z.infer<typeof MusicCommandSchema>;
+export type MusicCommand = z.infer<typeof OldMusicCommandSchema>;
 
 // Spotify search enhancement schema
 export const SpotifySearchEnhancementSchema = z.object({
@@ -129,17 +129,17 @@ export const SpotifySearchEnhancementSchema = z.object({
     .describe('What type of content to search for'),
   
   filters: z.object({
-    artist: z.string().optional(),
-    album: z.string().optional(),
-    year: z.string().optional(),
-    genre: z.string().optional(),
-    tag: z.array(z.string()).optional()
-  }).optional(),
+    artist: z.string().optional().nullable(),
+    album: z.string().optional().nullable(),
+    year: z.string().optional().nullable(),
+    genre: z.string().optional().nullable(),
+    tag: z.array(z.string()).optional().nullable()
+  }).optional().nullable(),
   
   popularity: z.object({
-    min: z.number().min(0).max(100).optional(),
-    max: z.number().min(0).max(100).optional()
-  }).optional()
+    min: z.number().min(0).max(100).optional().nullable(),
+    max: z.number().min(0).max(100).optional().nullable()
+  }).optional().nullable()
     .describe('Popularity range for obscure/rare requests'),
   
   explanation: z.string()
@@ -162,15 +162,15 @@ export const MusicKnowledgeSchema = z.object({
       .describe('Why this is recommended'),
     spotifyQuery: z.string()
       .describe('Query to find this on Spotify')
-  })).optional()
+  })).optional().nullable()
     .describe('Specific song recommendations if applicable'),
   
   context: z.object({
-    genre: z.string().optional(),
-    era: z.string().optional(),
-    mood: z.string().optional(),
-    cultural_references: z.array(z.string()).optional()
-  }).optional(),
+    genre: z.string().optional().nullable(),
+    era: z.string().optional().nullable(),
+    mood: z.string().optional().nullable(),
+    cultural_references: z.array(z.string()).optional().nullable()
+  }).optional().nullable(),
   
   confidence: z.number().min(0).max(1)
 });
@@ -180,20 +180,20 @@ export type MusicKnowledge = z.infer<typeof MusicKnowledgeSchema>;
 // Error response schema
 export const ErrorResponseSchema = z.object({
   error: z.string(),
-  suggestion: z.string().optional(),
-  fallback: z.string().optional()
+  suggestion: z.string().optional().nullable(),
+  fallback: z.string().optional().nullable()
 });
 
 export type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
 
 // Batch command schema for multiple operations
 export const BatchCommandSchema = z.object({
-  commands: z.array(MusicCommandSchema),
+  commands: z.array(OldMusicCommandSchema),
   
   executionOrder: z.enum(['sequential', 'parallel'])
     .describe('How to execute multiple commands'),
   
-  context: z.string().optional()
+  context: z.string().optional().nullable()
     .describe('Shared context for all commands')
 });
 
@@ -203,7 +203,7 @@ export type BatchCommand = z.infer<typeof BatchCommandSchema>;
 export const PlaylistSelectionSchema = z.object({
   selectedPlaylistIds: z.array(z.string()).max(50)
     .describe('Array of selected playlist IDs that best match the user query'),
-  reasoning: z.string().optional()
+  reasoning: z.string().optional().nullable()
     .describe('Brief explanation of why these playlists were selected')
 });
 
@@ -213,19 +213,19 @@ export type PlaylistSelection = z.infer<typeof PlaylistSelectionSchema>;
 export const PlaylistSummarizationSchema = z.object({
   summary: z.string()
     .describe('2-3 sentence description of the playlist'),
-  alignmentLevel: z.enum(['strong', 'moderate', 'weak', 'tangential']).optional()
+  alignmentLevel: z.enum(['strong', 'moderate', 'weak', 'tangential']).optional().nullable()
     .describe('How well the playlist aligns with the query'),
   characteristics: z.object({
-    primaryGenre: z.string().optional(),
-    mood: z.string().optional(),
-    instrumentation: z.array(z.string()).optional(),
-    tempo: z.string().optional(),
-    decadeRange: z.string().optional()
-  }).optional()
+    primaryGenre: z.string().optional().nullable(),
+    mood: z.string().optional().nullable(),
+    instrumentation: z.array(z.string()).optional().nullable(),
+    tempo: z.string().optional().nullable(),
+    decadeRange: z.string().optional().nullable()
+  }).optional().nullable()
     .describe('Musical characteristics of the playlist'),
-  matchScore: z.number().min(0).max(1).optional()
+  matchScore: z.number().min(0).max(1).optional().nullable()
     .describe('Match score between 0.0 and 1.0'),
-  reasoning: z.string().optional()
+  reasoning: z.string().optional().nullable()
     .describe('Brief explanation of the match score')
 });
 
@@ -328,9 +328,9 @@ export function createSchemaRequest(
 
 // Re-export the new discriminated union schemas
 export * from './schemas/index';
-// Keep the original MusicCommandSchema for backward compatibility
-// but mark it as deprecated
+
+// Export the old flat schema as LegacyMusicCommandSchema for backward compatibility
 /**
  * @deprecated Use the discriminated union MusicCommandSchema from './schemas/index' instead
  */
-export const LegacyMusicCommandSchema = MusicCommandSchema;
+export const LegacyMusicCommandSchema = OldMusicCommandSchema;

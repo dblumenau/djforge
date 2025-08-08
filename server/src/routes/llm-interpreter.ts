@@ -355,7 +355,15 @@ llmInterpreterRouter.post('/command', requireValidTokens, async (req: any, res) 
       case 'play_specific_song':
       case 'queue_specific_song': {
         // Build precise search query first
-        let searchQuery = buildSpotifySearchQuery(interpretation);
+        // Ensure null values are converted to undefined for compatibility
+        const cleanInterpretation = {
+          query: interpretation.query || undefined,
+          artist: interpretation.artist || undefined,
+          track: interpretation.track || undefined,
+          album: interpretation.album || undefined,
+          modifiers: interpretation.modifiers || undefined
+        };
+        let searchQuery = buildSpotifySearchQuery(cleanInterpretation);
         
         // If we have a basic query but no structured data, try to enhance it
         if (!searchQuery && interpretation.query) {
@@ -471,12 +479,12 @@ llmInterpreterRouter.post('/command', requireValidTokens, async (req: any, res) 
         break;
         
       case 'set_shuffle':
-        const shuffleEnabled = interpretation.enabled !== undefined ? interpretation.enabled : true;
+        const shuffleEnabled = interpretation.enabled !== undefined && interpretation.enabled !== null ? interpretation.enabled : true;
         result = await spotifyControl.setShuffle(shuffleEnabled);
         break;
         
       case 'set_repeat':
-        const repeatEnabled = interpretation.enabled !== undefined ? interpretation.enabled : true;
+        const repeatEnabled = interpretation.enabled !== undefined && interpretation.enabled !== null ? interpretation.enabled : true;
         result = await spotifyControl.setRepeat(repeatEnabled);
         break;
         

@@ -29,7 +29,7 @@ export interface LLMRequest {
   max_tokens?: number;
   response_format?: { type: 'json_object' } | undefined;
   schema?: z.ZodSchema;
-  conversationContext?: string; // Added for conversation history integration
+  conversationContext?: string; // DEPRECATED: Use messages array directly for conversation history
   skipValidation?: boolean; // Skip intent validation for non-command responses (e.g., playlist discovery)
   // GPT-5 specific parameters
   reasoning_effort?: 'minimal' | 'low' | 'medium' | 'high';
@@ -126,6 +126,16 @@ const JSON_CAPABLE_MODELS = new Set([
   OPENROUTER_MODELS.GROK_3,
 ]);
 
+/**
+ * LLM Orchestrator with Extended Message Array Support
+ * 
+ * Handles native conversation history through message arrays:
+ * - OpenAI Direct: Native multi-turn conversation support
+ * - Gemini Direct: Native multi-turn conversation support  
+ * - OpenRouter: Native multi-turn conversation support
+ * 
+ * Legacy conversationContext parameter is deprecated but maintained for compatibility.
+ */
 export class LLMOrchestrator {
   private providers: LLMProvider[] = [];
   private defaultModel: string;
@@ -213,6 +223,14 @@ export class LLMOrchestrator {
   async complete(request: LLMRequest): Promise<LLMResponse> {
     this.ensureInitialized();
     const model = request.model || this.defaultModel;
+    
+    // Modern approach: Pass full message arrays to providers
+    // Providers handle native message history and conversation context
+    // The messages array can contain extended conversation history
+    console.log(`🔄 Processing ${request.messages.length} messages for ${model}`);
+    if (request.messages.length > 2) {
+      console.log(`📜 Extended message history: ${request.messages.length - 2} conversation turns`);
+    }
 
     // Try the specified model only - no fallbacks
     try {
@@ -239,6 +257,7 @@ export class LLMOrchestrator {
           provider: 'google-direct'
         };
         
+        // Pass the full request with native message array to Gemini
         const response = await this.geminiService.complete(request);
         
         // Store raw response and processing steps
@@ -334,6 +353,7 @@ export class LLMOrchestrator {
           provider: 'openai-direct'
         };
         
+        // Pass the full request with native message array to OpenAI
         const response = await this.openaiService.complete(request);
         
         // Store raw response and processing steps
@@ -427,8 +447,9 @@ export class LLMOrchestrator {
     }
 
     console.log(`🔄 Routing ${model} to ${provider.name}`);
-
-    // Prepare request based on provider
+    
+    // Prepare request with full message array support
+    // OpenRouter now receives the complete message history
     const requestBody = this.prepareRequest(provider, model, request);
     
     // Store the full request for logging
@@ -575,10 +596,14 @@ export class LLMOrchestrator {
   }
 
   private prepareRequest(provider: LLMProvider, model: string, request: LLMRequest) {
+    // Use the full message array as-is - no need to manipulate conversation context
+    // since providers now handle native message history
     let messages = [...request.messages];
     
-    // Add conversation context to system message if provided
+    // DEPRECATED: Legacy support for conversationContext (only for OpenRouter fallback)
+    // Modern approach uses native message arrays in the messages parameter
     if (request.conversationContext) {
+      console.warn('⚠️ conversationContext is deprecated - use native message arrays instead');
       const systemMessageIndex = messages.findIndex(m => m.role === 'system');
       if (systemMessageIndex >= 0) {
         messages[systemMessageIndex] = {

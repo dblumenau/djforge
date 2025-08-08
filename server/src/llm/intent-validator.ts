@@ -758,9 +758,9 @@ export function validatePlaylistSummarization(
 /**
  * Batch validation for testing multiple intents
  */
-export function validateIntents(
+export async function validateIntents(
   intents: any[],
   options: ValidationOptions = { strict: false, normalize: true, logErrors: false }
-): ValidationResult[] {
-  return intents.map(intent => validateIntent(intent, options));
+): Promise<IntentValidationResult[]> {
+  return Promise.all(intents.map(intent => validateIntent(intent, options)));
 }

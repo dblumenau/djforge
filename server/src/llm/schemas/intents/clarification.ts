@@ -4,7 +4,7 @@ import { BaseCommandSchema } from '../base';
 const ClarificationOptionSchema = z.object({
   label: z.string(),
   value: z.string(),
-  description: z.string().optional()
+  description: z.string().optional().nullable()
 });
 
 export const ClarificationModeSchema = BaseCommandSchema.extend({

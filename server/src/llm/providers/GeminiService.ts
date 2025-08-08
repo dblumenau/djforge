@@ -53,17 +53,20 @@ export class GeminiService {
       // Get user request from the last message
       const userRequest = request.messages.find(m => m.role === 'user')?.content || '';
       
-      // Parse context if provided
+      // DEPRECATED: Parse context if provided (legacy support)
+      // Modern approach uses native message arrays for conversation history
       let tasteProfile = '';
       let conversationHistory = '';
       
       if (request.conversationContext) {
-        // Extract taste profile and history from context
+        console.warn('⚠️ Gemini: conversationContext is deprecated - prefer native message arrays');
+        // Only extract taste profile from context (conversation history now uses native messages)
         const tasteProfileMatch = request.conversationContext.match(/User's Music Taste Profile:[\s\S]*?(?=\n\n|$)/);
         if (tasteProfileMatch) {
           tasteProfile = tasteProfileMatch[0];
         }
         
+        // Keep conversation history extraction for now but prefer native messages
         const conversationMatch = request.conversationContext.match(/Recent music plays:[\s\S]*$/);
         if (conversationMatch) {
           conversationHistory = conversationMatch[0];
@@ -109,7 +112,7 @@ export class GeminiService {
       
       // Validate the response
       if (request.response_format?.type === 'json_object') {
-        const validationResult = this.validateStructuredOutput(content, request);
+        const validationResult = await this.validateStructuredOutput(content, request);
         if (!validationResult.isValid) {
           console.warn('Gemini API structured output validation failed:', validationResult.errors);
         }
@@ -259,7 +262,7 @@ export class GeminiService {
     }
   }
 
-  private validateStructuredOutput(content: string, request: LLMRequest): { isValid: boolean; errors: string[] } {
+  private async validateStructuredOutput(content: string, request: LLMRequest): Promise<{ isValid: boolean; errors: string[] }> {
     try {
       const parsed = JSON.parse(content);
       
@@ -275,7 +278,7 @@ export class GeminiService {
         }
       };
 
-      const result = validateIntent(parsed, validationOptions);
+      const result = await validateIntent(parsed, validationOptions);
       return {
         isValid: result.isValid,
         errors: result.errors

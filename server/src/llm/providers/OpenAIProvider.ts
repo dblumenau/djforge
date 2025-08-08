@@ -79,39 +79,28 @@ export class OpenAIProvider {
       // Build the system prompt using the new adapter
       const userRequest = request.messages.find(m => m.role === 'user')?.content || '';
       
-      // Extract context from the request if provided
+      // Extract taste profile from conversation context for system prompt
       let tasteProfile = '';
-      let conversationHistory = '';
       
       if (request.conversationContext) {
-        // Parse the conversation context to extract taste profile and history
-        const contextLines = request.conversationContext.split('\n').filter(line => line.trim());
-        
-        // Extract taste profile
+        // Extract taste profile only - conversation history will be handled natively
         const tasteProfileMatch = request.conversationContext.match(/User's Music Taste Profile:[\s\S]*?(?=\n\n|$)/);
         if (tasteProfileMatch) {
           tasteProfile = tasteProfileMatch[0];
         }
-        
-        // Extract conversation history
-        const conversationMatch = request.conversationContext.match(/Recent music plays:[\s\S]*$/);
-        if (conversationMatch) {
-          conversationHistory = conversationMatch[0];
-        }
       }
       
-      // Use the new prompt adapter
+      // Use the new prompt adapter without conversation context (handled natively now)
       const systemPrompt = PromptAdapter.forOpenAI(
         userRequest,
-        tasteProfile,
-        conversationHistory
+        tasteProfile
       );
       
       console.log(`🎯 Using OpenAI Direct API with unified structured output and new prompt system`);
       
-      // Convert messages to OpenAI format
+      // Convert messages to OpenAI format with native conversation history
       const requiresJSON = request.response_format?.type === 'json_object';
-      const messages = this.formatMessagesForOpenAI(request.messages, systemPrompt, requiresJSON);
+      const messages = this.formatMessagesForOpenAI(request, systemPrompt, requiresJSON);
       
       let response;
       
@@ -120,6 +109,9 @@ export class OpenAIProvider {
         // Map the model ID to the actual OpenAI model
         const actualModel = this.mapModelId(request.model || OPENAI_MODELS.GPT_4_1);
         console.log(`🔧 Using OpenAI structured output with pre-wrapped schema for ${actualModel}`);
+        
+        // Debug: Log the schema structure
+        console.log('📋 OpenAI schema structure:', JSON.stringify(openaiSchema, null, 2));
         
         // Build request parameters
         const params: any = {
@@ -374,9 +366,9 @@ export class OpenAIProvider {
   // and getOpenAISystemPromptForIntent() functions now handle this logic.
 
   /**
-   * Convert LLMRequest messages to OpenAI format
+   * Convert LLMRequest to OpenAI format with native message history support
    */
-  private formatMessagesForOpenAI(messages: LLMRequest['messages'], systemPrompt?: string, requiresJSON?: boolean): any[] {
+  private formatMessagesForOpenAI(request: LLMRequest, systemPrompt?: string, requiresJSON?: boolean): any[] {
     const formattedMessages: any[] = [];
     
     // Add system message if provided
@@ -398,8 +390,22 @@ export class OpenAIProvider {
       });
     }
     
-    // Convert other messages
-    for (const message of messages) {
+    // DEPRECATED: Parse and add conversation history if present (legacy support)
+    // Modern approach uses native message arrays in request.messages
+    if (request.conversationContext) {
+      console.warn('⚠️ OpenAI: conversationContext is deprecated - prefer native message arrays');
+      // Check if we already have conversation history in the messages array
+      const hasConversationHistory = request.messages.length > 2;
+      if (hasConversationHistory) {
+        console.warn('⚠️ OpenAI: Both conversationContext and message history present - using native messages');
+      } else {
+        const historyMessages = this.parseConversationContext(request.conversationContext);
+        formattedMessages.push(...historyMessages);
+      }
+    }
+    
+    // Convert current messages
+    for (const message of request.messages) {
       if (message.role === 'system') {
         // If this is a system message and we haven't added one yet, use it
         if (formattedMessages.length === 0 || formattedMessages[0].role !== 'system') {
@@ -427,7 +433,7 @@ export class OpenAIProvider {
   /**
    * Validate structured output against intent types
    */
-  private validateStructuredOutput(content: string, request: LLMRequest): { isValid: boolean; errors: string[] } {
+  private async validateStructuredOutput(content: string, request: LLMRequest): Promise<{ isValid: boolean; errors: string[] }> {
     try {
       const parsed = JSON.parse(content);
       
@@ -443,7 +449,7 @@ export class OpenAIProvider {
         }
       };
 
-      const result = validateIntent(parsed, validationOptions);
+      const result = await validateIntent(parsed, validationOptions);
       return {
         isValid: result.isValid,
         errors: result.errors
@@ -455,5 +461,66 @@ export class OpenAIProvider {
         errors: [`JSON parsing failed: ${error}`]
       };
     }
+  }
+  /**
+   * Parse conversation context string into OpenAI message objects
+   * Handles formats like:
+   * - "User: \"command\"\nAssistant: response" (for chat responses)
+   * - "User: \"command\"\nAction: played Taylor Swift - Shake It Off" (for music actions)
+   */
+  private parseConversationContext(conversationContext: string): any[] {
+    const messages: any[] = [];
+    
+    // Split by double newlines to separate conversation entries
+    const entries = conversationContext.split('\n\n').filter(entry => entry.trim());
+    
+    for (const entry of entries) {
+      const lines = entry.split('\n').filter(line => line.trim());
+      if (lines.length < 2) continue;
+      
+      // Extract user message (first line)
+      const userLine = lines[0];
+      const userMatch = userLine.match(/^\[?\d*\]?\s*User:\s*"([^"]+)"/);
+      if (!userMatch) continue;
+      
+      const userContent = userMatch[1];
+      
+      // Extract response (second line)
+      const responseLine = lines[1];
+      let assistantContent = '';
+      
+      // Handle Assistant: format (chat responses)
+      const assistantMatch = responseLine.match(/^\s*Assistant:\s*(.+)$/);
+      if (assistantMatch) {
+        assistantContent = assistantMatch[1];
+      } else {
+        // Handle Action: format (music actions)
+        const actionMatch = responseLine.match(/^\s*Action:\s*(.+)$/);
+        if (actionMatch) {
+          const action = actionMatch[1];
+          // Convert action to a more conversational response
+          if (action.toLowerCase().includes('played')) {
+            assistantContent = `I ${action.toLowerCase()}.`;
+          } else if (action.toLowerCase().includes('queued')) {
+            assistantContent = `I ${action.toLowerCase()}.`;
+          } else {
+            assistantContent = `I performed the action: ${action}.`;
+          }
+        } else {
+          // Fallback: use the entire response line
+          assistantContent = responseLine.replace(/^\s*\w+:\s*/, '');
+        }
+      }
+      
+      // Add user and assistant messages
+      if (userContent && assistantContent) {
+        messages.push(
+          { role: 'user', content: userContent },
+          { role: 'assistant', content: assistantContent }
+        );
+      }
+    }
+    
+    return messages;
   }
 }

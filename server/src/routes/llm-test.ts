@@ -1,0 +1,341 @@
+import { Router } from 'express';
+import { promises as fs } from 'fs';
+import path from 'path';
+import { interpretCommand } from './simple-llm-interpreter';
+
+export const llmTestRouter = Router();
+
+// Test conversation storage interface
+interface TestConversation {
+  conversationHistory: Array<{
+    command: string;
+    interpretation: any;
+    response: any;
+    timestamp: number;
+  }>;
+  userId: string;
+  model: string;
+}
+
+// File path for test conversation storage
+const CONVERSATION_FILE_PATH = '/tmp/llm-test-conversation.json';
+
+// Helper function to load conversation from file
+async function loadConversation(): Promise<TestConversation> {
+  try {
+    const data = await fs.readFile(CONVERSATION_FILE_PATH, 'utf-8');
+    return JSON.parse(data);
+  } catch (error) {
+    // File doesn't exist or is invalid, return empty conversation
+    return {
+      conversationHistory: [],
+      userId: 'test-user',
+      model: 'gpt-5-nano'
+    };
+  }
+}
+
+// Helper function to save conversation to file
+async function saveConversation(conversation: TestConversation): Promise<void> {
+  await fs.writeFile(CONVERSATION_FILE_PATH, JSON.stringify(conversation, null, 2), 'utf-8');
+}
+
+// Generate response based on interpretation
+function generateResponse(interpretation: any): any {
+  const intent = interpretation.intent;
+
+  switch (intent) {
+    case 'chat':
+    case 'ask_question':
+      return {
+        success: true,
+        message: interpretation.responseMessage || interpretation.message || "I provided a response.",
+        conversational: true
+      };
+
+    case 'clarification_mode':
+      return {
+        success: true,
+        message: interpretation.responseMessage || "What direction would you like to go? Feel free to be more specific about what you're looking for.",
+        conversational: true,
+        clarificationOptions: interpretation.options || [],
+        currentContext: interpretation.currentContext,
+        uiType: interpretation.uiType || 'clarification_buttons'
+      };
+
+    case 'play_specific_song':
+      const playTrack = interpretation.track || 'Unknown track';
+      const playArtist = interpretation.artist || 'Unknown artist';
+      return {
+        success: true,
+        message: `I'll play "${playTrack}" by ${playArtist}`,
+        track: {
+          name: playTrack,
+          artist: playArtist,
+          uri: `spotify:track:test-${Date.now()}`
+        }
+      };
+
+    case 'queue_specific_song':
+      const queueTrack = interpretation.track || 'Unknown track';
+      const queueArtist = interpretation.artist || 'Unknown artist';
+      return {
+        success: true,
+        message: `I'll queue "${queueTrack}" by ${queueArtist}`,
+        track: {
+          name: queueTrack,
+          artist: queueArtist,
+          uri: `spotify:track:test-${Date.now()}`
+        }
+      };
+
+    case 'queue_multiple_songs':
+      const songs = interpretation.songs || [];
+      return {
+        success: true,
+        message: `I'll queue ${songs.length} songs`,
+        queuedSongs: songs.map((song: any, index: number) => ({
+          name: song.track || `Song ${index + 1}`,
+          artists: song.artist || 'Unknown artist',
+          success: true,
+          uri: `spotify:track:test-${Date.now()}-${index}`
+        }))
+      };
+
+    case 'play_playlist':
+      const playlistName = interpretation.query || 'a playlist';
+      return {
+        success: true,
+        message: `I'll play ${playlistName}`,
+        playlist: {
+          name: playlistName,
+          uri: `spotify:playlist:test-${Date.now()}`
+        }
+      };
+
+    case 'queue_playlist':
+      const queuePlaylistName = interpretation.query || 'a playlist';
+      return {
+        success: true,
+        message: `I'll queue ${queuePlaylistName}`,
+        playlist: {
+          name: queuePlaylistName,
+          uri: `spotify:playlist:test-${Date.now()}`
+        }
+      };
+
+    case 'pause':
+      return {
+        success: true,
+        message: "I'll pause the music"
+      };
+
+    case 'play':
+    case 'resume':
+      return {
+        success: true,
+        message: "I'll resume playback"
+      };
+
+    case 'skip':
+    case 'next':
+      return {
+        success: true,
+        message: "I'll skip to the next track"
+      };
+
+    case 'previous':
+    case 'back':
+      return {
+        success: true,
+        message: "I'll go back to the previous track"
+      };
+
+    case 'set_volume':
+      const volume = interpretation.volume_level || interpretation.volume || interpretation.value || 50;
+      return {
+        success: true,
+        message: `I'll set the volume to ${volume}%`
+      };
+
+    case 'set_shuffle':
+      const shuffleEnabled = interpretation.enabled !== undefined ? interpretation.enabled : true;
+      return {
+        success: true,
+        message: `I'll ${shuffleEnabled ? 'enable' : 'disable'} shuffle`
+      };
+
+    case 'set_repeat':
+      const repeatEnabled = interpretation.enabled !== undefined ? interpretation.enabled : true;
+      return {
+        success: true,
+        message: `I'll ${repeatEnabled ? 'enable' : 'disable'} repeat`
+      };
+
+    case 'get_current_track':
+    case 'get_playback_info':
+      return {
+        success: true,
+        message: "🎵 Currently playing:\n\n🎤 Test Song\n👤 Test Artist\n💿 Test Album\n\n⏱️ 1:30 / 3:45",
+        track: {
+          name: 'Test Song',
+          artist: 'Test Artist',
+          album: 'Test Album',
+          position: 90,
+          duration: 225
+        }
+      };
+
+    case 'unknown':
+      return {
+        success: false,
+        message: interpretation.error || "I couldn't understand that command"
+      };
+
+    default:
+      return {
+        success: true,
+        message: `I performed the requested action: ${intent}`
+      };
+  }
+}
+
+// POST / - Send a command and get interpretation
+llmTestRouter.post('/', async (req, res) => {
+  const { command, model } = req.body;
+
+  if (!command || typeof command !== 'string') {
+    return res.status(400).json({ 
+      error: 'Command is required and must be a string' 
+    });
+  }
+
+  if (command.length > 500) {
+    return res.status(400).json({ 
+      error: 'Command is too long (max 500 characters)' 
+    });
+  }
+
+  try {
+    // Load existing conversation
+    const conversation = await loadConversation();
+    
+    // Use provided model or default
+    const requestModel = model || 'gpt-5-nano';
+    conversation.model = requestModel;
+
+    // Call the actual interpretCommand function
+    const interpretation = await interpretCommand(
+      command,
+      conversation.userId,
+      requestModel,
+      '', // Empty music context for test
+      'llm-test-session'
+    );
+
+    // Generate response based on interpretation
+    const response = generateResponse(interpretation);
+
+    // Add to conversation history
+    const conversationEntry = {
+      command,
+      interpretation,
+      response,
+      timestamp: Date.now()
+    };
+
+    conversation.conversationHistory.push(conversationEntry);
+
+    // Save updated conversation
+    await saveConversation(conversation);
+
+    // Return interpretation and response
+    res.json({
+      success: true,
+      interpretation,
+      response,
+      model: requestModel,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('LLM test error:', error);
+    
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    const errorModel = (error as any)?.model || model || 'unknown';
+    
+    res.status(500).json({
+      success: false,
+      error: `LLM interpretation failed: ${errorMessage}`,
+      model: errorModel,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// DELETE / - Clear conversation history
+llmTestRouter.delete('/', async (req, res) => {
+  try {
+    // Create empty conversation
+    const emptyConversation: TestConversation = {
+      conversationHistory: [],
+      userId: 'test-user',
+      model: 'gpt-5-nano'
+    };
+
+    // Save empty conversation (or delete file)
+    await saveConversation(emptyConversation);
+
+    res.json({
+      success: true,
+      message: 'Conversation history cleared',
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Error clearing conversation:', error);
+    
+    res.status(500).json({
+      success: false,
+      error: 'Failed to clear conversation history',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// GET / - View current conversation history
+llmTestRouter.get('/', async (req, res) => {
+  try {
+    const conversation = await loadConversation();
+
+    res.json({
+      success: true,
+      conversation: {
+        userId: conversation.userId,
+        model: conversation.model,
+        historyCount: conversation.conversationHistory.length,
+        history: conversation.conversationHistory.map(entry => ({
+          command: entry.command,
+          intent: entry.interpretation?.intent,
+          confidence: entry.interpretation?.confidence,
+          response: entry.response?.message || 'No message',
+          success: entry.response?.success,
+          timestamp: entry.timestamp,
+          formattedTime: new Date(entry.timestamp).toISOString()
+        }))
+      },
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Error fetching conversation:', error);
+    
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch conversation history',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+export default llmTestRouter;

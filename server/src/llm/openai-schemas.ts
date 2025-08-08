@@ -30,10 +30,19 @@ import {
 } from './schemas';
 
 /**
- * Generate OpenAI schema for the unified music command discriminated union
+ * Generate OpenAI schema for the unified music command
+ * Note: OpenAI's structured output has limitations with discriminated unions,
+ * so we use a flattened schema that includes ALL fields from ALL intents.
+ * This ensures compatibility while preserving all functionality including clarification_mode.
  */
+
+// Import the new flattened schema for OpenAI compatibility  
+// This includes ALL intents including clarification_mode which was missing from legacy
+import { OpenAIFlattenedMusicCommandSchema } from './schemas/openai-flattened';
+
+// Use the new flattened schema that includes all intents including clarification_mode
 export const OpenAIUnifiedSchema = zodResponseFormat(
-  MusicCommandSchema,
+  OpenAIFlattenedMusicCommandSchema,
   'music_command'
 );
 
