@@ -15,29 +15,96 @@ interface TestConversation {
   }>;
   userId: string;
   model: string;
+  seriesId: string;
+  lastUpdated: number;
 }
 
-// File path for test conversation storage
-const CONVERSATION_FILE_PATH = '/tmp/llm-test-conversation.json';
+interface TestSeriesInfo {
+  seriesId: string;
+  turnCount: number;
+  lastUpdated: number;
+  model: string;
+}
+
+// Validate seriesId to ensure it's safe for file system
+function validateSeriesId(seriesId: string): boolean {
+  // Allow alphanumeric, underscore, and hyphen only
+  return /^[a-zA-Z0-9_-]+$/.test(seriesId);
+}
+
+// Generate file path for a test series
+function getConversationFilePath(seriesId: string): string {
+  return `/tmp/llm-test-${seriesId}.json`;
+}
 
 // Helper function to load conversation from file
-async function loadConversation(): Promise<TestConversation> {
+async function loadConversation(seriesId: string): Promise<TestConversation> {
   try {
-    const data = await fs.readFile(CONVERSATION_FILE_PATH, 'utf-8');
-    return JSON.parse(data);
+    const filePath = getConversationFilePath(seriesId);
+    const data = await fs.readFile(filePath, 'utf-8');
+    const conversation = JSON.parse(data);
+    
+    // Ensure seriesId is set (for backwards compatibility)
+    if (!conversation.seriesId) {
+      conversation.seriesId = seriesId;
+    }
+    
+    return conversation;
   } catch (error) {
     // File doesn't exist or is invalid, return empty conversation
     return {
       conversationHistory: [],
       userId: 'test-user',
-      model: 'gpt-5-nano'
+      model: 'gpt-5-nano',
+      seriesId: seriesId,
+      lastUpdated: Date.now()
     };
   }
 }
 
 // Helper function to save conversation to file
-async function saveConversation(conversation: TestConversation): Promise<void> {
-  await fs.writeFile(CONVERSATION_FILE_PATH, JSON.stringify(conversation, null, 2), 'utf-8');
+async function saveConversation(seriesId: string, conversation: TestConversation): Promise<void> {
+  const filePath = getConversationFilePath(seriesId);
+  conversation.seriesId = seriesId;
+  conversation.lastUpdated = Date.now();
+  await fs.writeFile(filePath, JSON.stringify(conversation, null, 2), 'utf-8');
+}
+
+// List all test series files
+async function listAllTestSeries(): Promise<TestSeriesInfo[]> {
+  try {
+    const files = await fs.readdir('/tmp');
+    const testFiles = files.filter(file => file.startsWith('llm-test-') && file.endsWith('.json'));
+    
+    const seriesInfos: TestSeriesInfo[] = [];
+    
+    for (const file of testFiles) {
+      try {
+        const filePath = path.join('/tmp', file);
+        const data = await fs.readFile(filePath, 'utf-8');
+        const conversation: TestConversation = JSON.parse(data);
+        
+        // Extract seriesId from filename
+        const seriesId = file.replace('llm-test-', '').replace('.json', '');
+        
+        seriesInfos.push({
+          seriesId,
+          turnCount: conversation.conversationHistory.length,
+          lastUpdated: conversation.lastUpdated || 0,
+          model: conversation.model || 'unknown'
+        });
+      } catch (error) {
+        // Skip invalid files
+        console.warn(`Skipping invalid test series file: ${file}`);
+      }
+    }
+    
+    // Sort by last updated (most recent first)
+    return seriesInfos.sort((a, b) => b.lastUpdated - a.lastUpdated);
+  } catch (error) {
+    console.error('Error listing test series:', error);
+    return [];
+  }
 }
 
 // Generate response based on interpretation
