@@ -4,6 +4,7 @@ import { normalizeLLMResponse } from './normalizer';
 import { GeminiService } from './providers/GeminiService';
 import { OpenAIProvider, OPENAI_MODELS } from './providers/OpenAIProvider';
 import { validateIntent, ValidationOptions } from './intent-validator';
+import { validateMusicCommand } from './validation/command-validator';
 import { LLMLoggingService } from '../services/llm-logging.service';
 
 // LLM Provider Configuration
@@ -751,30 +752,23 @@ export class LLMOrchestrator {
     model: string
   ): void {
     try {
-      const parsed = JSON.parse(response.content);
-      
-      const validationOptions: ValidationOptions = {
-        strict: false,
-        normalize: false,
-        logErrors: true,
-        context: {
-          source,
-          model,
-          timestamp: Date.now(),
-          rawResponse: response.content
-        }
-      };
-
-      const result = validateIntent(parsed, validationOptions);
-      
-      if (result.isValid) {
-        console.log(`✅ ${source} validation passed for ${model} (${result.intentType})`);
+      let parsed;
+      if (typeof response.content === 'string') {
+        parsed = JSON.parse(response.content);
       } else {
-        console.warn(`❌ ${source} validation failed for ${model}:`, result.errors);
+        parsed = response.content;
       }
       
-      if (result.warnings.length > 0) {
-        console.warn(`⚠️  ${source} validation warnings for ${model}:`, result.warnings);
+      // Use the new validator
+      const validation = validateMusicCommand(parsed);
+      
+      if (validation.isValid) {
+        console.log(`✅ ${source} validation passed for ${model} (${validation.data?.intent})`);
+      } else {
+        console.warn(`❌ ${source} validation failed for ${model}:`, validation.error);
+        if (validation.suggestions) {
+          console.warn(`💡 ${source} validation suggestions for ${model}:`, validation.suggestions);
+        }
       }
     } catch (error) {
       console.error(`🔥 JSON parsing failed for ${source} ${model}:`, error);

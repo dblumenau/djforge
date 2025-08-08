@@ -45,7 +45,9 @@ const FileStore = require('session-file-store')(session);
 
 dotenv.config({ path: '../.env' });
 console.log('🔐 SESSION_SECRET loaded:', process.env.SESSION_SECRET ? 'Yes' : 'No');
+console.log('🚀 About to initialize logger...');
 logger.info('🚀 Starting Spotify Claude Controller server...');
+console.log('✅ Logger initialized, continuing server setup...');
 
 const app = express();
 const PORT = process.env.PORT || 3001;

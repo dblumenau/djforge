@@ -1,4 +1,11 @@
 /**
+ * @deprecated This file uses the legacy Gemini-specific schema approach.
+ * Consider migrating to the new discriminated union schemas in ./schemas/index.ts
+ * which provide better type safety and validation.
+ * 
+ * The new schemas can be used with Gemini's structured output by converting
+ * the Zod schemas to Gemini format.
+ * 
  * Gemini Native Structured Output Schemas
  * 
  * This file contains responseSchema definitions for Gemini's native structured output.
@@ -638,3 +645,6 @@ export const GEMINI_SCHEMAS = {
   ErrorResponse: ErrorResponseSchema,
   BatchCommand: BatchCommandSchema
 } as const;
+
+// Add an export for the new schemas
+export { MusicCommandSchema as NewMusicCommandSchema } from './schemas/index';

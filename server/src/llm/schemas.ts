@@ -325,3 +325,12 @@ export function createSchemaRequest(
     conversationContext: undefined as string | undefined
   };
 }
+
+// Re-export the new discriminated union schemas
+export * from './schemas/index';
+// Keep the original MusicCommandSchema for backward compatibility
+// but mark it as deprecated
+/**
+ * @deprecated Use the discriminated union MusicCommandSchema from './schemas/index' instead
+ */
+export const LegacyMusicCommandSchema = MusicCommandSchema;

@@ -18,6 +18,9 @@ import {
   formatMusicHistory 
 } from '../llm/music-curator-prompts';
 import { detectRequestContextType } from '../utils/requestContext';
+import { validateAndRepair, validateMusicCommand } from '../llm/validation/command-validator';
+import { PromptAdapter } from '../llm/prompts/adapter';
+import { extractEssentialFields } from '../llm/normalizer';
 
 export const simpleLLMInterpreterRouter = Router();
 
@@ -326,290 +329,35 @@ async function interpretCommand(command: string, userId?: string, preferredModel
     
     const startTime = Date.now();
     const requestModel = preferredModel || OPENROUTER_MODELS.GEMINI_2_5_FLASH;
-    const messages = [
-      { role: 'system' as const, content: `You are a thoughtful music curator with encyclopedic knowledge of music across all genres and eras.
-
-### Primary Goal ###
-Your single most important goal is to find excellent matches for the user's request below.
-
-### How to Use the Provided Context ###
-1. **User Request**: This is your primary instruction. Fulfill it directly and precisely.
-2. **User Taste Profile**: This is secondary reference information.
-   - DO use it if the User Request is vague (e.g., "play something for me", "I want new music")
-   - DO NOT let it override a specific User Request for a genre, artist, or style. If the request is for 'spoken-word', you must provide 'spoken-word', even if it's not in the user's profile.
-3. **Conversation History**: Use this to understand contextual references like "play that again" or "the second one"
-
-${FULL_CURATOR_GUIDELINES}
-
-${musicContext ? (() => {
-  const lines = musicContext.split('\n').filter(line => line.trim());
-  const currentlyPlayingLine = lines.find(line => line.includes('Currently playing:'));
-  const tasteProfileLines = lines.filter(line => !line.includes('Currently playing:'));
-  
-  let result = '';
-  
-  if (currentlyPlayingLine) {
-    result += `### Currently Playing Track ###\n${currentlyPlayingLine}\n\n`;
-  }
-  
-  if (tasteProfileLines.length > 0) {
-    result += `### User Taste Profile (Secondary Reference) ###\n${tasteProfileLines.join('\n')}\n\n`;
-  }
-  
-  return result;
-})() : '### Currently Playing Track ###\nNo track currently playing\n\n'}
-
-${contextBlock ? `### Conversation History ###
-${contextBlock}` : ''}
-
-[DEBUG: Relevant context entries: ${relevantContext.length}]
-[DEBUG: Music context length: ${musicContext?.length || 0} chars]
-
-CRITICAL FIRST STEP: Determine if this is a QUESTION/CONVERSATION or a MUSIC ACTION command.
-
-AVAILABLE INTENTS - Choose the most appropriate one:
-
-=== CONVERSATIONAL INTENTS (return text, NO Spotify action) ===
-• chat - General music discussion ("what do you think of this artist", "how's the song")
-• ask_question - Questions about collaborations, facts ("did he collaborate with X", "has she ever worked with Y")
-• get_playback_info - Get information about what's currently playing ("what's playing", "current song", "what song is this") - IMPORTANT: Use the "Currently Playing Track" section from the context to answer
-• clarification_mode - When user expresses rejection/dissatisfaction with current selection or gives vague directional requests
-• explain_reasoning - When user asks about model decisions or reasoning ("why did you choose", "how did you decide", "explain your reasoning")
-
-CONVERSATIONAL TRIGGERS (these are NOT music actions):
-- Questions starting with: "did", "does", "has", "tell me about", "what do you think", "how is", "what's"
-- Playback info requests: "what's playing", "what song is this", "current track"
-- General discussion: "what do you think", "how do you feel", "your opinion"
-- Reasoning questions: "why did you choose", "why did the model", "how did you decide", "explain your reasoning", "what was your thought process"
-
-CLARIFICATION MODE TRIGGERS:
-- User expresses rejection: "not this", "dislike", "don't like", "hate this", "not feeling", "not the vibe"
-- Vague directional requests: "something else", "different", "change it", "not my mood", "another direction"
-- Any negative response to current playback when they want an alternative
-
-=== SONG INTENTS (require specific song recommendations) ===
-• play_specific_song - Play a specific song based on vague/mood/cultural descriptions
-• queue_specific_song - Queue a specific song based on vague/mood/cultural descriptions
-• queue_multiple_songs - Queue multiple songs (5-10) based on similarity, mood, or theme
-
-=== PLAYLIST INTENTS (use search queries) ===
-• play_playlist - Search and play a playlist immediately
-• queue_playlist - Search and queue a playlist
-
-=== CONTROL INTENTS ===
-• pause - Pause playback
-• play/resume - Resume playback (no parameters needed)
-• skip/next - Skip to next track
-• previous/back - Go to previous track
-• set_volume - Set volume level (requires volume_level field between 0-100)
-• get_current_track - Get currently playing track info
-• set_shuffle - Enable/disable shuffle (requires enabled field)
-• set_repeat - Enable/disable repeat (requires enabled field)
-• clear_queue - Clear the playback queue (ONLY for explicit "clear queue" commands, NOT for rejection/dislike)
-
-=== OTHER INTENTS ===
-• search - Search without playing (requires query)
-• get_devices - List available devices
-• get_playlists - Get user's playlists
-• get_recently_played - Get recently played tracks
-
-CRITICAL DISTINCTIONS:
-
-1. SPECIFIC SONG REQUESTS (use play_specific_song, queue_specific_song, or queue_multiple_songs):
-   - "play something for assassins creed" → play_specific_song with "Ezio's Family" by Jesper Kyd
-   - "queue the most obscure Taylor Swift song" → queue_specific_song with "I'd Lie"
-   - "play taylor swift" → play_specific_song with a popular Taylor Swift song
-   - "queue taylor swift" → queue_specific_song with a popular Taylor Swift song
-   - "add something melancholy to queue" → queue_specific_song with specific sad song
-   - "play bohemian rhapsody" → play_specific_song (even though it's specific, still use this intent)
-   - "queue bohemian rhapsody" → queue_specific_song (for consistency)
-   - "queue up many more songs like heaven by beyonce" → queue_multiple_songs with multiple obscure Beyoncé tracks
-   - "add several upbeat songs to queue" → queue_multiple_songs with 5-10 upbeat songs
-   - "queue multiple taylor swift deep cuts" → queue_multiple_songs with multiple lesser-known Taylor Swift songs
-
-2. ALBUM REQUESTS (use play_playlist or queue_playlist with the album name as query):
-   - "play the album lover by taylor swift" → play_playlist with query: "lover taylor swift album"
-   - "play folklore album" → play_playlist with query: "folklore album"
-   - "queue the entire dark side of the moon album" → queue_playlist with query: "dark side of the moon album"
-   - "play taylor swift's 1989" → play_playlist with query: "1989 taylor swift album"
-   
-3. PLAYLIST REQUESTS (use play_playlist or queue_playlist):
-   - "play my workout playlist" → play_playlist with query: "workout"
-   - "queue up a jazz playlist" → queue_playlist with query: "jazz"
-   - "play taylor swift playlist" → play_playlist with query: "taylor swift"
-   - "play my discover weekly" → play_playlist with query: "discover weekly"
-
-4. CONVERSATIONAL vs ACTION DISTINCTION:
-   - Questions starting with "did", "does", "has", "tell me about", "what do you think" → conversational intents
-   - Commands requesting action "play", "queue", "skip" → action intents
-   - "did he ever collaborate with X" → ask_question (return text, don't play music)
-   - "tell me about this song" → ask_question (return info, don't play music)
-   - "what do you think of this artist" → chat (return opinion, don't play music)
-
-5. CRITICAL INTENT DISTINCTIONS:
-   - If asking for A SONG (even by name) → use play_specific_song/queue_specific_song
-   - If asking for MULTIPLE SONGS → use queue_multiple_songs
-   - If asking for AN ALBUM → use play_playlist/queue_playlist with album name as query
-   - If asking for A PLAYLIST → use play_playlist/queue_playlist
-   - If asking QUESTIONS → use conversational intents (chat/ask_question)
-   - If asking "what's playing" or "current song" → use get_playback_info
-   - If asking about MODEL REASONING/DECISIONS → use explain_reasoning
-   - The word "album" in the command is a strong indicator to use playlist intents with album query
-   - The word "playlist" in the command is a strong indicator for playlist intents
-   - Words like "multiple", "many", "several", "more songs", "a few songs" indicate queue_multiple_songs
-
-6. REJECTION vs CLEAR QUEUE DISTINCTION:
-   - Expressions of dislike or wanting alternatives → clarification_mode (offer alternatives)
-   - Explicit queue management commands → clear_queue (actual queue clearing)
-
-RESPONSE FORMAT:
-For specific song requests (both play and queue):
-{
-  "intent": "play_specific_song" or "queue_specific_song",
-  "artist": "Exact Artist Name",
-  "track": "Exact Song Title",
-  "album": "Album Name (optional)",
-  "confidence": 0.8-1.0,
-  "reasoning": "Why this specific song matches their request",
-  "alternatives": [
-    "Artist Name - Song Title",
-    "Artist Name - Song Title", 
-    "Artist Name - Song Title",
-    "Artist Name - Song Title",
-    "Artist Name - Song Title",
-    "Artist Name - Song Title"
-  ]
-  
-  IMPORTANT: ${ALTERNATIVES_APPROACH}
-}
-
-For multiple song requests:
-{
-  "intent": "queue_multiple_songs",
-  "songs": [
-    {
-      "artist": "Artist Name",
-      "track": "Song Title",
-      "album": "Album Name (optional)"
-    },
-    {
-      "artist": "Artist Name",
-      "track": "Song Title",
-      "album": "Album Name (optional)"
-    },
-    ... (5-10 songs total)
-  ],
-  "confidence": 0.8-1.0,
-  "reasoning": "Why these songs match the request theme/mood/similarity",
-  "theme": "Brief description of the common theme (e.g., 'obscure Beyoncé tracks', 'upbeat indie songs')"
-}
-
-For album requests:
-{
-  "intent": "play_playlist" or "queue_playlist",
-  "query": "[album name] [artist] album" (e.g., "lover taylor swift album", "dark side of the moon album"),
-  "confidence": 0.7-1.0,
-  "reasoning": "brief explanation"
-}
-
-For playlist requests:
-{
-  "intent": "play_playlist" or "queue_playlist",
-  "query": "playlist search terms",
-  "confidence": 0.7-1.0,
-  "reasoning": "brief explanation"
-}
-
-For conversational requests:
-{
-  "intent": "chat" or "ask_question",
-  "confidence": 0.8-1.0,
-  "reasoning": "explain why this is conversational and what information to provide",
-  "responseMessage": "The actual answer to the user's question about the artist/music. For 'this artist' questions, use the currently playing context to provide information about the specific artist. Include interesting facts, notable achievements, genre influences, and career highlights. Keep it 2-4 sentences."
-}
-
-For playback info requests:
-{
-  "intent": "get_playback_info",
-  "confidence": 0.9-1.0,
-  "reasoning": "User is asking about the currently playing track",
-  "responseMessage": "Currently playing: [track name] by [artist] from the album [album]. (Use the info from 'Currently Playing Track' section)"
-}
-
-For reasoning explanation requests:
-{
-  "intent": "explain_reasoning",
-  "confidence": 0.9-1.0,
-  "reasoning": "User is asking about model decision-making process",
-  "responseMessage": "I will explain the reasoning from the most recent model decision, including what was chosen and why."
-}
-
-For clarification mode (when user rejects/dislikes current selection):
-{
-  "intent": "clarification_mode",
-  "confidence": 0.9-1.0,
-  "reasoning": "explain why this requires clarification",
-  "responseMessage": "Friendly message acknowledging their preference and asking for direction",
-  "currentContext": {
-    "rejected": "what they disliked (artist name, genre, etc.)",
-    "rejectionType": "artist" or "genre" or "mood" or "song"
-  },
-  "options": [
-    // Generate 4-5 contextually relevant options based on what was rejected
-    // Examples of smart alternatives the AI might suggest:
-    // If rejecting Lana Del Rey: "Female vocalist but more upbeat", "Different decade (80s/90s)", "Electronic instead of indie", "Faster tempo", "Surprise me"
-    // If rejecting metal: "Acoustic version", "Same energy, different genre", "Instrumental", "Female vocals", "Softer but still powerful"
-    // If rejecting slow songs: "Same artist, faster songs", "Upbeat alternative", "Dance music", "Rock energy", "Happy pop"
-    {
-      "direction": "contextual_direction_1", // AI decides what makes sense
-      "description": "AI-generated description", // e.g. "Female vocals instead", "80s music", "Acoustic version"
-      "example": "AI-generated example", // e.g. "Like Stevie Nicks or Fleetwood Mac", "Think Bon Jovi era"
-      "icon": "🎵", // AI picks appropriate emoji: ⚡🎭📼☀️🎲🎸🎤🕺💃🎹🥁🎺🎷
-      "followUpQuery": "AI-generated follow-up" // e.g. "play female vocalist rock music", "play 80s pop hits"
+    
+    // Extract taste profile and conversation context for the prompt adapter
+    let tasteProfileText = '';
+    if (musicContext) {
+      const lines = musicContext.split('\n').filter(line => line.trim());
+      const tasteProfileLines = lines.filter(line => !line.includes('Currently playing:'));
+      tasteProfileText = tasteProfileLines.join('\n');
     }
-    // ... AI generates 4-5 total options that make contextual sense
-  ],
-  "uiType": "clarification_buttons"
-}
-
-For control intents:
-{
-  "intent": "set_volume",
-  "volume_level": 75,
-  "confidence": 0.9,
-  "reasoning": "setting volume to specified level"
-}
-
-{
-  "intent": "pause" or "play" or "skip" or "previous",
-  "confidence": 0.9,
-  "reasoning": "basic playback control"
-}
-
-{
-  "intent": "set_shuffle",
-  "enabled": true,
-  "confidence": 0.9,
-  "reasoning": "enabling or disabling shuffle"
-}
-
-{
-  "intent": "set_repeat",
-  "enabled": true,
-  "confidence": 0.9,
-  "reasoning": "enabling or disabling repeat"
-}
-
-Other intents: clear_queue, get_current_track, get_devices, get_playlists, get_recently_played, search
-
-Respond with valid JSON. Be helpful and specific. Include confidence scores as a decimal between 0 and 1 (e.g., 0.95 for 95% confidence). 
-
-CRITICAL ACCURACY REQUIREMENTS:
-• ONLY recommend songs that actually exist - never invent song titles
-• If you're unsure about a song title, choose a different artist or song you're certain about
-• Double-check your music knowledge before recommending specific tracks
-
-CRITICAL: You must use the discriminated union pattern - when intent is "play_specific_song" or "queue_specific_song", you MUST include artist, track, and alternatives fields. ${ALTERNATIVES_APPROACH} When intent is "play_playlist" or "queue_playlist", use query field. For ALBUM requests (when user mentions "album"), use play_playlist/queue_playlist with query containing the album name, artist, and the word "album" (e.g., "lover taylor swift album"). Never use generic search queries for specific song requests - always recommend exact songs using your music knowledge. Distinguish between playing (immediate) and queuing (add to queue) for both songs, albums, and playlists. For conversational intents (chat, ask_question), include the actual answer in the responseMessage field. Set isAIDiscovery: true for ALL songs you queue/play EXCEPT when the user explicitly names BOTH artist AND track. Always include aiReasoning explaining your choice when isAIDiscovery is true. ${RESPONSE_VARIATION}` },
+    
+    // Build the prompt using the new adapter
+    let systemPrompt: string;
+    if (preferredModel?.includes('gemini')) {
+      // Use Gemini adapter for Gemini models
+      systemPrompt = PromptAdapter.forGemini(
+        command,
+        tasteProfileText,
+        contextBlock
+      );
+    } else {
+      // Use OpenRouter adapter for other models
+      systemPrompt = PromptAdapter.forOpenRouter(
+        command,
+        tasteProfileText,
+        contextBlock
+      );
+    }
+    
+    const messages = [
+      { role: 'system' as const, content: systemPrompt },
       { role: 'user' as const, content: `Command: "${command}"` }
     ];
     
@@ -624,7 +372,33 @@ CRITICAL: You must use the discriminated union pattern - when intent is "play_sp
     
     const response = await Promise.race([responsePromise, timeoutPromise]) as any;
     const latency = Date.now() - startTime;
-    const normalized = normalizeResponse(response.content);
+    
+    // Parse the response
+    let interpretation;
+    if (typeof response.content === 'string') {
+      try {
+        interpretation = JSON.parse(response.content);
+      } catch (e) {
+        console.error('Failed to parse LLM response:', e);
+        interpretation = { intent: 'unknown', reasoning: 'Failed to parse response' };
+      }
+    } else {
+      interpretation = response.content;
+    }
+    
+    // Validate and repair the interpretation using the new validator
+    const validationResult = validateAndRepair(interpretation);
+    if (!validationResult.isValid) {
+      console.warn('LLM response validation failed:', validationResult.error);
+      console.warn('Suggestions:', validationResult.suggestions);
+      // Try to extract essential fields as fallback
+      interpretation = extractEssentialFields(interpretation);
+    } else {
+      interpretation = validationResult.data;
+    }
+    
+    // For backward compatibility, call the old normalizeResponse for any additional processing
+    const normalized = normalizeResponse(interpretation);
     
     // Add model information to the normalized response
     normalized.model = response.model || preferredModel || 'unknown';

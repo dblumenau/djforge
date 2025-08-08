@@ -7,19 +7,19 @@
  * - verbosity: Control response length ('low', 'medium', 'high')
  * - Model variants: gpt-5, gpt-5-mini, gpt-5-nano
  * 
- * Speed Optimization Example:
+ * Speed Optimization for Music Commands (Default):
  * {
- *   model: 'gpt-5-nano',           // Ultra-fast model
- *   reasoning_effort: 'minimal',   // Skip extensive reasoning
- *   verbosity: 'low',              // Short responses
- *   max_completion_tokens: 500,    // Limit output length
- *   temperature: 0.2               // More deterministic
+ *   model: 'gpt-5' or 'gpt-5-nano',
+ *   reasoning_effort: 'minimal',   // Fastest for instruction-following
+ *   verbosity: 'low',              // Concise JSON responses
+ *   max_completion_tokens: 8192,   // Sufficient for music commands
  * }
  * 
- * Default Behavior:
- * - Let GPT-5's router automatically choose settings
- * - Model analyzes query complexity and optimizes accordingly
- * - Only override when specific behavior is needed
+ * Default Behavior for Music Commands:
+ * - reasoning_effort: 'minimal' (fastest, great for instruction-following)
+ * - verbosity: 'low' (concise responses, less tokens)
+ * - max_completion_tokens: 8192 (prevents length limit errors)
+ * - These defaults optimize for speed while maintaining quality
  */
 
 // Use named export for compatibility with both dev and production
@@ -32,6 +32,7 @@ import {
   OpenAIUnifiedSchema
 } from '../openai-schemas';
 import { validateIntent, ValidationOptions } from '../intent-validator';
+import { PromptAdapter } from '../prompts/adapter';
 
 export interface OpenAIProviderOptions {
   apiKey: string;
@@ -67,70 +68,46 @@ export class OpenAIProvider {
 
   async complete(request: LLMRequest): Promise<LLMResponse> {
     try {
-      // Always use unified schema for JSON requests - let the model determine the intent
-      // This is more robust than trying to pre-determine the intent type
+      // Always use unified schema for JSON requests
       let openaiSchema = null;
-      let systemPrompt = getOpenAISystemPromptForIntent('music_command'); // Default comprehensive prompt
       
       if (request.response_format?.type === 'json_object') {
         // Use the unified schema that includes all possible intents
         openaiSchema = OpenAIUnifiedSchema;
       }
       
-      // Check if there's an explicit intent type override (for specialized cases like playlist discovery)
-      const explicitIntent = (request as any).intentType;
-      if (explicitIntent && explicitIntent !== 'music_command') {
-        // Override with specific prompt if explicitly requested
-        systemPrompt = getOpenAISystemPromptForIntent(explicitIntent);
-      }
+      // Build the system prompt using the new adapter
+      const userRequest = request.messages.find(m => m.role === 'user')?.content || '';
       
-      // Handle conversation context
+      // Extract context from the request if provided
+      let tasteProfile = '';
+      let conversationHistory = '';
+      
       if (request.conversationContext) {
-        // Split the context into sections
-        const lines = request.conversationContext.split('\n').filter(line => line.trim());
-        
-        // Extract currently playing track
-        const currentlyPlayingLine = lines.find(line => line.includes('Currently playing:'));
-        let currentlyPlayingTrack = '';
-        if (currentlyPlayingLine) {
-          currentlyPlayingTrack = currentlyPlayingLine;
-        }
+        // Parse the conversation context to extract taste profile and history
+        const contextLines = request.conversationContext.split('\n').filter(line => line.trim());
         
         // Extract taste profile
-        let tasteProfile = '';
         const tasteProfileMatch = request.conversationContext.match(/User's Music Taste Profile:[\s\S]*?(?=\n\n|$)/);
         if (tasteProfileMatch) {
           tasteProfile = tasteProfileMatch[0];
         }
         
-        // Extract conversation history (anything after "Recent music plays:")
-        let conversationContext = '';
+        // Extract conversation history
         const conversationMatch = request.conversationContext.match(/Recent music plays:[\s\S]*$/);
         if (conversationMatch) {
-          conversationContext = conversationMatch[0];
+          conversationHistory = conversationMatch[0];
         }
-        
-        // Build the context sections for the system prompt
-        let contextSections = '';
-        
-        if (currentlyPlayingTrack) {
-          contextSections += `\n\n### Currently Playing Track ###\n${currentlyPlayingTrack}`;
-        } else {
-          contextSections += `\n\n### Currently Playing Track ###\nNo track currently playing`;
-        }
-        
-        if (tasteProfile) {
-          contextSections += `\n\n### User Taste Profile (Secondary Reference) ###\n${tasteProfile}`;
-        }
-        
-        if (conversationContext) {
-          contextSections += `\n\n### Conversation History ###\n${conversationContext}`;
-        }
-        
-        systemPrompt += contextSections;
       }
       
-      console.log(`🎯 Using OpenAI Direct API with unified structured output`);
+      // Use the new prompt adapter
+      const systemPrompt = PromptAdapter.forOpenAI(
+        userRequest,
+        tasteProfile,
+        conversationHistory
+      );
+      
+      console.log(`🎯 Using OpenAI Direct API with unified structured output and new prompt system`);
       
       // Convert messages to OpenAI format
       const requiresJSON = request.response_format?.type === 'json_object';
@@ -161,21 +138,28 @@ export class OpenAIProvider {
             params.max_completion_tokens = request.max_tokens;
           } else {
             // For structured output, set a reasonable default to avoid length limit errors
-            // GPT-5 supports up to 128,000 output tokens
-            params.max_completion_tokens = 65536; // Use half of max to balance speed/completeness
+            // Music commands typically need 1000-3000 tokens for complete JSON
+            // Set to 8192 to be safe while keeping responses fast
+            params.max_completion_tokens = 8192; // Balanced for music command responses
           }
           
           // GPT-5's automatic router decides optimal settings by default
           // Only override if explicitly provided in the request
           if ((request as any).reasoning_effort !== undefined) {
             params.reasoning_effort = (request as any).reasoning_effort; // 'minimal', 'low', 'medium', 'high'
+          } else {
+            // Default to 'minimal' for music commands - fastest response times
+            // The docs say minimal "performs especially well in coding and instruction following scenarios"
+            params.reasoning_effort = 'minimal';
           }
-          // Otherwise, let GPT-5's router automatically choose based on query complexity
           
           if ((request as any).verbosity !== undefined) {
             params.verbosity = (request as any).verbosity; // 'low', 'medium', 'high'
+          } else {
+            // Default to 'low' verbosity for music commands - concise JSON responses
+            // This reduces token count and improves response time
+            params.verbosity = 'low';
           }
-          // Otherwise, let GPT-5 determine appropriate verbosity
           
           // GPT-5 only supports default temperature (1.0)
           // Only set if explicitly provided and not the default
@@ -231,21 +215,28 @@ export class OpenAIProvider {
             params.max_completion_tokens = request.max_tokens;
           } else {
             // For structured output, set a reasonable default to avoid length limit errors
-            // GPT-5 supports up to 128,000 output tokens
-            params.max_completion_tokens = 65536; // Use half of max to balance speed/completeness
+            // Music commands typically need 1000-3000 tokens for complete JSON
+            // Set to 8192 to be safe while keeping responses fast
+            params.max_completion_tokens = 8192; // Balanced for music command responses
           }
           
           // GPT-5's automatic router decides optimal settings by default
           // Only override if explicitly provided in the request
           if ((request as any).reasoning_effort !== undefined) {
             params.reasoning_effort = (request as any).reasoning_effort; // 'minimal', 'low', 'medium', 'high'
+          } else {
+            // Default to 'minimal' for music commands - fastest response times
+            // The docs say minimal "performs especially well in coding and instruction following scenarios"
+            params.reasoning_effort = 'minimal';
           }
-          // Otherwise, let GPT-5's router automatically choose based on query complexity
           
           if ((request as any).verbosity !== undefined) {
             params.verbosity = (request as any).verbosity; // 'low', 'medium', 'high'
+          } else {
+            // Default to 'low' verbosity for music commands - concise JSON responses
+            // This reduces token count and improves response time
+            params.verbosity = 'low';
           }
-          // Otherwise, let GPT-5 determine appropriate verbosity
           
           // GPT-5 only supports default temperature (1.0)
           // Only set if explicitly provided and not the default

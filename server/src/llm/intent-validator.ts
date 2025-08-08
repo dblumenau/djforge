@@ -38,6 +38,8 @@ import {
   VALID_SEARCH_TYPES,
   VALID_EXECUTION_ORDERS
 } from './intent-types';
+import { MusicCommandSchema } from './schemas/index';
+import { validateMusicCommand } from './validation/command-validator';
 
 // Validation result interface
 export interface ValidationResult {
@@ -67,43 +69,46 @@ export interface ValidationOptions {
 /**
  * Primary validation function - validates any intent response
  */
-export function validateIntent(
-  response: any,
+export async function validateIntent(
+  intent: any,
   options: ValidationOptions = { strict: false, normalize: true, logErrors: true }
-): ValidationResult {
-  const result: ValidationResult = {
-    isValid: false,
-    intentType: 'unknown',
+): Promise<IntentValidationResult> {
+  const { requireConfidence = true, minConfidence = 0.7 } = options as any;
+  
+  // Use the new validator
+  const validation = validateMusicCommand(intent);
+  
+  if (!validation.isValid) {
+    return {
+      isValid: false,
+      errors: [validation.error || 'Validation failed'],
+      warnings: validation.suggestions || []
+    };
+  }
+  
+  // Check confidence if required
+  if (requireConfidence && validation.data.confidence < minConfidence) {
+    return {
+      isValid: false,
+      errors: [`Confidence ${validation.data.confidence} is below minimum ${minConfidence}`],
+      warnings: []
+    };
+  }
+  
+  return {
+    isValid: true,
     errors: [],
-    warnings: []
+    warnings: [],
+    data: validation.data
   };
+}
 
-  // Basic null/undefined checks
-  if (!response || typeof response !== 'object') {
-    result.errors.push('Response must be a non-null object');
-    return logAndReturn(result, options);
-  }
-
-  // Determine intent type and validate accordingly
-  // Use more permissive checks to route to specific validators
-  if (looksLikeMusicCommandIntent(response)) {
-    return validateMusicCommandIntent(response, options);
-  } else if (looksLikeSpotifySearchEnhancement(response)) {
-    return validateSpotifySearchEnhancement(response, options);
-  } else if (looksLikeMusicKnowledgeResponse(response)) {
-    return validateMusicKnowledgeResponse(response, options);
-  } else if (looksLikeErrorResponse(response)) {
-    return validateErrorResponse(response, options);
-  } else if (looksLikeBatchCommand(response)) {
-    return validateBatchCommand(response, options);
-  } else if (looksLikePlaylistSelection(response)) {
-    return validatePlaylistSelection(response, options);
-  } else if (looksLikePlaylistSummarization(response)) {
-    return validatePlaylistSummarization(response, options);
-  } else {
-    result.errors.push('Unknown intent type - does not match any supported schema');
-    return logAndReturn(result, options);
-  }
+// Add new interface for the updated validation result
+export interface IntentValidationResult {
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
+  data?: any;
 }
 
 /**

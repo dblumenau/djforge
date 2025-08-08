@@ -6,6 +6,7 @@ import {
   GEMINI_SCHEMAS 
 } from '../gemini-schemas';
 import { validateIntent, ValidationOptions } from '../intent-validator';
+import { PromptAdapter } from '../prompts/adapter';
 
 export interface GeminiServiceOptions {
   apiKey: string;
@@ -49,56 +50,35 @@ export class GeminiService {
       // Check for explicit intent type in request
       let intentType = (request as any).intentType || this.determineIntentType(request);
       
-      // Determine schema based on request context
-      const schema = getSchemaForIntent(intentType);
-      let systemPrompt = getSystemPromptForIntent(intentType);
+      // Get user request from the last message
+      const userRequest = request.messages.find(m => m.role === 'user')?.content || '';
       
-      // Handle conversation context
+      // Parse context if provided
       let tasteProfile = '';
-      let currentlyPlayingTrack = '';
-      let conversationContext = '';
+      let conversationHistory = '';
       
       if (request.conversationContext) {
-        // Split the context into sections
-        const lines = request.conversationContext.split('\n').filter(line => line.trim());
-        
-        // Extract currently playing track
-        const currentlyPlayingLine = lines.find(line => line.includes('Currently playing:'));
-        if (currentlyPlayingLine) {
-          currentlyPlayingTrack = currentlyPlayingLine;
-        }
-        
-        // Extract taste profile
+        // Extract taste profile and history from context
         const tasteProfileMatch = request.conversationContext.match(/User's Music Taste Profile:[\s\S]*?(?=\n\n|$)/);
         if (tasteProfileMatch) {
           tasteProfile = tasteProfileMatch[0];
         }
         
-        // Extract conversation history (anything after "Recent music plays:")
         const conversationMatch = request.conversationContext.match(/Recent music plays:[\s\S]*$/);
         if (conversationMatch) {
-          conversationContext = conversationMatch[0];
+          conversationHistory = conversationMatch[0];
         }
-        
-        // Build the context sections for the system prompt
-        let contextSections = '';
-        
-        if (currentlyPlayingTrack) {
-          contextSections += `\n\n### Currently Playing Track ###\n${currentlyPlayingTrack}`;
-        } else {
-          contextSections += `\n\n### Currently Playing Track ###\nNo track currently playing`;
-        }
-        
-        if (tasteProfile) {
-          contextSections += `\n\n### User Taste Profile (Secondary Reference) ###\n${tasteProfile}`;
-        }
-        
-        if (conversationContext) {
-          contextSections += `\n\n### Conversation History ###\n${conversationContext}`;
-        }
-        
-        systemPrompt += contextSections;
       }
+      
+      // Use the prompt adapter for Gemini
+      const systemPrompt = PromptAdapter.forGemini(
+        userRequest,
+        tasteProfile,
+        conversationHistory
+      );
+      
+      // Determine schema based on request context (keep existing schema selection for now)
+      const schema = getSchemaForIntent(intentType);
       
       console.log(`🎯 Using @google/genai API with native responseSchema for intent: ${intentType}`);
       
