@@ -11,8 +11,14 @@ import { MusicAlternativesSchema, MusicAlternatives } from '../../schemas/v2/mus
 /**
  * Provides music alternatives when user rejects a song or asks for "something else"
  * 
- * This function generates contextual music alternatives based on what was rejected,
- * providing 4-5 options with emoji labels for the UI.
+ * This function acts as a pass-through for the AI's suggestions, allowing GPT-5
+ * to provide contextual alternatives that get displayed in the UI.
+ * 
+ * The AI generates the alternatives based on:
+ * - What was rejected (song, artist, genre, playlist)
+ * - Current conversation context
+ * - User's taste profile
+ * - Music knowledge and creativity
  * 
  * Example use cases:
  * - User: "I don't like that song, play something else" 
@@ -22,118 +28,35 @@ import { MusicAlternativesSchema, MusicAlternatives } from '../../schemas/v2/mus
 export async function provideMusicAlternatives(
   args: z.infer<typeof MusicAlternativesSchema>
 ): Promise<MusicAlternatives> {
-  // For the Responses API, we actually need to generate the alternatives
-  // based on what was rejected. This is a demonstration implementation.
+  // IMPORTANT: This function should NOT generate its own alternatives!
+  // The AI has already provided thoughtful, contextual alternatives.
+  // We simply validate and pass them through to the UI.
   
-  const { rejectedItem } = args;
+  const { responseMessage, rejectedItem, alternatives } = args;
   
-  // Generate contextual alternatives based on what was rejected
-  const alternatives: MusicAlternatives['alternatives'] = [];
-  
-  if (rejectedItem.type === 'artist') {
-    // If they rejected an artist, suggest different genres/moods
-    alternatives.push({
-      emoji: '⚡',
-      label: 'More upbeat',
-      value: 'upbeat',
-      description: 'Higher energy music with driving beats',
-      exampleQuery: 'play upbeat songs'
-    });
-    alternatives.push({
-      emoji: '🎸',
-      label: 'Rock/Alternative',
-      value: 'rock',
-      description: 'Guitar-driven rock and alternative music',
-      exampleQuery: 'play rock music'
-    });
-    alternatives.push({
-      emoji: '🎹',
-      label: 'Jazz/Soul',
-      value: 'jazz',
-      description: 'Smooth jazz, soul, and R&B vibes',
-      exampleQuery: 'play jazz music'
-    });
-    alternatives.push({
-      emoji: '🎵',
-      label: 'Indie/Folk',
-      value: 'indie',
-      description: 'Independent and folk music',
-      exampleQuery: 'play indie folk music'
-    });
-    alternatives.push({
-      emoji: '🕺',
-      label: 'Dance/Electronic',
-      value: 'electronic',
-      description: 'Electronic, dance, and EDM tracks',
-      exampleQuery: 'play electronic dance music'
-    });
-  } else if (rejectedItem.type === 'song') {
-    // If they rejected a song, suggest different moods/styles
-    alternatives.push({
-      emoji: '☀️',
-      label: 'Happier mood',
-      value: 'happy',
-      description: 'Uplifting, positive, feel-good music',
-      exampleQuery: 'play happy songs'
-    });
-    alternatives.push({
-      emoji: '🎺',
-      label: 'Different genre',
-      value: 'different_genre',
-      description: 'Try a completely different musical style',
-      exampleQuery: 'play something different'
-    });
-    alternatives.push({
-      emoji: '📼',
-      label: 'Throwback hits',
-      value: 'throwback',
-      description: 'Classic hits from past decades',
-      exampleQuery: 'play throwback hits'
-    });
-    alternatives.push({
-      emoji: '🎲',
-      label: 'Surprise me',
-      value: 'random',
-      description: 'Random discovery from different genres',
-      exampleQuery: 'surprise me with music'
-    });
-  } else {
-    // Generic alternatives for other rejection types
-    alternatives.push({
-      emoji: '⚡',
-      label: 'High energy',
-      value: 'high_energy',
-      description: 'Energetic, fast-paced music',
-      exampleQuery: 'play high energy music'
-    });
-    alternatives.push({
-      emoji: '🎤',
-      label: 'Vocal focus',
-      value: 'vocals',
-      description: 'Great vocals and singing',
-      exampleQuery: 'play songs with great vocals'
-    });
-    alternatives.push({
-      emoji: '🎹',
-      label: 'Instrumental',
-      value: 'instrumental',
-      description: 'Focus on instruments and melodies',
-      exampleQuery: 'play instrumental music'
-    });
-    alternatives.push({
-      emoji: '🎲',
-      label: 'Random discovery',
-      value: 'discovery',
-      description: 'Discover something completely new',
-      exampleQuery: 'play something I haven\'t heard'
-    });
+  // Validate we have the required number of alternatives (1-5)
+  if (!alternatives || alternatives.length === 0) {
+    throw new Error('AI must provide at least 1 alternative');
   }
   
-  // Ensure we have 4-5 alternatives (trim if we have more than 5)
+  if (alternatives.length > 5) {
+    console.log(`AI provided ${alternatives.length} alternatives, trimming to 5`);
+  }
+  
+  // Ensure we have at most 5 alternatives for UI consistency
   const finalAlternatives = alternatives.slice(0, 5);
   
+  // Log what the AI suggested for debugging
+  console.log('AI-generated alternatives:', {
+    responseMessage,
+    rejectedItem,
+    alternativeCount: finalAlternatives.length,
+    alternatives: finalAlternatives.map(alt => `${alt.emoji} ${alt.label}`)
+  });
+  
+  // Return exactly what the AI provided (validated and trimmed)
   return {
-    responseMessage: `What direction would you like to go instead of ${rejectedItem.name}?`,
+    responseMessage: responseMessage || `What would you like to hear instead of ${rejectedItem.name}?`,
     rejectedItem,
     alternatives: finalAlternatives
   };
