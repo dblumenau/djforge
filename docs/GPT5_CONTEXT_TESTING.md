@@ -99,46 +99,49 @@ The test endpoint at `/api/llm/test` allows you to test LLM interpretations dire
 ### Basic Commands
 
 ```bash
-# 1. Clear conversation (start fresh)
-curl -X DELETE http://localhost:4001/api/llm/test
+# 1. List all test series
+curl http://localhost:4001/api/llm/test
 
-# 2. Send a command (default model: gpt-5-nano)
-curl -X POST http://localhost:4001/api/llm/test \
+# 2. Clear a specific test series (start fresh)
+curl -X DELETE http://localhost:4001/api/llm/test/taylor_swift_test
+
+# 3. Send a command to a test series (default model: gpt-5-nano)
+curl -X POST http://localhost:4001/api/llm/test/taylor_swift_test \
   -H "Content-Type: application/json" \
   -d '{"command": "tell me about taylor swift"}'
 
-# 3. Send follow-up (tests context)
-curl -X POST http://localhost:4001/api/llm/test \
+# 4. Send follow-up (tests context)
+curl -X POST http://localhost:4001/api/llm/test/taylor_swift_test \
   -H "Content-Type: application/json" \
   -d '{"command": "play some of her stuff"}'
 
-# 4. View conversation history
-curl http://localhost:4001/api/llm/test
+# 5. View conversation history for a series
+curl http://localhost:4001/api/llm/test/taylor_swift_test
 
-# 5. Check raw conversation file
-cat /tmp/llm-test-conversation.json | jq
+# 6. Check raw conversation file
+cat /tmp/llm-test-taylor_swift_test.json | jq
 ```
 
 ### Testing Different Models
 
 ```bash
 # Test with GPT-5 nano (default)
-curl -X POST http://localhost:4001/api/llm/test \
+curl -X POST http://localhost:4001/api/llm/test/gpt5_test \
   -H "Content-Type: application/json" \
   -d '{"command": "play taylor swift", "model": "gpt-5-nano"}'
 
 # Test with GPT-5 (full)
-curl -X POST http://localhost:4001/api/llm/test \
+curl -X POST http://localhost:4001/api/llm/test/gpt5_test \
   -H "Content-Type: application/json" \
   -d '{"command": "play taylor swift", "model": "gpt-5"}'
 
 # Test with GPT-4o
-curl -X POST http://localhost:4001/api/llm/test \
+curl -X POST http://localhost:4001/api/llm/test/gpt4_test \
   -H "Content-Type: application/json" \
   -d '{"command": "play taylor swift", "model": "openai/gpt-4o"}'
 
 # Test with Gemini
-curl -X POST http://localhost:4001/api/llm/test \
+curl -X POST http://localhost:4001/api/llm/test/gemini_test \
   -H "Content-Type: application/json" \
   -d '{"command": "play taylor swift", "model": "gemini-2.5-flash"}'
 ```
@@ -147,22 +150,22 @@ curl -X POST http://localhost:4001/api/llm/test \
 
 ```bash
 # Pretty print responses with jq
-curl -X POST http://localhost:4001/api/llm/test \
+curl -X POST http://localhost:4001/api/llm/test/music_test \
   -H "Content-Type: application/json" \
   -d '{"command": "play some music"}' | jq
 
 # Extract just the interpretation
-curl -X POST http://localhost:4001/api/llm/test \
+curl -X POST http://localhost:4001/api/llm/test/music_test \
   -H "Content-Type: application/json" \
   -d '{"command": "play anti-hero"}' | jq '.interpretation'
 
 # Check intent and confidence
-curl -X POST http://localhost:4001/api/llm/test \
+curl -X POST http://localhost:4001/api/llm/test/music_test \
   -H "Content-Type: application/json" \
   -d '{"command": "queue something upbeat"}' | jq '.interpretation | {intent, confidence}'
 
 # See what songs were selected
-curl -X POST http://localhost:4001/api/llm/test \
+curl -X POST http://localhost:4001/api/llm/test/music_test \
   -H "Content-Type: application/json" \
   -d '{"command": "play some taylor swift"}' | jq '.interpretation.songs'
 ```
@@ -172,39 +175,42 @@ curl -X POST http://localhost:4001/api/llm/test \
 ```bash
 # Test scenario: "tell me about X" -> "play some of her stuff"
 # Clear first
-curl -X DELETE http://localhost:4001/api/llm/test
+curl -X DELETE http://localhost:4001/api/llm/test/context_test
 
 # Step 1: Ask about artist
-curl -X POST http://localhost:4001/api/llm/test \
+curl -X POST http://localhost:4001/api/llm/test/context_test \
   -H "Content-Type: application/json" \
   -d '{"command": "tell me about taylor swift"}' | jq '.response.message'
 
 # Step 2: Test contextual reference (should understand "her" = Taylor Swift)
-curl -X POST http://localhost:4001/api/llm/test \
+curl -X POST http://localhost:4001/api/llm/test/context_test \
   -H "Content-Type: application/json" \
   -d '{"command": "play some of her stuff"}' | jq '.interpretation.songs'
 
 # Check if it understood the context
-curl http://localhost:4001/api/llm/test | jq '.conversation.history[-1].interpretation.songs'
+curl http://localhost:4001/api/llm/test/context_test | jq '.conversation.history[-1].interpretation.songs'
 ```
 
 ### Debugging Commands
 
 ```bash
-# See the full conversation structure
-cat /tmp/llm-test-conversation.json | jq
+# See the full conversation structure for a series
+cat /tmp/llm-test-context_test.json | jq
 
 # Check last interpretation
-cat /tmp/llm-test-conversation.json | jq '.conversationHistory[-1].interpretation'
+cat /tmp/llm-test-context_test.json | jq '.conversationHistory[-1].interpretation'
 
 # Count conversation turns
-cat /tmp/llm-test-conversation.json | jq '.conversationHistory | length'
+cat /tmp/llm-test-context_test.json | jq '.conversationHistory | length'
 
 # See all commands sent
-cat /tmp/llm-test-conversation.json | jq '.conversationHistory[].command'
+cat /tmp/llm-test-context_test.json | jq '.conversationHistory[].command'
 
 # Check all intents detected
-cat /tmp/llm-test-conversation.json | jq '.conversationHistory[].interpretation.intent'
+cat /tmp/llm-test-context_test.json | jq '.conversationHistory[].interpretation.intent'
+
+# List all test series files
+ls -la /tmp/llm-test-*.json
 ```
 
 ### Advanced Testing
@@ -212,21 +218,22 @@ cat /tmp/llm-test-conversation.json | jq '.conversationHistory[].interpretation.
 ```bash
 # Test multi-turn conversation in one script
 #!/bin/bash
+SERIES="advanced_test"
 echo "Clearing conversation..."
-curl -X DELETE http://localhost:4001/api/llm/test
+curl -X DELETE http://localhost:4001/api/llm/test/$SERIES
 
 echo -e "\n1. Asking about Taylor Swift..."
-curl -X POST http://localhost:4001/api/llm/test \
+curl -X POST http://localhost:4001/api/llm/test/$SERIES \
   -H "Content-Type: application/json" \
   -d '{"command": "who is taylor swift"}' | jq '.interpretation.intent'
 
 echo -e "\n2. Testing contextual reference..."
-curl -X POST http://localhost:4001/api/llm/test \
+curl -X POST http://localhost:4001/api/llm/test/$SERIES \
   -H "Content-Type: application/json" \
   -d '{"command": "play some of her songs"}' | jq '.interpretation.songs[].artist' | uniq
 
 echo -e "\n3. Testing rejection..."
-curl -X POST http://localhost:4001/api/llm/test \
+curl -X POST http://localhost:4001/api/llm/test/$SERIES \
   -H "Content-Type: application/json" \
   -d '{"command": "no not those, something else"}' | jq '.interpretation'
 ```
@@ -234,8 +241,11 @@ curl -X POST http://localhost:4001/api/llm/test \
 ### Watch Mode (for continuous testing)
 
 ```bash
-# Watch the conversation file for changes
-watch -n 1 'cat /tmp/llm-test-conversation.json | jq ".conversationHistory | length"'
+# Watch a specific test series file for changes
+watch -n 1 'cat /tmp/llm-test-context_test.json | jq ".conversationHistory | length"'
+
+# Watch all test series
+watch -n 1 'ls -la /tmp/llm-test-*.json | wc -l'
 
 # In another terminal, send commands and watch the count increase
 ```
@@ -256,9 +266,10 @@ watch -n 1 'cat /tmp/llm-test-conversation.json | jq ".conversationHistory | len
 
 ```bash
 # This should work but doesn't
-curl -X DELETE http://localhost:4001/api/llm/test
-curl -X POST http://localhost:4001/api/llm/test -d '{"command": "tell me about taylor swift"}' 
-curl -X POST http://localhost:4001/api/llm/test -d '{"command": "play some of her stuff"}' | jq '.interpretation.songs'
+SERIES="taylor_context_test"
+curl -X DELETE http://localhost:4001/api/llm/test/$SERIES
+curl -X POST http://localhost:4001/api/llm/test/$SERIES -d '{"command": "tell me about taylor swift"}' 
+curl -X POST http://localhost:4001/api/llm/test/$SERIES -d '{"command": "play some of her stuff"}' | jq '.interpretation.songs'
 
 # Expected: All songs by Taylor Swift
 # Actual: Random female artists (Adele, Billie Eilish, Lorde, etc.)
@@ -284,7 +295,7 @@ The test endpoint will be available at `http://localhost:4001/api/llm/test`
 
 ## Key Files to Review
 
-- **Conversation storage**: `/tmp/llm-test-conversation.json`
+- **Conversation storage**: `/tmp/llm-test-{seriesId}.json` (e.g., `/tmp/llm-test-taylor_context_test.json`)
 - **Test route code**: `/server/src/routes/llm-test.ts`
 - **Main interpretation logic**: `/server/src/routes/simple-llm-interpreter.ts`
 - **OpenAI provider**: `/server/src/llm/providers/OpenAIProvider.ts`

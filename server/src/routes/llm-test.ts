@@ -2,8 +2,20 @@ import { Router } from 'express';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { interpretCommand } from './simple-llm-interpreter';
+import { ConversationManager, getConversationManager } from '../services/ConversationManager';
+import { ConversationEntry } from '../utils/redisConversation';
 
 export const llmTestRouter = Router();
+
+// Initialize conversation manager when Redis is available
+let conversationManager: ConversationManager | null = null;
+
+export function setRedisClientForTest(client: any) {
+  if (client) {
+    conversationManager = getConversationManager(client);
+    console.log('✅ Test endpoint ConversationManager initialized with Redis');
+  }
+}
 
 // Test conversation storage interface
 interface TestConversation {
@@ -321,6 +333,25 @@ llmTestRouter.post('/:seriesId', async (req, res) => {
     // Use provided model or default
     const requestModel = model || 'gpt-5-nano';
     conversation.model = requestModel;
+    
+    // Store conversation history in Redis if available
+    const sessionId = `llm-test-session-${seriesId}`;
+    if (conversationManager && conversation.conversationHistory.length > 0) {
+      // Clear existing history for this session
+      await conversationManager.clearConversationHistory(sessionId);
+      
+      // Add each previous conversation entry to Redis
+      for (const entry of conversation.conversationHistory) {
+        const redisEntry: ConversationEntry = {
+          command: entry.command,
+          interpretation: entry.interpretation,
+          response: entry.response,
+          timestamp: entry.timestamp
+        };
+        await conversationManager.addConversationEntry(sessionId, redisEntry);
+      }
+      console.log(`📝 Loaded ${conversation.conversationHistory.length} entries into Redis for session ${sessionId}`);
+    }
 
     // Call the actual interpretCommand function
     const interpretation = await interpretCommand(
@@ -328,7 +359,7 @@ llmTestRouter.post('/:seriesId', async (req, res) => {
       conversation.userId,
       requestModel,
       '', // Empty music context for test
-      `llm-test-session-${seriesId}`
+      sessionId
     );
 
     // Generate response based on interpretation
@@ -346,6 +377,18 @@ llmTestRouter.post('/:seriesId', async (req, res) => {
 
     // Save updated conversation
     await saveConversation(seriesId, conversation);
+    
+    // Also save to Redis for next request
+    if (conversationManager) {
+      const redisEntry: ConversationEntry = {
+        command,
+        interpretation,
+        response,
+        timestamp: conversationEntry.timestamp
+      };
+      await conversationManager.addConversationEntry(sessionId, redisEntry);
+      console.log(`✅ Saved new entry to Redis for session ${sessionId}`);
+    }
 
     // Return interpretation and response
     res.json({
@@ -396,6 +439,13 @@ llmTestRouter.delete('/:seriesId', async (req, res) => {
 
     // Save empty conversation (or delete file)
     await saveConversation(seriesId, emptyConversation);
+    
+    // Also clear Redis history
+    const sessionId = `llm-test-session-${seriesId}`;
+    if (conversationManager) {
+      await conversationManager.clearConversationHistory(sessionId);
+      console.log(`🗑️ Cleared Redis history for session ${sessionId}`);
+    }
 
     res.json({
       success: true,

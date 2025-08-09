@@ -32,7 +32,7 @@ import { webPlayerRouter } from './routes/web-player';
 import { websocketRouter } from './routes/websocket';
 import playlistSearchRouter from './routes/playlist-search';
 import playlistDiscoveryRouter, { setRedisClient as setPlaylistDiscoveryRedisClient, setLoggingService as setPlaylistDiscoveryLoggingService } from './routes/playlist-discovery';
-import llmTestRouter from './routes/llm-test';
+import llmTestRouter, { setRedisClientForTest } from './routes/llm-test';
 import { overrideConsole, logger } from './utils/logger';
 import { setSentryUserContext } from './middleware/sentry-auth';
 import { initializeWebSocket, getWebSocketService } from './services/websocket.service';
@@ -111,6 +111,9 @@ async function initializeSessionStore() {
       // Initialize logging service for playlist discovery
       const playlistDiscoveryLoggingService = new LLMLoggingService(redisClient);
       setPlaylistDiscoveryLoggingService(playlistDiscoveryLoggingService);
+      
+      // Initialize Redis client for test endpoint
+      setRedisClientForTest(redisClient);
     } else {
       throw new Error('Redis health check failed');
     }
