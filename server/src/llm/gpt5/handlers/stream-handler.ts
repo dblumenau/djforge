@@ -56,7 +56,12 @@ export class StreamHandler {
       }
       
       // Collect function calls from completion event
-      if ('response' in event && event.response?.output) {
+      if ('response' in event && event.response) {
+        // Try to get response ID from completion event
+        if (event.response.id) {
+          responseId = event.response.id;
+        }
+        
         const output = event.response.output;
         if (Array.isArray(output)) {
           output.forEach((item: any) => {
@@ -107,6 +112,7 @@ export class StreamHandler {
       });
       
       await saveSessionFn();
+      console.log(chalk.green(`\n✓ Session saved with ID: ${responseId}`));
     }
   }
 

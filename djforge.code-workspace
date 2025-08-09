@@ -1,0 +1,665 @@
+{
+  "folders": [
+    {
+      "name": "🎵 DJ Forge (Root)",
+      "path": "."
+    },
+     {
+      "name": "⚡ Server",
+      "path": "./server"
+    },
+    {
+      "name": "🎨 Client",
+      "path": "./client"
+    },
+    {
+      "name": "📚 Documentation",
+      "path": "./docs"
+    }
+]
+}
+//    
+//      {
+//       "name": "🤖 Claude User Config",
+//       "path": "/Users/david/.claude"
+//     }
+//   ],
+//   "settings": {
+//     // Editor Configuration
+//     "editor.formatOnSave": true,
+//     "editor.codeActionsOnSave": {
+//       "source.fixAll.eslint": "explicit",
+//       "source.organizeImports": "explicit"
+//     },
+//     "editor.rulers": [
+//       100,
+//       120
+//     ],
+//     "editor.wordWrap": "on",
+//     "editor.minimap.enabled": true,
+//     "editor.bracketPairColorization.enabled": true,
+//     "editor.guides.bracketPairs": true,
+//     "editor.stickyScroll.enabled": true,
+//     "editor.inlineSuggest.enabled": true,
+//     // TypeScript Configuration
+//     "typescript.tsdk": "node_modules/typescript/lib",
+//     "typescript.enablePromptUseWorkspaceTsdk": true,
+//     "typescript.preferences.includePackageJsonAutoImports": "on",
+//     "typescript.preferences.importModuleSpecifier": "relative",
+//     "typescript.updateImportsOnFileMove.enabled": "always",
+//     "typescript.suggest.autoImports": true,
+//     "typescript.format.enable": true,
+//     "typescript.validate.enable": true,
+//     // ESLint Configuration
+//     "eslint.validate": [
+//       "javascript",
+//       "javascriptreact",
+//       "typescript",
+//       "typescriptreact"
+//     ],
+//     "eslint.workingDirectories": [
+//       "./client",
+//       "./server"
+//     ],
+//     // Prettier Configuration
+//     "prettier.enable": true,
+//     "prettier.singleQuote": false,
+//     "prettier.semi": true,
+//     "prettier.trailingComma": "es5",
+//     "prettier.printWidth": 100,
+//     // Tailwind CSS
+//     "tailwindCSS.experimental.classRegex": [
+//       [
+//         "clsx\\(([^)]*)\\)",
+//         "(?:'|\"|`)([^']*)(?:'|\"|`)"
+//       ],
+//       [
+//         "cva\\(([^)]*)\\)",
+//         "[\"'`]([^\"'`]*).*?[\"'`]"
+//       ],
+//       [
+//         "cn\\(([^)]*)\\)",
+//         "(?:'|\"|`)([^']*)(?:'|\"|`)"
+//       ]
+//     ],
+//     "tailwindCSS.includeLanguages": {
+//       "typescript": "javascript",
+//       "typescriptreact": "javascript"
+//     },
+//     "tailwindCSS.files.exclude": [
+//       "**/.git/**",
+//       "**/node_modules/**",
+//       "**/.hg/**",
+//       "**/.svn/**"
+//     ],
+//     // File Associations
+//     "files.associations": {
+//       "*.css": "tailwindcss",
+//       ".env*": "dotenv",
+//       "CLAUDE.md": "markdown"
+//     },
+//     // File Exclusions
+//     "files.exclude": {
+//       "**/.git": true,
+//       "**/.DS_Store": true,
+//       "**/node_modules": false,
+//       "**/dist": false,
+//       "**/build": false,
+//       "**/.next": true,
+//       "**/.turbo": true,
+//       "**/*.log": true
+//     },
+//     // Search Exclusions
+//     "search.exclude": {
+//       "**/node_modules": true,
+//       "**/dist": true,
+//       "**/build": true,
+//       "**/.git": true,
+//       "**/coverage": true,
+//       "**/.turbo": true,
+//       "package-lock.json": true,
+//       "pnpm-lock.yaml": true
+//     },
+//     // Git Configuration
+//     "git.ignoreLimitWarning": true,
+//     "git.autofetch": true,
+//     "git.confirmSync": false,
+//     "git.enableSmartCommit": true,
+//     // Terminal Configuration
+//     "terminal.integrated.defaultProfile.osx": "zsh",
+//     "terminal.integrated.fontSize": 13,
+//     "terminal.integrated.fontFamily": "MesloLGS NF, Menlo, Monaco, 'Courier New', monospace",
+//     // Auto Save
+//     "files.autoSave": "onFocusChange",
+//     "files.autoSaveDelay": 1000,
+//     // Emmet for React
+//     "emmet.includeLanguages": {
+//       "javascript": "javascriptreact",
+//       "typescript": "typescriptreact"
+//     },
+//     "emmet.triggerExpansionOnTab": true,
+//     // Path Intellisense
+//     "path-intellisense.mappings": {
+//       "@": "${workspaceFolder}/client/src",
+//       "@server": "${workspaceFolder}/server/src",
+//       "@shared": "${workspaceFolder}/shared"
+//     },
+//     // Todo Tree Configuration
+//     "todo-tree.highlights.enabled": true,
+//     "todo-tree.highlights.defaultHighlight": {
+//       "icon": "alert",
+//       "type": "text",
+//       "foreground": "#FF8C00",
+//       "background": "#FFD700",
+//       "opacity": 50,
+//       "iconColour": "#FF8C00"
+//     },
+//     "todo-tree.general.tags": [
+//       "TODO",
+//       "FIXME",
+//       "XXX",
+//       "HACK",
+//       "BUG",
+//       "NOTE",
+//       "IMPORTANT",
+//       "CLAUDE",
+//       "REFACTOR",
+//       "OPTIMIZE"
+//     ],
+//     // Better Comments
+//     "better-comments.tags": [
+//       {
+//         "tag": "!",
+//         "color": "#FF2D00",
+//         "strikethrough": false,
+//         "backgroundColor": "transparent"
+//       },
+//       {
+//         "tag": "?",
+//         "color": "#3498DB",
+//         "strikethrough": false,
+//         "backgroundColor": "transparent"
+//       },
+//       {
+//         "tag": "//",
+//         "color": "#474747",
+//         "strikethrough": true,
+//         "backgroundColor": "transparent"
+//       },
+//       {
+//         "tag": "TODO",
+//         "color": "#FF8C00",
+//         "strikethrough": false,
+//         "backgroundColor": "transparent"
+//       },
+//       {
+//         "tag": "CLAUDE",
+//         "color": "#98C379",
+//         "strikethrough": false,
+//         "backgroundColor": "transparent"
+//       }
+//     ],
+//     // REST Client
+//     "rest-client.environmentVariables": {
+//       "local": {
+//         "baseUrl": "http://127.0.0.1:4001",
+//         "token": ""
+//       },
+//       "production": {
+//         "baseUrl": "https://api.djforge.app",
+//         "token": ""
+//       }
+//     },
+//     // Coverage Gutters
+//     "coverage-gutters.showLineCoverage": true,
+//     "coverage-gutters.showRulerCoverage": true,
+//     // npm Scripts
+//     "npm.enableRunFromFolder": true,
+//     "npm.scriptExplorerAction": "run",
+//     // Thunder Client
+//     "thunder-client.saveToWorkspace": true,
+//     "thunder-client.workspaceRelativePath": ".thunder-client",
+//     // Project Manager
+//     "projectManager.git.baseFolders": [
+//       "$home/Sites"
+//     ],
+//     // Live Share
+//     "liveshare.presence": true,
+//     "liveshare.showInStatusBar": "whileCollaborating",
+//     // Spell Checker
+//     "cSpell.words": [
+//       "djforge",
+//       "spotify",
+//       "gemini",
+//       "openrouter",
+//       "applescript",
+//       "osascript",
+//       "websocket",
+//       "socketio",
+//       "tailwindcss",
+//       "vite",
+//       "vitest",
+//       "clsx",
+//       "lucide",
+//       "zustand",
+//       "tanstack",
+//       "trpc",
+//       "superjson",
+//       "zod",
+//       "prisma",
+//       "nextauth",
+//       "vercel",
+//       "playwright",
+//       "msw",
+//       "storybook",
+//       "chromatic",
+//       "commitlint",
+//       "husky",
+//       "CLAUDE",
+//       "flyio",
+//       "redis",
+//       "bullmq",
+//       "pino",
+//       "fastify",
+//       "upsert",
+//       "dto",
+//       "OPENAI",
+//       "GEMINI",
+//       "OPENROUTER",
+//       "websockets",
+//       "unauth",
+//       "reauth",
+//       "prefetch",
+//       "debounce",
+//       "throttle",
+//       "memoize"
+//     ],
+//     // Material Icon Theme
+//     "material-icon-theme.folders.associations": {
+//       "llm": "robot",
+//       "spotify": "audio",
+//       "skeletons": "animation",
+//       "dashboard": "analytics"
+//     },
+//     // Peacock (Project Color)
+//     "peacock.color": "#1DB954",
+//     // GitLens
+//     "gitlens.hovers.currentLine.over": "line",
+//     "gitlens.codeLens.enabled": false,
+//     "gitlens.currentLine.enabled": true
+//   },
+//   "extensions": {
+//     "recommendations": [
+//       // Core Development
+//       "dbaeumer.vscode-eslint",
+//       "esbenp.prettier-vscode",
+//       "ms-vscode.vscode-typescript-next",
+//       // React & Frontend
+//       "dsznajder.es7-react-js-snippets",
+//       "burkeholland.simple-react-snippets",
+//       "bradlc.vscode-tailwindcss",
+//       "styled-components.vscode-styled-components",
+//       // Node.js & Backend
+//       "christian-kohler.npm-intellisense",
+//       "eg2.vscode-npm-script",
+//       "jasonnutter.search-node-modules",
+//       // Productivity
+//       "christian-kohler.path-intellisense",
+//       "aaron-bond.better-comments",
+//       "gruntfuggly.todo-tree",
+//       "streetsidesoftware.code-spell-checker",
+//       "wayou.vscode-todo-highlight",
+//       // Git & Version Control
+//       "eamodio.gitlens",
+//       "donjayamanne.githistory",
+//       "mhutchie.git-graph",
+//       // Testing & Debugging
+//       "Orta.vscode-jest",
+//       "ms-vscode.vscode-typescript-tslint-plugin",
+//       "ryanluker.vscode-coverage-gutters",
+//       // API Development
+//       "humao.rest-client",
+//       "rangav.vscode-thunder-client",
+//       "42Crunch.vscode-openapi",
+//       // Docker & DevOps
+//       "ms-azuretools.vscode-docker",
+//       "ms-vscode-remote.remote-containers",
+//       "redhat.vscode-yaml",
+//       // Database
+//       "mtxr.sqltools",
+//       "redis.redis-for-vscode",
+//       // AI & Copilot
+//       "GitHub.copilot",
+//       "GitHub.copilot-chat",
+//       // Theme & Icons
+//       "PKief.material-icon-theme",
+//       "zhuangtongfa.material-theme",
+//       "johnpapa.vscode-peacock",
+//       // Markdown
+//       "yzhang.markdown-all-in-one",
+//       "DavidAnson.vscode-markdownlint",
+//       "bierner.markdown-mermaid",
+//       // Environment
+//       "mikestead.dotenv",
+//       "IronGeek.vscode-env",
+//       // Formatting & Linting
+//       "editorconfig.editorconfig",
+//       "foxundermoon.shell-format",
+//       // Live Collaboration
+//       "MS-vsliveshare.vsliveshare",
+//       // Code Quality
+//       "SonarSource.sonarlint-vscode",
+//       "mechatroner.rainbow-csv",
+//       // Utilities
+//       "sleistner.vscode-fileutils",
+//       "alexcvzz.vscode-sqlite",
+//       "wix.vscode-import-cost",
+//       "kisstkondoros.vscode-codemetrics",
+//       "WallabyJs.console-ninja"
+//     ]
+//   },
+//   "tasks": {
+//     "version": "2.0.0",
+//     "tasks": [
+//       {
+//         "label": "🚀 Dev: Full Stack",
+//         "type": "npm",
+//         "script": "dev",
+//         "path": ".",
+//         "problemMatcher": [],
+//         "isBackground": true,
+//         "presentation": {
+//           "reveal": "always",
+//           "panel": "new",
+//           "group": "development"
+//         },
+//         "group": {
+//           "kind": "build",
+//           "isDefault": true
+//         }
+//       },
+//       {
+//         "label": "⚡ Dev: Server Only",
+//         "type": "npm",
+//         "script": "dev",
+//         "path": "server/",
+//         "problemMatcher": [
+//           "$tsc-watch"
+//         ],
+//         "isBackground": true,
+//         "presentation": {
+//           "reveal": "always",
+//           "panel": "new",
+//           "group": "development"
+//         }
+//       },
+//       {
+//         "label": "🎨 Dev: Client Only",
+//         "type": "npm",
+//         "script": "dev",
+//         "path": "client/",
+//         "problemMatcher": [],
+//         "isBackground": true,
+//         "presentation": {
+//           "reveal": "always",
+//           "panel": "new",
+//           "group": "development"
+//         }
+//       },
+//       {
+//         "label": "📦 Install: All Dependencies",
+//         "type": "shell",
+//         "command": "npm run install:all",
+//         "problemMatcher": [],
+//         "presentation": {
+//           "reveal": "always",
+//           "panel": "new"
+//         }
+//       },
+//       {
+//         "label": "🔨 Build: Full Stack",
+//         "type": "npm",
+//         "script": "build",
+//         "path": ".",
+//         "group": "build",
+//         "problemMatcher": [
+//           "$tsc"
+//         ],
+//         "presentation": {
+//           "reveal": "always",
+//           "panel": "new"
+//         }
+//       },
+//       {
+//         "label": "✅ Type Check: All",
+//         "type": "npm",
+//         "script": "type-check",
+//         "path": ".",
+//         "problemMatcher": [
+//           "$tsc"
+//         ],
+//         "presentation": {
+//           "reveal": "always",
+//           "panel": "new"
+//         }
+//       },
+//       {
+//         "label": "🧪 Test: All",
+//         "type": "npm",
+//         "script": "test",
+//         "path": ".",
+//         "group": "test",
+//         "problemMatcher": [],
+//         "presentation": {
+//           "reveal": "always",
+//           "panel": "new"
+//         }
+//       },
+//       {
+//         "label": "🐳 Docker: Up",
+//         "type": "shell",
+//         "command": "docker-compose up",
+//         "problemMatcher": [],
+//         "presentation": {
+//           "reveal": "always",
+//           "panel": "new"
+//         }
+//       },
+//       {
+//         "label": "🐳 Docker: Down",
+//         "type": "shell",
+//         "command": "docker-compose down",
+//         "problemMatcher": [],
+//         "presentation": {
+//           "reveal": "always",
+//           "panel": "new"
+//         }
+//       },
+//       {
+//         "label": "🔄 Redis: Start",
+//         "type": "shell",
+//         "command": "redis-server",
+//         "problemMatcher": [],
+//         "isBackground": true,
+//         "presentation": {
+//           "reveal": "always",
+//           "panel": "new"
+//         }
+//       },
+//       {
+//         "label": "🚢 Deploy: Fly.io",
+//         "type": "shell",
+//         "command": "fly deploy",
+//         "problemMatcher": [],
+//         "presentation": {
+//           "reveal": "always",
+//           "panel": "new"
+//         }
+//       },
+//       {
+//         "label": "📊 Logs: Fly.io",
+//         "type": "shell",
+//         "command": "fly logs",
+//         "problemMatcher": [],
+//         "isBackground": true,
+//         "presentation": {
+//           "reveal": "always",
+//           "panel": "new"
+//         }
+//       },
+//       {
+//         "label": "🧹 Clean: All",
+//         "type": "shell",
+//         "command": "rm -rf node_modules client/node_modules server/node_modules client/dist server/dist",
+//         "problemMatcher": [],
+//         "presentation": {
+//           "reveal": "always",
+//           "panel": "new"
+//         }
+//       },
+//       {
+//         "label": "🔍 Lint: All",
+//         "type": "shell",
+//         "command": "cd server && npm run lint && cd ../client && npm run lint",
+//         "problemMatcher": [
+//           "$eslint-stylish"
+//         ],
+//         "presentation": {
+//           "reveal": "always",
+//           "panel": "new"
+//         }
+//       }
+//     ]
+//   },
+//   "launch": {
+//     "version": "0.2.0",
+//     "configurations": [
+//       {
+//         "name": "🐛 Debug: Server",
+//         "type": "node",
+//         "request": "launch",
+//         "runtimeExecutable": "npm",
+//         "runtimeArgs": [
+//           "run",
+//           "dev"
+//         ],
+//         "cwd": "${workspaceFolder}/server",
+//         "console": "integratedTerminal",
+//         "internalConsoleOptions": "neverOpen",
+//         "env": {
+//           "NODE_ENV": "development",
+//           "DEBUG": "*"
+//         }
+//       },
+//       {
+//         "name": "🐛 Debug: Client",
+//         "type": "chrome",
+//         "request": "launch",
+//         "url": "http://localhost:5173",
+//         "webRoot": "${workspaceFolder}/client/src",
+//         "sourceMaps": true,
+//         "sourceMapPathOverrides": {
+//           "webpack:///src/*": "${webRoot}/*"
+//         }
+//       },
+//       {
+//         "name": "🧪 Debug: Jest Tests",
+//         "type": "node",
+//         "request": "launch",
+//         "runtimeExecutable": "npm",
+//         "runtimeArgs": [
+//           "test",
+//           "--",
+//           "--runInBand",
+//           "--no-cache",
+//           "--watchAll=false"
+//         ],
+//         "cwd": "${workspaceFolder}",
+//         "console": "integratedTerminal",
+//         "internalConsoleOptions": "neverOpen",
+//         "protocol": "inspector"
+//       },
+//       {
+//         "name": "🚀 Full Stack",
+//         "configurations": [
+//           "Debug: Server",
+//           "Debug: Client"
+//         ],
+//         "stopAll": true
+//       }
+//     ]
+//   },
+//   "snippets": {
+//     "DJ Forge Custom Snippets": {
+//       "LLM Handler": {
+//         "prefix": "llmhandler",
+//         "body": [
+//           "export const handle${1:CommandName} = async (",
+//           "  params: ${2:ParamType},",
+//           "  context: CommandContext",
+//           "): Promise<CommandResponse> => {",
+//           "  try {",
+//           "    // Implementation",
+//           "    $0",
+//           "    return {",
+//           "      success: true,",
+//           "      action: '${3:action}',",
+//           "      confidence: 0.9,",
+//           "    };",
+//           "  } catch (error) {",
+//           "    logger.error('Error in ${1:CommandName}:', error);",
+//           "    throw error;",
+//           "  }",
+//           "};"
+//         ],
+//         "description": "Create an LLM command handler"
+//       },
+//       "React Component": {
+//         "prefix": "djfc",
+//         "body": [
+//           "import React from 'react';",
+//           "import { cn } from '@/utils/cn';",
+//           "",
+//           "interface ${1:ComponentName}Props {",
+//           "  className?: string;",
+//           "  $2",
+//           "}",
+//           "",
+//           "export const ${1:ComponentName}: React.FC<${1:ComponentName}Props> = ({",
+//           "  className,",
+//           "  $3",
+//           "}) => {",
+//           "  return (",
+//           "    <div className={cn('', className)}>",
+//           "      $0",
+//           "    </div>",
+//           "  );",
+//           "};"
+//         ],
+//         "description": "Create a React component with TypeScript"
+//       },
+//       "API Route": {
+//         "prefix": "apiroute",
+//         "body": [
+//           "import { Router } from 'express';",
+//           "import { authenticate } from '../middleware/auth';",
+//           "import { asyncHandler } from '../utils/asyncHandler';",
+//           "",
+//           "const router = Router();",
+//           "",
+//           "router.${1|get,post,put,delete,patch|}(",
+//           "  '/${2:path}',",
+//           "  authenticate,",
+//           "  asyncHandler(async (req, res) => {",
+//           "    $0",
+//           "    res.json({ success: true });",
+//           "  })",
+//           ");",
+//           "",
+//           "export default router;"
+//         ],
+//         "description": "Create an Express API route"
+//       }
+//     }
+//   }
+// }
