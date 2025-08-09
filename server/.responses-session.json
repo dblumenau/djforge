@@ -1,0 +1,46 @@
+{
+  "lastResponseId": "chatcmpl-C2ZUTnPLN1WGKmOn0XlpGW69iPzxr",
+  "history": [
+    {
+      "role": "user",
+      "content": "hello",
+      "timestamp": "2025-08-09T08:43:25.477Z"
+    },
+    {
+      "role": "assistant",
+      "content": "Hello! How can I assist you today?",
+      "timestamp": "2025-08-09T08:43:25.478Z"
+    },
+    {
+      "role": "user",
+      "content": "Hello",
+      "timestamp": "2025-08-09T08:44:40.032Z"
+    },
+    {
+      "role": "assistant",
+      "content": "Hi again — how can I help you today?",
+      "timestamp": "2025-08-09T08:44:40.033Z"
+    },
+    {
+      "role": "user",
+      "content": "Do you remember what I just said?",
+      "timestamp": "2025-08-09T08:44:59.057Z"
+    },
+    {
+      "role": "assistant",
+      "content": "Yes — you just said “Hello.” I can remember messages from this current conversation, but I don’t retain them after the chat ends. Anything you want to follow up on?",
+      "timestamp": "2025-08-09T08:44:59.057Z"
+    },
+    {
+      "role": "user",
+      "content": "What was the first thing I said?",
+      "timestamp": "2025-08-09T08:45:18.797Z"
+    },
+    {
+      "role": "assistant",
+      "content": "The first thing you said was \"Hello.\"",
+      "timestamp": "2025-08-09T08:45:18.797Z"
+    }
+  ],
+  "timestamp": "2025-08-09T08:45:18.797Z"
+}
