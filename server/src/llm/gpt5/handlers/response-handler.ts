@@ -10,6 +10,7 @@ import {
 } from 'openai/resources/responses/responses';
 import { SessionData } from '../types';
 import OpenAI from 'openai';
+import { extractFunctionCalls, continueAfterFunctions } from '../tools/function-executor';
 
 export class ResponseHandler {
   private toolValidators: Record<string, z.ZodSchema<any>>;
@@ -28,7 +29,7 @@ export class ResponseHandler {
   ): Promise<void> {
     console.log(chalk.yellow('\n⏳ Calling OpenAI Responses API...'));
     
-    const response = await openai.responses.create(params) as Response;
+    let response = await openai.responses.create(params) as Response;
     const duration = Date.now() - startTime;
 
     console.log(chalk.green('\n' + '═'.repeat(80)));
@@ -37,8 +38,11 @@ export class ResponseHandler {
 
     this.parseResponse(response);
 
-    // Update session
-    sessionData.lastResponseId = response.id;
+    // Handle function calls recursively
+    const finalResponse = await this.handleFunctionCallsRecursively(openai, response, params);
+
+    // Update session with the final response
+    sessionData.lastResponseId = finalResponse.id;
     
     // Ensure conversationHistory exists
     if (!sessionData.conversationHistory) {
@@ -46,17 +50,69 @@ export class ResponseHandler {
     }
     
     sessionData.conversationHistory.push({
-      responseId: response.id,
+      responseId: finalResponse.id,
       input: input,
-      output: response.output_text || '',
+      output: finalResponse.output_text || '',
       timestamp: new Date().toISOString(),
-      model: response.model,
-      usage: response.usage,
-      hadFunctionCall: false  // Hardcoded for testing
+      model: finalResponse.model,
+      usage: finalResponse.usage
     });
     
     await saveSessionFn();
-    console.log(chalk.green(`\n✓ Session saved with ID: ${response.id}`));
+    console.log(chalk.green(`\n✓ Session saved with ID: ${finalResponse.id}`));
+  }
+
+  /**
+   * Recursively handle function calls until we get a final response without function calls
+   */
+  private async handleFunctionCallsRecursively(
+    openai: OpenAI,
+    response: Response,
+    originalParams: ResponseCreateParams,
+    depth: number = 0
+  ): Promise<Response> {
+    // Safety check to prevent infinite recursion
+    const MAX_DEPTH = 10;
+    if (depth >= MAX_DEPTH) {
+      console.log(chalk.yellow(`\n⚠️ Maximum function call depth (${MAX_DEPTH}) reached, stopping recursion`));
+      return response;
+    }
+
+    // Check if we need to execute functions and continue
+    const functionCalls = extractFunctionCalls(response);
+    if (functionCalls.length === 0) {
+      // No function calls, this is our final response
+      return response;
+    }
+
+    console.log(chalk.yellow(`\n📦 Found ${functionCalls.length} function call(s) to execute at depth ${depth}...`));
+    
+    // Get continuation parameters after executing functions
+    const continuationParams = await continueAfterFunctions(openai, response, originalParams);
+    
+    if (!continuationParams) {
+      // No continuation needed, return current response
+      return response;
+    }
+
+    // Make the continuation call
+    const continuationStartTime = Date.now();
+    const continuationResponse = await openai.responses.create(continuationParams) as Response;
+    const continuationDuration = Date.now() - continuationStartTime;
+    
+    console.log(chalk.green('\n' + '═'.repeat(80)));
+    console.log(chalk.bold(`CONTINUATION RESPONSE RECEIVED (${continuationDuration}ms) - Depth ${depth + 1}`));
+    console.log(chalk.green('═'.repeat(80)));
+    
+    this.parseResponse(continuationResponse);
+    
+    // Recursively handle any function calls in the continuation response
+    return await this.handleFunctionCallsRecursively(
+      openai, 
+      continuationResponse, 
+      originalParams, 
+      depth + 1
+    );
   }
 
   parseResponse(response: Response): void {
@@ -120,6 +176,37 @@ export class ResponseHandler {
 
     // Handle tool calls
     this.parseToolCalls(response);
+  }
+
+  /**
+   * Check if a response contains function calls
+   */
+  checkForFunctionCalls(response: Response): boolean {
+    if (!response.output) return false;
+
+    const toolCalls = response.output.filter(item => 
+      item.type === 'function_call' || 
+      item.type === 'file_search_call' || 
+      item.type === 'web_search_call' ||
+      item.type === 'computer_call' ||
+      item.type === 'code_interpreter_call'
+    );
+
+    // Also check for tool_use in message content
+    let hasToolUse = false;
+    response.output.forEach((item: any) => {
+      if (item.type === 'message' && item.content) {
+        if (Array.isArray(item.content)) {
+          item.content.forEach((content: any) => {
+            if (content.type === 'tool_use') {
+              hasToolUse = true;
+            }
+          });
+        }
+      }
+    });
+
+    return toolCalls.length > 0 || hasToolUse;
   }
 
   parseToolCalls(response: Response): void {

@@ -1,5 +1,48 @@
 {
-  "lastResponseId": null,
-  "conversationHistory": [],
+  "lastResponseId": "resp_68978f1719f881a2a78eeecd1502e18007be5edf9abfa4bb",
+  "conversationHistory": [
+    {
+      "responseId": "resp_68978ef63c6081a2b214fa90e12c7ce507be5edf9abfa4bb",
+      "input": "Hello! My name is David and I love jazz music.",
+      "output": "",
+      "timestamp": "2025-08-09T18:09:59.765Z",
+      "model": "gpt-5-nano"
+    },
+    {
+      "responseId": "resp_68978efa252081a2a4f5ce5953da5e6f07be5edf9abfa4bb",
+      "input": "Tell me about Miles Davis.",
+      "output": "",
+      "timestamp": "2025-08-09T18:10:04.842Z",
+      "model": "gpt-5-nano"
+    },
+    {
+      "responseId": "resp_68978f04b23c81a2a15f5d8f1e7418bd07be5edf9abfa4bb",
+      "input": "I don't like that song, play something else please",
+      "output": "",
+      "timestamp": "2025-08-09T18:10:15.493Z",
+      "model": "gpt-5-nano"
+    },
+    {
+      "responseId": "resp_68978f09dcf081a29a065d81eb91c20007be5edf9abfa4bb",
+      "input": "What was I asking about before?",
+      "output": "",
+      "timestamp": "2025-08-09T18:10:19.217Z",
+      "model": "gpt-5-nano"
+    },
+    {
+      "responseId": "resp_68978f13029481a2a49653e9200b766507be5edf9abfa4bb",
+      "input": "Actually, different music please",
+      "output": "",
+      "timestamp": "2025-08-09T18:10:28.833Z",
+      "model": "gpt-5-nano"
+    },
+    {
+      "responseId": "resp_68978f1719f881a2a78eeecd1502e18007be5edf9abfa4bb",
+      "input": "You were telling me about that jazz musician?",
+      "output": "",
+      "timestamp": "2025-08-09T18:10:40.261Z",
+      "model": "gpt-5-nano"
+    }
+  ],
   "metadata": {}
 }

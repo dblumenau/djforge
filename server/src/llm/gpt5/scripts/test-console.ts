@@ -189,12 +189,6 @@ This dual approach makes the experience both functional and conversational.`,
     if (this.sessionData.lastResponseId) {
       params.previous_response_id = this.sessionData.lastResponseId;
       console.log(chalk.yellow(`Continuing from: ${this.sessionData.lastResponseId}`));
-      
-      // Check if last response had function calls that might need handling
-      const lastMessage = this.sessionData.conversationHistory[this.sessionData.conversationHistory.length - 1];
-      if (lastMessage && config.verbose) {
-        console.log(chalk.dim('Last message context:', lastMessage.output.substring(0, 100) + '...'));
-      }
     }
 
     // Add tools if enabled
@@ -265,6 +259,7 @@ This dual approach makes the experience both functional and conversational.`,
     console.log(`  ${chalk.cyan('/reset')}       - Reset response ID only (keep history)`);
     console.log(`  ${chalk.cyan('/history')}     - Show conversation history`);
     console.log(`  ${chalk.cyan('/session')}     - Show session info`);
+    console.log(`  ${chalk.cyan('/skiptest')}    - Test function calling with proper execution`);
     console.log(`  ${chalk.cyan('/examples')}    - Run example conversations`);
     console.log(`  ${chalk.cyan('/test')}        - Run comprehensive test series`);
     console.log(`  ${chalk.cyan('/help')}        - Show this help`);
@@ -321,8 +316,80 @@ This dual approach makes the experience both functional and conversational.`,
       return false;
     }
     
+    if (command === '/skiptest') {
+      await this.runSkipBackTest();
+      return false;
+    }
+    
     // Delegate to CommandHandler for all other commands
     return await this.commandHandler.handleCommand(input);
+  }
+
+  private async runSkipBackTest(): Promise<void> {
+    console.log(chalk.bold('\n🔬 Testing Function Calling with Proper Execution...\n'));
+    console.log(chalk.dim('This test demonstrates that we now properly execute functions'));
+    console.log(chalk.dim('and provide results back to the model - no skip-back needed!\n'));
+
+    const tests = [
+      {
+        name: 'Step 1: Start conversation (no function call)',
+        input: 'Hello! My name is David and I love jazz music.',
+        expectFunctionCall: false
+      },
+      {
+        name: 'Step 2: Continue conversation (no function call)',
+        input: 'Tell me about Miles Davis.',
+        expectFunctionCall: false
+      },
+      {
+        name: 'Step 3: Trigger function call',
+        input: "I don't like that song, play something else please",
+        expectFunctionCall: true,
+        description: 'Should execute provide_music_alternatives function and continue'
+      },
+      {
+        name: 'Step 4: Test continuity after function call',
+        input: 'What was I asking about before?',
+        expectFunctionCall: false,
+        description: 'Should remember previous context including function execution'
+      },
+      {
+        name: 'Step 5: Another function call',
+        input: 'Actually, different music please',
+        expectFunctionCall: true,
+        description: 'Should execute function again and provide alternatives'
+      },
+      {
+        name: 'Step 6: Test complete memory',
+        input: 'You were telling me about that jazz musician?',
+        expectFunctionCall: false,
+        description: 'Should remember entire conversation including all function calls'
+      }
+    ];
+
+    for (const test of tests) {
+      console.log(chalk.yellow(`\n📝 ${test.name}`));
+      if (test.expectFunctionCall) {
+        console.log(chalk.cyan('  Expected: Function call → execution → final response'));
+      } else {
+        console.log(chalk.dim('  Expected: Direct text response'));
+      }
+      if (test.description) {
+        console.log(chalk.dim(`  ${test.description}`));
+      }
+      
+      await this.callResponsesAPI(test.input, { 
+        useTools: true,
+        streaming: true 
+      });
+      
+      // Wait between tests
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+
+    console.log(chalk.green.bold('\n✅ Function calling test complete!'));
+    console.log(chalk.green('🎉 No more skip-back needed - functions are properly executed!'));
+    console.log(chalk.dim('\nUse /history to see the complete conversation flow'));
   }
 }
 

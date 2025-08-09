@@ -30,7 +30,6 @@ export interface SessionData {
     timestamp: string;
     model: string;
     usage?: ResponseUsage;
-    hadFunctionCall?: boolean;  // Track if this response included function calls
   }>;
   metadata: Record<string, any>;
 }

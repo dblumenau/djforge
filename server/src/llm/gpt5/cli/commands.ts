@@ -94,6 +94,11 @@ export class CommandHandler {
         }
         break;
 
+      case '/skiptest':
+        // This command is handled in test-console.ts since it needs callResponsesAPI
+        console.log(chalk.yellow('The /skiptest command must be run from the main console.'));
+        break;
+
       case '/help':
         this.showHelp();
         break;
@@ -115,6 +120,7 @@ export class CommandHandler {
     this.sessionData.conversationHistory.forEach((entry, idx) => {
       console.log(chalk.cyan(`\n[${idx + 1}] ${entry.timestamp}`));
       console.log(`  Model: ${entry.model}`);
+      console.log(`  Response ID: ${entry.responseId}`);
       console.log(`  Input: ${entry.input.substring(0, 100)}...`);
       console.log(`  Output: ${entry.output.substring(0, 100)}...`);
       if (entry.usage) {
@@ -151,4 +157,5 @@ export class CommandHandler {
     console.log('  • Structured     - JSON schema-validated outputs');
     console.log('  • Redis Session  - Persistent conversation storage');
   }
+
 }
