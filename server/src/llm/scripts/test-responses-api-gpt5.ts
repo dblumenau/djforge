@@ -1,4 +1,4 @@
-#!/usr/bin/env tsx
+#!/usr/bin/env npx tsx
 
 /**
  * ULTIMATE OpenAI Responses API Test Script - GPT-5 Edition
@@ -15,34 +15,32 @@
  * - Built-in and custom tools
  */
 
-import 'dotenv/config';
-import OpenAI from 'openai';
-import { z } from 'zod';
-import { zodResponseFormat } from 'openai/helpers/zod';
-import * as readline from 'readline';
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import { createClient } from 'redis';
 import chalk from 'chalk';
+import util from 'util';
+import 'dotenv/config';
+import * as fs from 'fs/promises';
+import OpenAI from 'openai';
+import * as path from 'path';
+import * as readline from 'readline';
+import { createClient } from 'redis';
+import { z } from 'zod';
+import { zodToJsonSchema } from 'zod-to-json-schema';
+import { MusicAlternativesSchema, ToolResponseSchemas } from '../schemas/v2/music-alternatives';
 
 // Import response types from the responses module
 import type {
   Response,
   ResponseCreateParams,
-  ResponseUsage,
+  ResponseErrorEvent,
+  ResponseFormatTextConfig,
   ResponseOutputItem,
   ResponseOutputMessage,
   ResponseReasoningItem,
   ResponseStreamEvent,
-  ResponseTextConfig,
-  ComputerTool,
-  CustomTool,
-  FileSearchTool,
-  FunctionTool
+  ResponseTextDeltaEvent,
+  ResponseUsage,
+  Tool
 } from 'openai/resources/responses/responses';
-
-// Tool type is a union of all tool types
-type Tool = FunctionTool | FileSearchTool | ComputerTool | CustomTool | { type: 'web_search' } | { type: 'code_interpreter' } | { type: 'file_search' };
 
 // Session management types
 interface SessionData {
@@ -54,9 +52,25 @@ interface SessionData {
     timestamp: string;
     model: string;
     usage?: ResponseUsage;
+    hadFunctionCall?: boolean;  // Track if this response included function calls
   }>;
   metadata: Record<string, any>;
 }
+
+// Session validation schema - runtime validation for loaded sessions
+const SessionDataSchema = z.object({
+  lastResponseId: z.string().nullable(),
+  conversationHistory: z.array(z.object({
+    responseId: z.string(),
+    input: z.string(),
+    output: z.string(),
+    timestamp: z.string(),
+    model: z.string(),
+    usage: z.any().optional(), // ResponseUsage type is complex, using any for now
+    hadFunctionCall: z.boolean().optional() // Track if response had function calls
+  })),
+  metadata: z.record(z.any())
+});
 
 // Tool schemas using Zod
 const WeatherSchema = z.object({
@@ -76,6 +90,34 @@ const CodeExecutionSchema = z.object({
   timeout: z.number().default(5000).describe("Execution timeout in ms")
 });
 
+/**
+ * Music Alternatives Schema for Rejection Scenarios
+ * 
+ * This schema handles the "clarification_mode" intent when users reject
+ * a song/artist and say things like "play something else", "not this", etc.
+ * 
+ * The function provides 4-5 alternative music directions, each with:
+ * - An emoji label for visual distinction in UI
+ * - A short descriptive label
+ * - An internal value identifier
+ * - A longer description of the alternative
+ * - An example query that would be executed if selected
+ * 
+ * Example emojis: ⚡🎸🎹🎤🎵🎺🎷🕺💃📼☀️🎲
+ * 
+ * This enables smart contextual alternatives based on what was rejected,
+ * such as offering "More upbeat indie" if user rejects "Phoebe Bridgers"
+ */
+// MusicAlternativesSchema is now imported from ../schemas/music-alternatives
+
+// Tool validation map for runtime validation
+const toolValidators: Record<string, z.ZodSchema<any>> = {
+  get_weather: WeatherSchema,
+  search_music: MusicSearchSchema,
+  execute_code: CodeExecutionSchema,
+  provide_music_alternatives: MusicAlternativesSchema
+};
+
 // Configuration interface
 interface TestConfig {
   model: 'gpt-5' | 'gpt-5-mini' | 'gpt-5-nano';
@@ -89,6 +131,20 @@ interface TestConfig {
   maxOutputTokens?: number;
   structuredOutput?: boolean;
 }
+
+// Config validation schema for runtime validation
+const TestConfigSchema = z.object({
+  model: z.enum(['gpt-5', 'gpt-5-mini', 'gpt-5-nano']),
+  reasoning: z.object({
+    effort: z.enum(['low', 'medium', 'high'])
+  }),
+  verbose: z.boolean(),
+  useTools: z.boolean(),
+  streaming: z.boolean(),
+  temperature: z.number().min(0).max(2),
+  maxOutputTokens: z.number().positive().optional(),
+  structuredOutput: z.boolean().optional()
+});
 
 class GPT5ResponsesAPITester {
   private openai: OpenAI;
@@ -131,11 +187,11 @@ class GPT5ResponsesAPITester {
     this.config = {
       model: 'gpt-5-nano',
       reasoning: { effort: 'low' },
-      verbose: true,
-      useTools: false,
-      streaming: false,
+      verbose: false,
+      useTools: true,  // Tools enabled by default
+      streaming: true,
       temperature: 1,
-      structuredOutput: false
+      structuredOutput: true
     };
 
     // Setup readline interface
@@ -178,16 +234,31 @@ class GPT5ResponsesAPITester {
       if (this.redisClient) {
         const redisData = await this.redisClient.get('gpt5-test-session');
         if (redisData) {
-          const loadedData = JSON.parse(redisData);
+          const loadedData = JSON.parse(redisData as string);
           
-          // Ensure proper structure
-          this.sessionData = {
-            lastResponseId: loadedData.lastResponseId || null,
-            conversationHistory: loadedData.conversationHistory || [],
-            metadata: loadedData.metadata || {}
-          };
+          // Validate with Zod
+          try {
+            this.sessionData = SessionDataSchema.parse(loadedData);
+            console.log(chalk.green('✓ Loaded and validated session from Redis'));
+          } catch (validationError) {
+            if (validationError instanceof z.ZodError) {
+              console.log(chalk.yellow('Session validation failed:'));
+              validationError.errors.forEach(err => {
+                console.log(chalk.yellow(`  - ${err.path.join('.')}: ${err.message}`));
+              });
+              console.log(chalk.yellow('Starting with fresh session'));
+              
+              // Reset to valid empty session
+              this.sessionData = {
+                lastResponseId: null,
+                conversationHistory: [],
+                metadata: {}
+              };
+            } else {
+              throw validationError;
+            }
+          }
           
-          console.log(chalk.green('✓ Loaded session from Redis'));
           this.displaySessionInfo();
           return;
         }
@@ -197,14 +268,29 @@ class GPT5ResponsesAPITester {
       const fileData = await fs.readFile(this.sessionFile, 'utf8');
       const loadedData = JSON.parse(fileData);
       
-      // Ensure proper structure
-      this.sessionData = {
-        lastResponseId: loadedData.lastResponseId || null,
-        conversationHistory: loadedData.conversationHistory || [],
-        metadata: loadedData.metadata || {}
-      };
+      // Validate with Zod
+      try {
+        this.sessionData = SessionDataSchema.parse(loadedData);
+        console.log(chalk.green('✓ Loaded and validated session from file'));
+      } catch (validationError) {
+        if (validationError instanceof z.ZodError) {
+          console.log(chalk.yellow('Session validation failed:'));
+          validationError.errors.forEach(err => {
+            console.log(chalk.yellow(`  - ${err.path.join('.')}: ${err.message}`));
+          });
+          console.log(chalk.yellow('Starting with fresh session'));
+          
+          // Reset to valid empty session
+          this.sessionData = {
+            lastResponseId: null,
+            conversationHistory: [],
+            metadata: {}
+          };
+        } else {
+          throw validationError;
+        }
+      }
       
-      console.log(chalk.green('✓ Loaded session from file'));
       this.displaySessionInfo();
     } catch (error) {
       console.log(chalk.yellow('Starting fresh session'));
@@ -256,7 +342,30 @@ class GPT5ResponsesAPITester {
     }
   }
 
-  private async callResponsesAPI(input: string, options: Partial<TestConfig> = {}) {
+  /**
+   * Find the last response ID that didn't have function calls
+   * This allows us to maintain conversation continuity while avoiding
+   * the "No tool output found" error when streaming with function calls
+   */
+  private findLastValidResponseId(): string | null {
+    if (!this.sessionData.conversationHistory || this.sessionData.conversationHistory.length === 0) {
+      return null;
+    }
+
+    // Search backwards through history for a response without function calls
+    for (let i = this.sessionData.conversationHistory.length - 1; i >= 0; i--) {
+      const entry = this.sessionData.conversationHistory[i];
+      if (!entry.hadFunctionCall) {
+        console.log(chalk.yellow(`Found valid response ID from ${i === this.sessionData.conversationHistory.length - 1 ? 'last' : `${this.sessionData.conversationHistory.length - 1 - i} messages ago`}: ${entry.responseId}`));
+        return entry.responseId;
+      }
+    }
+
+    console.log(chalk.yellow('No responses without function calls found in history'));
+    return null;
+  }
+
+  public async callResponsesAPI(input: string, options: Partial<TestConfig> = {}) {
     const config = { ...this.config, ...options };
     
     console.log(chalk.blue('\n' + '═'.repeat(80)));
@@ -270,7 +379,18 @@ class GPT5ResponsesAPITester {
       store: true, // Enable server-side storage
       
       // Optional parameters
-      instructions: "You are a helpful AI assistant with deep knowledge and reasoning capabilities.",
+      instructions: `You are a music assistant integrated with DJ Forge, a Spotify control system.
+
+CRITICAL RULES:
+1. When user rejects music or asks for alternatives (examples: "I don't like that song", "play something else", "another please", "different music"), you MUST use the 'provide_music_alternatives' function.
+2. You can provide BOTH a friendly text response AND call the function in the same response.
+3. The function provides structured data for the UI, while your text message adds personality.
+
+Example: User says "I don't like that song"
+- Call provide_music_alternatives function with alternatives
+- Also say something friendly like "No problem! Let me suggest some alternatives..."
+
+This dual approach makes the experience both functional and conversational.`,
       max_output_tokens: config.maxOutputTokens,
       temperature: config.temperature,
       top_p: 1,
@@ -284,12 +404,12 @@ class GPT5ResponsesAPITester {
       text: {
         format: {
           type: "text"
-        } as ResponseTextConfig,
+        } as ResponseFormatTextConfig,
         verbosity: "medium"
       },
       
       // Tool configuration
-      tool_choice: config.useTools ? "auto" : undefined,
+      tool_choice: config.useTools ? "auto" : undefined,  // "auto" is PERFECT - model decides when functions make sense!
       parallel_tool_calls: true,
       
       // Truncation strategy
@@ -303,10 +423,26 @@ class GPT5ResponsesAPITester {
       }
     };
 
-    // Add conversation continuity
-    if (this.sessionData.lastResponseId) {
-      params.previous_response_id = this.sessionData.lastResponseId;
-      console.log(chalk.yellow(`Continuing from: ${this.sessionData.lastResponseId}`));
+    // Add conversation continuity with smart skip-back for function calls
+    // This avoids the "No tool output found" error when streaming with function calls
+    const validResponseId = this.findLastValidResponseId();
+    if (validResponseId) {
+      params.previous_response_id = validResponseId;
+      console.log(chalk.yellow(`Continuing from: ${validResponseId}`));
+      
+      // Show context info in verbose mode
+      if (this.config.verbose) {
+        const lastMessage = this.sessionData.conversationHistory[this.sessionData.conversationHistory.length - 1];
+        if (lastMessage?.hadFunctionCall) {
+          console.log(chalk.dim('Last response had function calls, skipping back to maintain continuity'));
+        }
+        const usedMessage = this.sessionData.conversationHistory.find(m => m.responseId === validResponseId);
+        if (usedMessage) {
+          console.log(chalk.dim('Using response context:', usedMessage.output.substring(0, 100) + '...'));
+        }
+      }
+    } else if (this.sessionData.conversationHistory.length > 0) {
+      console.log(chalk.yellow('All previous responses had function calls, starting fresh context'));
     }
 
     // Add tools if enabled
@@ -315,6 +451,8 @@ class GPT5ResponsesAPITester {
     }
 
     // Add structured output if enabled
+    // Note: response_format is not directly supported in ResponseCreateParams
+    // This would need to be handled differently based on the actual API
     if (config.structuredOutput) {
       const ResponseSchema = z.object({
         answer: z.string(),
@@ -323,12 +461,13 @@ class GPT5ResponsesAPITester {
         sources: z.array(z.string()).optional()
       });
       
-      params.response_format = zodResponseFormat(ResponseSchema, 'structured_response');
+      // TODO: Structured output might need different handling
+      // params.response_format = zodResponseFormat(ResponseSchema, 'structured_response');
     }
 
     if (config.verbose) {
       console.log(chalk.dim('Request Parameters:'));
-      console.log(JSON.stringify(params, null, 2));
+      console.log(this.formatJSON(params));
     }
 
     try {
@@ -347,87 +486,102 @@ class GPT5ResponsesAPITester {
 
   private buildTools(): Tool[] {
     return [
-      // Custom function tools - convert to JSON Schema format
+      // Custom function tools - FunctionTool format
+      // {
+      //   type: "function",
+      //   name: "get_weather",
+      //   description: "Get current weather for a location",
+      //   strict: false,
+      //   parameters: {
+      //       type: "object",
+      //       properties: {
+      //         location: { 
+      //           type: "string", 
+      //           description: "City and state, e.g. San Francisco, CA" 
+      //         },
+      //         unit: { 
+      //           type: "string", 
+      //           enum: ["celsius", "fahrenheit"],
+      //           default: "celsius"
+      //         }
+      //       },
+      //       required: ["location"]
+      //     }
+      // },
+      // {
+      //   type: "function",
+      //   name: "search_music",
+      //   description: "Search for music tracks or artists",
+      //   strict: false,
+      //   parameters: {
+      //       type: "object",
+      //       properties: {
+      //         query: { 
+      //           type: "string", 
+      //           description: "Artist name, song title, or genre" 
+      //         },
+      //         type: { 
+      //           type: "string", 
+      //           enum: ["track", "artist", "album", "playlist"],
+      //           default: "track"
+      //         },
+      //         limit: {
+      //           type: "number",
+      //           default: 10,
+      //           minimum: 1,
+      //           maximum: 50
+      //         }
+      //       },
+      //       required: ["query"]
+      //     }
+      // },
+      // {
+      //   type: "function",
+      //   name: "execute_code",
+      //   description: "Execute code in various languages",
+      //   strict: false,
+      //   parameters: {
+      //       type: "object",
+      //       properties: {
+      //         language: {
+      //           type: "string",
+      //           enum: ["python", "javascript", "typescript", "bash"]
+      //         },
+      //         code: {
+      //           type: "string",
+      //           description: "Code to execute"
+      //         },
+      //         timeout: {
+      //           type: "number",
+      //           default: 5000,
+      //           description: "Execution timeout in ms"
+      //         }
+      //       },
+      //       required: ["language", "code"]
+      //     }
+      // },
       {
         type: "function",
-        function: {
-          name: "get_weather",
-          description: "Get current weather for a location",
-          parameters: {
-            type: "object",
-            properties: {
-              location: { 
-                type: "string", 
-                description: "City and state, e.g. San Francisco, CA" 
-              },
-              unit: { 
-                type: "string", 
-                enum: ["celsius", "fahrenheit"],
-                default: "celsius"
-              }
-            },
-            required: ["location"]
-          }
-        }
-      },
-      {
-        type: "function",
-        function: {
-          name: "search_music",
-          description: "Search for music tracks or artists",
-          parameters: {
-            type: "object",
-            properties: {
-              query: { 
-                type: "string", 
-                description: "Artist name, song title, or genre" 
-              },
-              type: { 
-                type: "string", 
-                enum: ["track", "artist", "album", "playlist"],
-                default: "track"
-              },
-              limit: {
-                type: "number",
-                default: 10,
-                minimum: 1,
-                maximum: 50
-              }
-            },
-            required: ["query"]
-          }
-        }
-      },
-      {
-        type: "function",
-        function: {
-          name: "execute_code",
-          description: "Execute code in various languages",
-          parameters: {
-            type: "object",
-            properties: {
-              language: {
-                type: "string",
-                enum: ["python", "javascript", "typescript", "bash"]
-              },
-              code: {
-                type: "string",
-                description: "Code to execute"
-              },
-              timeout: {
-                type: "number",
-                default: 5000,
-                description: "Execution timeout in ms"
-              }
-            },
-            required: ["language", "code"]
-          }
-        }
-      },
-      // Built-in tools
-      { type: "web_search" },
-      { type: "code_interpreter" },
-      { type: "file_search" }
+        name: "provide_music_alternatives",
+        description: "When user rejects a song or says 'play something else', provide alternative music directions with emoji labels",
+        strict: true,
+        parameters: (() => {
+          const schema = zodToJsonSchema(MusicAlternativesSchema, {
+            // Options for strict mode compatibility with OpenAI's strict function calling
+            $refStrategy: "none",  // Don't use $ref, inline everything for strict mode
+            errorMessages: false,
+            markdownDescription: false,
+            target: "openAi"  // Optimize for OpenAI's schema format (valid target!)
+          });
+          // Remove the top-level schema properties that OpenAI doesn't expect
+          const { $schema, ...cleanSchema } = schema as any;
+          return cleanSchema;
+        })()
+      }
+      // Built-in tools - commented out for now as they may not be supported
+      // { type: "web_search" },
+      // { type: "code_interpreter" },
+      // { type: "file_search" }
     ] as Tool[];
   }
 
@@ -438,7 +592,7 @@ class GPT5ResponsesAPITester {
   ) {
     console.log(chalk.yellow('\n⏳ Calling OpenAI Responses API...'));
     
-    const response = await this.openai.responses.create(params);
+    const response = await this.openai.responses.create(params) as Response;
     const duration = Date.now() - startTime;
 
     console.log(chalk.green('\n' + '═'.repeat(80)));
@@ -446,6 +600,9 @@ class GPT5ResponsesAPITester {
     console.log(chalk.green('═'.repeat(80)));
 
     this.parseResponse(response);
+
+    // Check if response had function calls
+    const hadFunctionCall = this.checkForFunctionCalls(response);
 
     // Update session
     this.sessionData.lastResponseId = response.id;
@@ -461,11 +618,12 @@ class GPT5ResponsesAPITester {
       output: response.output_text || '',
       timestamp: new Date().toISOString(),
       model: response.model,
-      usage: response.usage
+      usage: response.usage,
+      hadFunctionCall: hadFunctionCall
     });
     
     await this.saveSession();
-    console.log(chalk.green(`\n✓ Session saved with ID: ${response.id}`));
+    console.log(chalk.green(`\n✓ Session saved with ID: ${response.id}${hadFunctionCall ? ' (with function calls)' : ''}`));
   }
 
   private async handleStreamingResponse(params: ResponseCreateParams, startTime: number) {
@@ -482,6 +640,9 @@ class GPT5ResponsesAPITester {
 
     let fullText = '';
     let responseId = '';
+    let toolCalls: any[] = [];
+    let functionCalls: any[] = [];
+    let responseData: any = null;  // Store full response for session
 
     for await (const event of stream) {
       this.handleStreamEvent(event as ResponseStreamEvent);
@@ -490,55 +651,194 @@ class GPT5ResponsesAPITester {
       if ('output_text' in event && event.output_text) {
         fullText += event.output_text;
       }
-      if ('id' in event && event.id) {
+      if ('id' in event && typeof event.id === 'string') {
         responseId = event.id;
+      }
+      
+      // Collect tool calls if present
+      if ('tool_calls' in event && event.tool_calls) {
+        toolCalls = event.tool_calls;
+      }
+      
+      // Store complete response data
+      if ('response' in event && event.response) {
+        responseData = event.response;
+      }
+      
+      // Collect function calls from completion event
+      if ('response' in event && event.response?.output) {
+        const output = event.response.output;
+        if (Array.isArray(output)) {
+          output.forEach((item: any) => {
+            if (item.type === 'function_call' || (item.content && Array.isArray(item.content))) {
+              item.content?.forEach((content: any) => {
+                if (content.type === 'tool_use') {
+                  functionCalls.push(content);
+                }
+              });
+            }
+          });
+        }
       }
     }
 
     const duration = Date.now() - startTime;
     console.log(chalk.green(`\n\nStream completed (${duration}ms)`));
+    
+    // Display tool calls if any were made
+    if (toolCalls.length > 0) {
+      console.log(chalk.cyan('\n📦 Tool Calls Made:'));
+      console.log(this.formatJSON(toolCalls));
+    }
+    
+    // Display function calls if any were made
+    if (functionCalls.length > 0) {
+      console.log(chalk.cyan('\n🔧 Function Calls Made:'));
+      console.log(this.formatJSON(functionCalls));
+    }
 
-    // Update session for streaming
+    // Check if response had function calls
+    const hadFunctionCall = toolCalls.length > 0 || functionCalls.length > 0;
+
+    // Update session for streaming with function call tracking
     if (responseId) {
       this.sessionData.lastResponseId = responseId;
+      
+      // Ensure conversationHistory exists
+      if (!this.sessionData.conversationHistory) {
+        this.sessionData.conversationHistory = [];
+      }
+      
+      // Get input from params (a bit hacky but works for this test)
+      const input = typeof params.input === 'string' ? params.input : JSON.stringify(params.input);
+      
+      this.sessionData.conversationHistory.push({
+        responseId: responseId,
+        input: input,
+        output: fullText || '',
+        timestamp: new Date().toISOString(),
+        model: params.model,
+        usage: responseData?.usage,
+        hadFunctionCall: hadFunctionCall
+      });
+      
       await this.saveSession();
+      console.log(chalk.green(`\n✓ Session saved with ID: ${responseId}${hadFunctionCall ? ' (with function calls)' : ''}`));
     }
   }
 
   private handleStreamEvent(event: ResponseStreamEvent) {
-    // Handle different event types
-    if ('type' in event) {
-      switch (event.type) {
-        case 'response.text.delta':
-          process.stdout.write(event.text || '');
-          break;
-        
-        case 'response.text.done':
-          console.log(chalk.dim('\n[Text Complete]'));
-          break;
-        
-        case 'response.reasoning.delta':
-          if (this.config.verbose) {
-            console.log(chalk.magenta(`[Reasoning] ${event.text}`));
+    // Log all events in verbose mode to debug
+    if (this.config.verbose) {
+      console.log(chalk.dim('\n[Event Debug]:'), this.formatJSON(event));
+    }
+    
+    // Handle different event types based on their structure
+    // Note: The actual events don't have a 'type' field, they are different interfaces
+    if ('delta' in event && 'content_index' in event) {
+      // This is a text delta event
+      const textEvent = event as ResponseTextDeltaEvent;
+      process.stdout.write(textEvent.delta || '');
+    } else if ('function_tool_call' in event) {
+      // Function tool call event - ALWAYS show these
+      console.log(chalk.cyan('\n📦 Function Call:'));
+      console.log(this.formatJSON(event));
+    } else if ('tool_calls' in event) {
+      // Tool calls event - ALWAYS show these
+      console.log(chalk.cyan('\n🔧 Tool Calls:'));
+      console.log(this.formatJSON(event));
+    } else if ('status' in event) {
+      // This is a completion event
+      if (this.config.verbose) {
+        console.log(chalk.dim('\n[Status Update]'));
+      }
+    } else if ('error' in event || (event as any).type === 'error') {
+      // This is an error event - ALWAYS show errors
+      const errorEvent = event as ResponseErrorEvent;
+      console.error(chalk.red('[Error]'), errorEvent.message || errorEvent);
+    } else if ((event as any).type === 'response.content_part.done') {
+      // Check if this is a tool use
+      const part = (event as any).part;
+      if (part?.type === 'tool_use') {
+        console.log(chalk.cyan('\n🔧 Tool Use:'));
+        console.log(chalk.cyan(`  Tool: ${part.name}`));
+        console.log(chalk.cyan(`  Input:`), this.formatJSON(part.input));
+      }
+    } else if ((event as any).type === 'response.completed') {
+      // Response completed - check for function calls in output
+      const response = (event as any).response;
+      if (response?.output) {
+        response.output.forEach((item: any) => {
+          if (item.type === 'message' && item.content) {
+            item.content.forEach((content: any) => {
+              if (content.type === 'tool_use') {
+                console.log(chalk.cyan('\n📦 Function Call in Response:'));
+                console.log(chalk.cyan(`  Function: ${content.name}`));
+                console.log(chalk.cyan(`  ID: ${content.id}`));
+                console.log(chalk.cyan(`  Input:`), this.formatJSON(content.input));
+              }
+            });
           }
-          break;
-        
-        case 'response.tool_calls.function.arguments.delta':
-          if (this.config.verbose) {
-            console.log(chalk.cyan(`[Tool Call] ${event.arguments}`));
-          }
-          break;
-        
-        case 'response.done':
-          console.log(chalk.green('\n[Response Complete]'));
-          break;
-        
-        default:
-          if (this.config.verbose) {
-            console.log(chalk.dim(`[Event: ${event.type}]`));
-          }
+        });
+      }
+    } else {
+      // Unknown event type - handle specific cases
+      const eventType = (event as any).type;
+      
+      // Show function/tool completion events but NOT deltas (unless verbose)
+      if (eventType === 'response.function_call_arguments.done') {
+        // Function call arguments complete - show this
+        const args = (event as any).arguments;
+        console.log(chalk.cyan('\n🔧 Function Call Complete:'));
+        try {
+          const parsed = JSON.parse(args);
+          console.log(chalk.cyan(`  Function: ${parsed.responseMessage ? 'provide_music_alternatives' : 'unknown'}`));
+          console.log(chalk.cyan('  Arguments:'), this.formatJSON(parsed));
+        } catch (e) {
+          console.log(chalk.cyan('  Raw Arguments:'), args);
+        }
+      } else if (eventType === 'response.function_call_arguments.delta') {
+        // Skip deltas unless verbose mode
+        if (this.config.verbose) {
+          console.log(chalk.dim(`[${eventType}]:`), this.formatJSON(event));
+        }
+      } else if (eventType?.includes('tool') || (eventType?.includes('function') && !eventType.includes('delta'))) {
+        // Show other tool/function events that aren't deltas
+        console.log(chalk.yellow(`\n[${eventType}]:`), this.formatJSON(event));
+      } else if (this.config.verbose) {
+        console.log(chalk.dim('[Unknown Event]:'), this.formatJSON(event));
       }
     }
+  }
+
+  /**
+   * Format JSON with beautiful colors for console output
+   */
+  private formatJSON(obj: any): string {
+    // Use util.inspect for deep, colorful output
+    return util.inspect(obj, {
+      colors: true,
+      depth: null,
+      maxArrayLength: null,
+      breakLength: 80,
+      compact: false,
+      sorted: true
+    });
+  }
+
+  /**
+   * Alternative JSON formatter with custom colors
+   */
+  private formatJSONCustom(obj: any): string {
+    const json = JSON.stringify(obj, null, 2);
+    return json
+      .replace(/(".*?")\s*:/g, chalk.cyan('$1:'))  // Keys in cyan
+      .replace(/:\s*"(.*?)"/g, ': ' + chalk.green('"$1"'))  // String values in green
+      .replace(/:\s*(\d+)/g, ': ' + chalk.yellow('$1'))  // Numbers in yellow
+      .replace(/:\s*(true|false)/g, ': ' + chalk.magenta('$1'))  // Booleans in magenta
+      .replace(/:\s*(null)/g, ': ' + chalk.red('$1'))  // Null in red
+      .replace(/(\[|\])/g, chalk.blue('$1'))  // Arrays in blue
+      .replace(/(\{|\})/g, chalk.white('$1'));  // Objects in white
   }
 
   private parseResponse(response: Response) {
@@ -572,8 +872,10 @@ class GPT5ResponsesAPITester {
         if (item.type === 'reasoning') {
           const reasoning = item as ResponseReasoningItem;
           console.log(chalk.magenta(`\n[${index + 1}] Reasoning:`));
-          if (reasoning.summary) {
+          if (reasoning.summary && reasoning.summary.length > 0) {
             console.log(`  Summary: ${reasoning.summary.join(' ')}`);
+          } else {
+            console.log(chalk.dim(`  (Internal reasoning: ${response.usage?.output_tokens_details?.reasoning_tokens || 0} tokens)`));
           }
         } else if (item.type === 'message') {
           const message = item as ResponseOutputMessage;
@@ -602,29 +904,86 @@ class GPT5ResponsesAPITester {
     this.parseToolCalls(response);
   }
 
+  /**
+   * Check if a response contains function calls
+   */
+  private checkForFunctionCalls(response: Response): boolean {
+    if (!response.output) return false;
+
+    const toolCalls = response.output.filter(item => 
+      item.type === 'function_call' || 
+      item.type === 'file_search_call' || 
+      item.type === 'web_search_call' ||
+      item.type === 'computer_call' ||
+      item.type === 'code_interpreter_call'
+    );
+
+    // Also check for tool_use in message content
+    let hasToolUse = false;
+    response.output.forEach((item: any) => {
+      if (item.type === 'message' && item.content) {
+        if (Array.isArray(item.content)) {
+          item.content.forEach((content: any) => {
+            if (content.type === 'tool_use') {
+              hasToolUse = true;
+            }
+          });
+        }
+      }
+    });
+
+    return toolCalls.length > 0 || hasToolUse;
+  }
+
   private parseToolCalls(response: Response) {
     if (!response.output) return;
 
-    response.output.forEach(item => {
-      if (item.type === 'message' && 'content' in item && item.content) {
-        item.content.forEach(content => {
-          if ('tool_calls' in content && content.tool_calls && content.tool_calls.length > 0) {
-            console.log(chalk.bold('\nTOOL CALLS:'));
-            content.tool_calls.forEach((toolCall, idx) => {
-              console.log(chalk.cyan(`\n[${idx + 1}] ${toolCall.type}`));
-              if ('function' in toolCall && toolCall.function) {
-                console.log(`  Function: ${toolCall.function.name}`);
-                console.log(`  Arguments: ${toolCall.function.arguments}`);
-                try {
-                  const args = JSON.parse(toolCall.function.arguments);
-                  console.log(`  Parsed:`, args);
-                } catch (e) {
-                  // Arguments might not be JSON
-                }
+    const toolCalls = response.output.filter(item => 
+      item.type === 'function_call' || 
+      item.type === 'file_search_call' || 
+      item.type === 'web_search_call' ||
+      item.type === 'computer_call' ||
+      item.type === 'code_interpreter_call'
+    );
+
+    if (toolCalls.length === 0) return;
+
+    console.log(chalk.bold('\nTOOL CALLS:'));
+    
+    toolCalls.forEach((toolCall, idx) => {
+      console.log(chalk.cyan(`\n[${idx + 1}] ${toolCall.type}`));
+      
+      // Handle function calls specifically
+      if (toolCall.type === 'function_call') {
+        const functionCall = toolCall as any; // Type assertion since ResponseFunctionToolCall is complex
+        console.log(`  Function: ${functionCall.name}`);
+        console.log(`  Arguments: ${functionCall.arguments}`);
+        
+        try {
+          const args = JSON.parse(functionCall.arguments);
+          console.log(`  Parsed:`, args);
+          
+          // Runtime validation with Zod
+          const validator = toolValidators[functionCall.name];
+          if (validator) {
+            try {
+              const validated = validator.parse(args);
+              console.log(chalk.green('  ✓ Validated successfully'));
+              console.log(`  Validated args:`, validated);
+            } catch (validationError) {
+              if (validationError instanceof z.ZodError) {
+                console.log(chalk.red('  ✗ Validation failed:'));
+                validationError.errors.forEach(err => {
+                  console.log(chalk.red(`    - ${err.path.join('.')}: ${err.message}`));
+                });
               }
-            });
+            }
+          } else {
+            console.log(chalk.dim('  No validator available for this function'));
           }
-        });
+        } catch (e) {
+          console.log(chalk.red('  Failed to parse arguments as JSON'));
+        }
       }
     });
   }
@@ -679,8 +1038,10 @@ class GPT5ResponsesAPITester {
     console.log(`  ${chalk.cyan('/structured')}  - Toggle structured output`);
     console.log(`  ${chalk.cyan('/verbose')}     - Toggle verbose output`);
     console.log(`  ${chalk.cyan('/clear')}       - Start new conversation`);
+    console.log(`  ${chalk.cyan('/reset')}       - Reset response ID only (keep history)`);
     console.log(`  ${chalk.cyan('/history')}     - Show conversation history`);
     console.log(`  ${chalk.cyan('/session')}     - Show session info`);
+    console.log(`  ${chalk.cyan('/skiptest')}    - Test skip-back strategy with function calls`);
     console.log(`  ${chalk.cyan('/examples')}    - Run example conversations`);
     console.log(`  ${chalk.cyan('/test')}        - Run comprehensive test series`);
     console.log(`  ${chalk.cyan('/help')}        - Show this help`);
@@ -737,6 +1098,14 @@ class GPT5ResponsesAPITester {
         await this.saveSession();
         console.log(chalk.green('✓ Started new conversation'));
         break;
+        
+      case '/reset':
+        // Just reset the response ID, keep history
+        this.sessionData.lastResponseId = null;
+        await this.saveSession();
+        console.log(chalk.green('✓ Response ID reset (history preserved)'));
+        console.log(chalk.dim('Use this if you encounter streaming errors with function calls'));
+        break;
 
       case '/history':
         this.showHistory();
@@ -792,6 +1161,10 @@ class GPT5ResponsesAPITester {
         await this.runTestSeries();
         break;
 
+      case '/skiptest':
+        await this.runSkipBackTest();
+        break;
+
       case '/help':
         this.showHelp();
         break;
@@ -811,6 +1184,10 @@ class GPT5ResponsesAPITester {
     this.sessionData.conversationHistory.forEach((entry, idx) => {
       console.log(chalk.cyan(`\n[${idx + 1}] ${entry.timestamp}`));
       console.log(`  Model: ${entry.model}`);
+      console.log(`  Response ID: ${entry.responseId}`);
+      if (entry.hadFunctionCall) {
+        console.log(chalk.yellow(`  ⚡ Had Function Calls`));
+      }
       console.log(`  Input: ${entry.input.substring(0, 100)}...`);
       console.log(`  Output: ${entry.output.substring(0, 100)}...`);
       if (entry.usage) {
@@ -893,6 +1270,74 @@ class GPT5ResponsesAPITester {
       "Compose a haiku about artificial intelligence",
       { model: 'gpt-5' as const, verbose: false }
     );
+
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // Example 6: Music alternatives (rejection scenario)
+    console.log(chalk.yellow('\nExample 6: Music alternatives with emoji labels'));
+    await this.callResponsesAPI(
+      "I don't like Phoebe Bridgers, play something else",
+      { useTools: true, verbose: false }
+    );
+  }
+
+  async runSkipBackTest() {
+    console.log(chalk.bold('\n🔬 Testing Skip-Back Strategy for Function Calls...\n'));
+    console.log(chalk.dim('This test demonstrates how we maintain conversation continuity'));
+    console.log(chalk.dim('by skipping back to the last response without function calls.\n'));
+
+    const tests = [
+      {
+        name: 'Step 1: Start conversation (no function call)',
+        input: 'Hello! My name is David and I love jazz music.',
+        expectFunctionCall: false
+      },
+      {
+        name: 'Step 2: Continue conversation (no function call)',
+        input: 'Tell me about Miles Davis.',
+        expectFunctionCall: false
+      },
+      {
+        name: 'Step 3: Trigger function call',
+        input: "I don't like that song, play something else please",
+        expectFunctionCall: true
+      },
+      {
+        name: 'Step 4: Test continuity (should skip back to Step 2)',
+        input: 'What was I asking about before?',
+        expectFunctionCall: false
+      },
+      {
+        name: 'Step 5: Another function call',
+        input: 'Actually, different music please',
+        expectFunctionCall: true
+      },
+      {
+        name: 'Step 6: Test memory (should remember Miles Davis from Step 2)',
+        input: 'You were telling me about that jazz musician?',
+        expectFunctionCall: false
+      }
+    ];
+
+    for (const test of tests) {
+      console.log(chalk.yellow(`\n📝 ${test.name}`));
+      if (test.expectFunctionCall) {
+        console.log(chalk.dim('  Expected: Function call (will not affect continuity)'));
+      } else {
+        console.log(chalk.dim('  Expected: Text response (will be used for continuity)'));
+      }
+      
+      await this.callResponsesAPI(test.input, { 
+        useTools: true,
+        streaming: true 
+      });
+      
+      // Wait between tests
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+
+    console.log(chalk.green.bold('\n✅ Skip-back test complete!'));
+    console.log(chalk.dim('\nUse /history to see how responses were linked'));
   }
 
   async runTestSeries() {
@@ -937,6 +1382,11 @@ class GPT5ResponsesAPITester {
       {
         name: 'Web Search',
         input: 'What are the latest developments in AI as of 2025?',
+        config: { useTools: true }
+      },
+      {
+        name: 'Music Alternatives (Rejection)',
+        input: 'Not this song, I want something different from Taylor Swift',
         config: { useTools: true }
       }
     ];
