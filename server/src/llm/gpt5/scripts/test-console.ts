@@ -110,10 +110,10 @@ export class GPT5ResponsesAPITester {
     // Initialize Redis first, then load session
     this.redisClient = await initRedis();
     this.sessionData = await this.sessionManager.loadSession(this.redisClient);
-    
+
     // Update stream handler verbosity
     this.streamHandler = new StreamHandler(this.config.verbose);
-    
+
     // Update command handler with initialized values
     this.commandHandler = new CommandHandler(
       this.config,
@@ -129,39 +129,52 @@ export class GPT5ResponsesAPITester {
 
   public async callResponsesAPI(input: string, options: Partial<TestConfig> = {}): Promise<void> {
     const config = { ...this.config, ...options };
-    
+
     console.log(chalk.blue('\n' + '═'.repeat(80)));
     console.log(chalk.bold('CALLING GPT-5 RESPONSES API'));
     console.log(chalk.blue('═'.repeat(80)));
+
+    // Echo the input being sent
+    console.log(chalk.magenta('📝 INPUT:'), chalk.white(input));
 
     // Build request parameters with proper typing
     const params: ResponseCreateParams = {
       model: config.model,
       input: input,
       store: true, // Enable server-side storage
-      
+
       // Optional parameters
       instructions: `You are a music assistant integrated with DJ Forge, a Spotify control system.
 
-CRITICAL RULES:
+CRITICAL WORKFLOW RULES:
 1. When user rejects music or asks for alternatives (examples: "I don't like that song", "play something else", "another please", "different music"), you MUST use the 'provide_music_alternatives' function.
 2. You can provide BOTH a friendly text response AND call the function in the same response.
 3. The function provides structured data for the UI, while your text message adds personality.
 
-Example: User says "I don't like that song"
-- Call provide_music_alternatives function with alternatives
-- Also say something friendly like "No problem! Let me suggest some alternatives..."
+SMART FUNCTION ORCHESTRATION:
+- You MAY call multiple DIFFERENT functions to fulfill complex requests (e.g., get_user_favorites → analyze_mood → provide_music_alternatives)
+- You MAY call functions in parallel or sequence as needed for sophisticated workflows
+- However, avoid calling the SAME function multiple times for a single user request
+- Specifically for provide_music_alternatives: Call it ONCE per user rejection, then present those alternatives and await user feedback
 
-This dual approach makes the experience both functional and conversational.`,
+Example workflows:
+✅ GOOD: User says "play something based on my taste" 
+   → get_user_profile() → analyze_listening_history() → suggest_playlist()
+✅ GOOD: User says "I don't like that song"
+   → provide_music_alternatives() once → present alternatives → wait
+❌ AVOID: User says "I don't like that song"
+   → provide_music_alternatives() → provide_music_alternatives() again → provide_music_alternatives() again
+
+This ensures intelligent tool orchestration while preventing redundant calls.`,
       max_output_tokens: config.maxOutputTokens,
       temperature: config.temperature,
       top_p: 1,
-      
+
       // Reasoning configuration
       reasoning: {
         effort: config.reasoning.effort
       },
-      
+
       // Text configuration
       text: {
         format: {
@@ -169,14 +182,14 @@ This dual approach makes the experience both functional and conversational.`,
         } as ResponseFormatTextConfig,
         verbosity: "medium"
       },
-      
+
       // Tool configuration
       tool_choice: config.useTools ? "auto" : undefined,  // "auto" is PERFECT - model decides when functions make sense!
       parallel_tool_calls: true,
-      
+
       // Truncation strategy
       truncation: "disabled",
-      
+
       // Metadata - all values must be strings
       metadata: {
         test: "true",
@@ -204,7 +217,7 @@ This dual approach makes the experience both functional and conversational.`,
         reasoning: z.string().optional(),
         sources: z.array(z.string()).optional()
       });
-      
+
       // TODO: Structured output might need different handling
       // params.response_format = zodResponseFormat(ResponseSchema, 'structured_response');
     }
@@ -216,26 +229,26 @@ This dual approach makes the experience both functional and conversational.`,
 
     try {
       const startTime = Date.now();
-      
+
       if (config.streaming) {
         await this.streamHandler.handleStreamingResponse(
-          this.openai, 
-          params, 
-          startTime, 
-          this.sessionData, 
+          this.openai,
+          params,
+          startTime,
+          this.sessionData,
           () => this.saveSession()
         );
       } else {
         await this.responseHandler.handleStandardResponse(
           this.openai,
-          params, 
-          startTime, 
+          params,
+          startTime,
           input,
           this.sessionData,
           () => this.saveSession()
         );
       }
-      
+
     } catch (error) {
       handleError(error, config.verbose);
     }
@@ -247,7 +260,7 @@ This dual approach makes the experience both functional and conversational.`,
     console.log(chalk.bold('═'.repeat(80)));
     console.log('\nThis console uses the ACTUAL Responses API with full feature support.');
     console.log('Server-side conversation management via previous_response_id.\n');
-    
+
     console.log(chalk.bold('Commands:'));
     console.log(`  ${chalk.cyan('/tools')}       - Enable all tools for next message`);
     console.log(`  ${chalk.cyan('/model <name>')} - Switch model (gpt-5, gpt-5-mini, gpt-5-nano)`);
@@ -270,7 +283,7 @@ This dual approach makes the experience both functional and conversational.`,
 
     this.rl.on('line', async (line) => {
       const input = line.trim();
-      
+
       // Prevent concurrent command processing
       if (this.processingCommand) {
         console.log(chalk.yellow('Still processing previous command, please wait...'));
@@ -301,26 +314,26 @@ This dual approach makes the experience both functional and conversational.`,
   private async handleCommand(input: string): Promise<boolean> {
     // Handle special test commands that need to call our API method
     const [command, ...args] = input.split(' ');
-    
+
     if (command === '/examples') {
-      await runExamples((input: string, options?: Partial<TestConfig>) => 
+      await runExamples((input: string, options?: Partial<TestConfig>) =>
         this.callResponsesAPI(input, options)
       );
       return false;
     }
-    
+
     if (command === '/test') {
-      await runTestSeries((input: string, options?: Partial<TestConfig>) => 
+      await runTestSeries((input: string, options?: Partial<TestConfig>) =>
         this.callResponsesAPI(input, options)
       );
       return false;
     }
-    
+
     if (command === '/skiptest') {
       await this.runSkipBackTest();
       return false;
     }
-    
+
     // Delegate to CommandHandler for all other commands
     return await this.commandHandler.handleCommand(input);
   }
@@ -330,59 +343,77 @@ This dual approach makes the experience both functional and conversational.`,
     console.log(chalk.dim('This test demonstrates that we now properly execute functions'));
     console.log(chalk.dim('and provide results back to the model - no skip-back needed!\n'));
 
+    // Store the original response ID to restore after test
+    const originalResponseId = this.sessionData.lastResponseId;
+
+    // Clear the response ID to start fresh for this test
+    this.sessionData.lastResponseId = null;
+    console.log(chalk.green('✨ Starting fresh conversation (cleared previous response ID)\n'));
+
     const tests = [
       {
-        name: 'Step 1: Start conversation (no function call)',
-        input: 'Hello! My name is David and I love jazz music.',
-        expectFunctionCall: false
-      },
-      {
-        name: 'Step 2: Continue conversation (no function call)',
-        input: 'Tell me about Miles Davis.',
-        expectFunctionCall: false
-      },
-      {
-        name: 'Step 3: Trigger function call',
-        input: "I don't like that song, play something else please",
-        expectFunctionCall: true,
-        description: 'Should execute provide_music_alternatives function and continue'
-      },
-      {
-        name: 'Step 4: Test continuity after function call',
-        input: 'What was I asking about before?',
+        name: 'Step 1: Start conversation',
+        input: 'Hello! My name is David and I love Taylor Swift!',
         expectFunctionCall: false,
-        description: 'Should remember previous context including function execution'
+        description: 'Introduction and establishing music preference'
       },
       {
-        name: 'Step 5: Another function call',
-        input: 'Actually, different music please',
-        expectFunctionCall: true,
-        description: 'Should execute function again and provide alternatives'
-      },
-      {
-        name: 'Step 6: Test complete memory',
-        input: 'You were telling me about that jazz musician?',
+        name: 'Step 2: Ask about latest album',
+        input: 'What is her latest album?',
         expectFunctionCall: false,
-        description: 'Should remember entire conversation including all function calls'
+        description: 'Should mention The Tortured Poets Department or recent work'
+      },
+      {
+        name: 'Step 3: Request to play a song',
+        input: 'Play a song from that album please',
+        expectFunctionCall: true,
+        description: 'Should call play_specific_song with a Taylor Swift track'
+      },
+      {
+        name: 'Step 4: Reject the song and request alternatives',
+        input: "Actually, I don't like this one. Play something else please",
+        expectFunctionCall: true,
+        description: 'Should call provide_music_alternatives ONCE and present options'
+      },
+      {
+        name: 'Step 5: Test memory after function calls',
+        input: 'What album were we talking about earlier?',
+        expectFunctionCall: false,
+        description: 'Should remember Taylor Swift album discussion'
+      },
+      {
+        name: 'Step 6: Request different alternatives',
+        input: 'Actually, I want something completely different from Taylor Swift',
+        expectFunctionCall: true,
+        description: 'NEW rejection - should call provide_music_alternatives again'
+      },
+      {
+        name: 'Step 7: Final memory test',
+        input: 'Can you remind me what we discussed at the beginning of our chat?',
+        expectFunctionCall: false,
+        description: 'Should recall entire conversation flow'
       }
     ];
 
     for (const test of tests) {
-      console.log(chalk.yellow(`\n📝 ${test.name}`));
+      console.log(chalk.yellow(`\n${'─'.repeat(80)}`));
+      console.log(chalk.yellow.bold(`📝 ${test.name}`));
+      console.log(chalk.gray(`   Message: "${test.input}"`));
       if (test.expectFunctionCall) {
-        console.log(chalk.cyan('  Expected: Function call → execution → final response'));
+        console.log(chalk.cyan('   Expected: Function call → execution → final response'));
       } else {
-        console.log(chalk.dim('  Expected: Direct text response'));
+        console.log(chalk.dim('   Expected: Direct text response'));
       }
       if (test.description) {
-        console.log(chalk.dim(`  ${test.description}`));
+        console.log(chalk.dim(`   ${test.description}`));
       }
-      
-      await this.callResponsesAPI(test.input, { 
+      console.log(chalk.yellow('─'.repeat(80)));
+
+      await this.callResponsesAPI(test.input, {
         useTools: true,
-        streaming: true 
+        streaming: true
       });
-      
+
       // Wait between tests
       await new Promise(resolve => setTimeout(resolve, 2000));
     }
@@ -390,29 +421,36 @@ This dual approach makes the experience both functional and conversational.`,
     console.log(chalk.green.bold('\n✅ Function calling test complete!'));
     console.log(chalk.green('🎉 No more skip-back needed - functions are properly executed!'));
     console.log(chalk.dim('\nUse /history to see the complete conversation flow'));
+
+    // Optionally restore the original response ID
+    if (originalResponseId) {
+      console.log(chalk.dim(`\nRestoring previous session (response ID: ${originalResponseId})`));
+      this.sessionData.lastResponseId = originalResponseId;
+      await this.saveSession();
+    }
   }
 }
 
 // Main execution
 async function main(): Promise<void> {
   const tester = new GPT5ResponsesAPITester();
-  
+
   // CRITICAL: Wait for initialization to complete before proceeding
   // This ensures Redis and session are fully loaded
   await tester.initializePromise;
 
   // Parse command line arguments
   const args = process.argv.slice(2);
-  
+
   if (args.includes('--examples')) {
-    await runExamples((input: string, options?: Partial<TestConfig>) => 
+    await runExamples((input: string, options?: Partial<TestConfig>) =>
       tester.callResponsesAPI(input, options)
     );
     process.exit(0);
   }
 
   if (args.includes('--test')) {
-    await runTestSeries((input: string, options?: Partial<TestConfig>) => 
+    await runTestSeries((input: string, options?: Partial<TestConfig>) =>
       tester.callResponsesAPI(input, options)
     );
     process.exit(0);

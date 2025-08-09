@@ -8,6 +8,7 @@ import TasteProfile from './pages/TasteProfile';
 import FeedbackDashboard from './pages/FeedbackDashboard';
 import LogsPage from './pages/LogsPage';
 import WebSocketDemo from './pages/WebSocketDemo';
+import GPT5Test from './pages/GPT5Test';
 import PlaylistSearch from './pages/PlaylistSearch';
 import PastPlaylistSearches from './pages/PastPlaylistSearches';
 import PlaylistTools from './pages/PlaylistTools';
@@ -67,6 +68,10 @@ export const router = createBrowserRouter([
       {
         path: "websocket-demo",
         element: <WebSocketDemo />
+      },
+      {
+        path: "gpt5-test",
+        element: <GPT5Test />
       },
       {
         path: "playlist-search",

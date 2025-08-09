@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPT-5 Spotify Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .container {
+            background: #2a2a2a;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        button {
+            background: #1db954;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background: #1ed760;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            background: #333;
+            color: white;
+            border: 1px solid #555;
+            border-radius: 4px;
+        }
+        .result {
+            background: #333;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 10px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .error {
+            color: #ff6b6b;
+        }
+        .success {
+            color: #51cf66;
+        }
+        .info {
+            color: #748ffc;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎵 GPT-5 Spotify Integration Test</h1>
+    
+    <div class="container">
+        <h2>1. Session Setup</h2>
+        <input type="text" id="sessionInput" placeholder="Enter your session ID (e.g., d606073b-9b18-4ef0-9404-0907ea0dc399)" value="">
+        <br>
+        <button onclick="setSession()">Set Session ID</button>
+        <button onclick="checkSession()">Check Current Session</button>
+        <button onclick="clearSession()">Clear Session</button>
+        <div id="sessionResult" class="result"></div>
+    </div>
+
+    <div class="container">
+        <h2>2. Test Commands</h2>
+        <input type="text" id="commandInput" placeholder="e.g., Play Bohemian Rhapsody by Queen" value="Play Hotel California by Eagles">
+        <br>
+        <button onclick="testCommand()">Send Command</button>
+        <button onclick="testWithoutTools()">Test Without Tools</button>
+        <button onclick="getHistory()">Get History</button>
+        <div id="commandResult" class="result"></div>
+    </div>
+
+    <div class="container">
+        <h2>3. Quick Tests</h2>
+        <button onclick="quickTest('Play Stairway to Heaven by Led Zeppelin')">Play Stairway to Heaven</button>
+        <button onclick="quickTest('Play some Beatles')">Play Beatles</button>
+        <button onclick="quickTest('Play something relaxing')">Play Relaxing Music</button>
+        <button onclick="quickTest('What is currently playing?')">What's Playing?</button>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:4001/api/gpt5';
+        
+        // Allow manual override of session ID
+        let manualSessionId = null;
+        
+        function getSessionId() {
+            // Use manual session if set, otherwise check localStorage
+            return manualSessionId || localStorage.getItem('spotify_session_id');
+        }
+        
+        function setSession() {
+            const input = document.getElementById('sessionInput').value.trim();
+            if (!input) {
+                alert('Please enter a session ID');
+                return;
+            }
+            
+            manualSessionId = input;
+            const result = document.getElementById('sessionResult');
+            result.innerHTML = `<span class="success">✅ Session ID set manually: ${manualSessionId}</span>`;
+        }
+        
+        function clearSession() {
+            manualSessionId = null;
+            const result = document.getElementById('sessionResult');
+            result.innerHTML = `<span class="info">Session cleared. Using localStorage now.</span>`;
+            document.getElementById('sessionInput').value = '';
+        }
+        
+        function checkSession() {
+            const sessionId = getSessionId();
+            const result = document.getElementById('sessionResult');
+            
+            if (sessionId) {
+                const source = manualSessionId ? 'manual' : 'localStorage';
+                result.innerHTML = `<span class="success">✅ Session found (${source}): ${sessionId}</span>`;
+            } else {
+                result.innerHTML = `<span class="error">❌ No session found. Please enter one above or login at http://localhost:5173</span>`;
+            }
+        }
+        
+        async function testCommand() {
+            const sessionId = getSessionId();
+            if (!sessionId) {
+                alert('Please login first at http://localhost:5173');
+                return;
+            }
+            
+            const command = document.getElementById('commandInput').value;
+            const result = document.getElementById('commandResult');
+            result.innerHTML = '<span class="info">⏳ Sending command to GPT-5...</span>';
+            
+            try {
+                const response = await fetch(`${API_URL}/command`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Session-ID': sessionId
+                    },
+                    body: JSON.stringify({
+                        command,
+                        model: 'gpt-5-nano',
+                        useTools: true,
+                        temperature: 0.7
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    result.innerHTML = `<span class="success">✅ Success!</span>\n\n${JSON.stringify(data, null, 2)}`;
+                } else {
+                    result.innerHTML = `<span class="error">❌ Error: ${data.error}</span>\n\n${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                result.innerHTML = `<span class="error">❌ Network error: ${error.message}</span>`;
+            }
+        }
+        
+        async function testWithoutTools() {
+            const sessionId = getSessionId();
+            if (!sessionId) {
+                alert('Please login first at http://localhost:5173');
+                return;
+            }
+            
+            const command = document.getElementById('commandInput').value;
+            const result = document.getElementById('commandResult');
+            result.innerHTML = '<span class="info">⏳ Sending command without tools...</span>';
+            
+            try {
+                const response = await fetch(`${API_URL}/command`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Session-ID': sessionId
+                    },
+                    body: JSON.stringify({
+                        command,
+                        model: 'gpt-5-nano',
+                        useTools: false
+                    })
+                });
+                
+                const data = await response.json();
+                result.innerHTML = `<span class="success">Response (no tools):</span>\n\n${JSON.stringify(data, null, 2)}`;
+            } catch (error) {
+                result.innerHTML = `<span class="error">❌ Error: ${error.message}</span>`;
+            }
+        }
+        
+        async function getHistory() {
+            const sessionId = getSessionId();
+            if (!sessionId) {
+                alert('Please login first at http://localhost:5173');
+                return;
+            }
+            
+            const result = document.getElementById('commandResult');
+            result.innerHTML = '<span class="info">⏳ Getting history...</span>';
+            
+            try {
+                const response = await fetch(`${API_URL}/history`, {
+                    headers: {
+                        'X-Session-ID': sessionId
+                    }
+                });
+                
+                const data = await response.json();
+                result.innerHTML = `<span class="success">History:</span>\n\n${JSON.stringify(data, null, 2)}`;
+            } catch (error) {
+                result.innerHTML = `<span class="error">❌ Error: ${error.message}</span>`;
+            }
+        }
+        
+        async function quickTest(command) {
+            document.getElementById('commandInput').value = command;
+            await testCommand();
+        }
+        
+        // Check session on load
+        window.onload = checkSession;
+    </script>
+</body>
+</html>

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { MusicAlternativesSchema } from '../../schemas/v2/music-alternatives';
+import { PlaySpecificSongSchema } from '../../schemas/v2/spotify-actions';
 
 // Session validation schema - runtime validation for loaded sessions
 export const SessionDataSchema = z.object({
@@ -54,4 +55,4 @@ export const CodeExecutionSchema = z.object({
  */
 // MusicAlternativesSchema is now imported from ../../../schemas/v2/music-alternatives
 
-export { MusicAlternativesSchema };
+export { MusicAlternativesSchema, PlaySpecificSongSchema };

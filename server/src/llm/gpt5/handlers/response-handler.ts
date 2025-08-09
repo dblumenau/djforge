@@ -10,7 +10,7 @@ import {
 } from 'openai/resources/responses/responses';
 import { SessionData } from '../types';
 import OpenAI from 'openai';
-import { extractFunctionCalls, continueAfterFunctions } from '../tools/function-executor';
+import { extractFunctionCalls, continueAfterFunctions, FunctionContext } from '../tools/function-executor';
 
 export class ResponseHandler {
   private toolValidators: Record<string, z.ZodSchema<any>>;
@@ -60,6 +60,120 @@ export class ResponseHandler {
     
     await saveSessionFn();
     console.log(chalk.green(`\n✓ Session saved with ID: ${finalResponse.id}`));
+  }
+
+  /**
+   * Handle standard response with function context for Spotify integration
+   */
+  async handleStandardResponseWithContext(
+    openai: OpenAI,
+    params: ResponseCreateParams, 
+    startTime: number,
+    input: string,
+    sessionData: SessionData,
+    saveSessionFn: () => Promise<void>,
+    functionContext?: FunctionContext
+  ): Promise<any> {
+    console.log(chalk.yellow('\n⏳ Calling OpenAI Responses API with context...'));
+    
+    let response = await openai.responses.create(params) as Response;
+    const duration = Date.now() - startTime;
+
+    console.log(chalk.green('\n' + '═'.repeat(80)));
+    console.log(chalk.bold(`RESPONSE RECEIVED (${duration}ms)`));
+    console.log(chalk.green('═'.repeat(80)));
+
+    this.parseResponse(response);
+
+    // Handle function calls recursively with context
+    const finalResponse = await this.handleFunctionCallsRecursivelyWithContext(
+      openai, response, params, functionContext
+    );
+
+    // Update session with the final response
+    sessionData.lastResponseId = finalResponse.id;
+    
+    // Ensure conversationHistory exists
+    if (!sessionData.conversationHistory) {
+      sessionData.conversationHistory = [];
+    }
+    
+    // Add to conversation history
+    const historyEntry = {
+      responseId: finalResponse.id,
+      input: input,
+      output: this.formatOutput(finalResponse),
+      timestamp: new Date().toISOString(),
+      model: finalResponse.model,
+      usage: finalResponse.usage,
+      hadFunctionCall: extractFunctionCalls(response).length > 0
+    };
+    
+    sessionData.conversationHistory.push(historyEntry);
+    
+    await saveSessionFn();
+    console.log(chalk.green(`\n✓ Session saved with ID: ${finalResponse.id}`));
+    
+    // Return the full response for the API
+    return {
+      ...finalResponse,
+      hadFunctionCall: extractFunctionCalls(response).length > 0
+    };
+  }
+
+  /**
+   * Recursively handle function calls with context
+   */
+  private async handleFunctionCallsRecursivelyWithContext(
+    openai: OpenAI,
+    response: Response,
+    originalParams: ResponseCreateParams,
+    functionContext?: FunctionContext,
+    depth: number = 0
+  ): Promise<Response> {
+    // Safety check to prevent infinite recursion
+    const MAX_DEPTH = 10;
+    if (depth >= MAX_DEPTH) {
+      console.log(chalk.yellow(`\n⚠️ Maximum function call depth (${MAX_DEPTH}) reached, stopping recursion`));
+      return response;
+    }
+
+    // Check if we need to execute functions and continue
+    const functionCalls = extractFunctionCalls(response);
+    if (functionCalls.length === 0) {
+      // No function calls, this is our final response
+      return response;
+    }
+
+    console.log(chalk.yellow(`\n📦 Found ${functionCalls.length} function call(s) to execute at depth ${depth}...`));
+    
+    // Get continuation parameters after executing functions with context
+    const continuationParams = await continueAfterFunctions(openai, response, originalParams, functionContext);
+    
+    if (!continuationParams) {
+      // No continuation needed, return current response
+      return response;
+    }
+
+    // Make the continuation call
+    const continuationStartTime = Date.now();
+    const continuationResponse = await openai.responses.create(continuationParams) as Response;
+    const continuationDuration = Date.now() - continuationStartTime;
+    
+    console.log(chalk.green('\n' + '═'.repeat(80)));
+    console.log(chalk.bold(`CONTINUATION RESPONSE RECEIVED (${continuationDuration}ms) - Depth ${depth + 1}`));
+    console.log(chalk.green('═'.repeat(80)));
+    
+    this.parseResponse(continuationResponse);
+    
+    // Recursively handle any function calls in the continuation response
+    return await this.handleFunctionCallsRecursivelyWithContext(
+      openai, 
+      continuationResponse, 
+      originalParams,
+      functionContext,
+      depth + 1
+    );
   }
 
   /**
@@ -113,6 +227,33 @@ export class ResponseHandler {
       originalParams, 
       depth + 1
     );
+  }
+
+  /**
+   * Format the output from a response for storage
+   */
+  private formatOutput(response: Response): string {
+    if (response.output_text) {
+      return response.output_text;
+    }
+    
+    // Extract text from output items
+    let outputText = '';
+    if (response.output && Array.isArray(response.output)) {
+      response.output.forEach((item: any) => {
+        if (item.type === 'message' && item.content) {
+          if (Array.isArray(item.content)) {
+            item.content.forEach((content: any) => {
+              if ('text' in content && content.text) {
+                outputText += content.text + '\n';
+              }
+            });
+          }
+        }
+      });
+    }
+    
+    return outputText.trim() || 'No text output';
   }
 
   parseResponse(response: Response): void {
@@ -257,6 +398,21 @@ export class ResponseHandler {
           }
         } catch (e) {
           console.log(chalk.red('  Failed to parse arguments as JSON'));
+        }
+      }
+      
+      // Handle web search calls
+      if (toolCall.type === 'web_search_call') {
+        const webSearchCall = toolCall as any;
+        console.log(`  Status: ${webSearchCall.status || 'unknown'}`);
+        if (webSearchCall.action) {
+          console.log(`  Action: ${webSearchCall.action}`);
+        }
+        if (webSearchCall.query) {
+          console.log(`  Query: ${webSearchCall.query}`);
+        }
+        if (webSearchCall.domains) {
+          console.log(`  Domains: ${webSearchCall.domains.join(', ')}`);
         }
       }
     });

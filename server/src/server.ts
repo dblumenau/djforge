@@ -33,6 +33,7 @@ import { websocketRouter } from './routes/websocket';
 import playlistSearchRouter from './routes/playlist-search';
 import playlistDiscoveryRouter, { setRedisClient as setPlaylistDiscoveryRedisClient, setLoggingService as setPlaylistDiscoveryLoggingService } from './routes/playlist-discovery';
 import llmTestRouter, { setRedisClientForTest } from './routes/llm-test';
+import { gpt5Router } from './routes/gpt5';
 import { overrideConsole, logger } from './utils/logger';
 import { setSentryUserContext } from './middleware/sentry-auth';
 import { initializeWebSocket, getWebSocketService } from './services/websocket.service';
@@ -241,6 +242,9 @@ async function initializeAndStart() {
     app.use('/api/playlist-discovery', playlistDiscoveryRouter);
     // LLM test endpoints
     app.use('/api/llm/test', llmTestRouter);
+    
+    // GPT-5 Responses API with Spotify integration
+    app.use('/api/gpt5', gpt5Router);
 
 
     // IMPORTANT: The Sentry error handler must be registered before any other error middleware and after all controllers

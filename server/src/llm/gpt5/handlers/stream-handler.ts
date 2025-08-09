@@ -8,13 +8,32 @@ import {
   ResponseErrorEvent 
 } from 'openai/resources/responses/responses';
 import { SessionData } from '../types';
-import { extractFunctionCalls, continueAfterFunctions } from '../tools/function-executor';
+import { extractFunctionCalls, continueAfterFunctions, FunctionContext } from '../tools/function-executor';
 
 export class StreamHandler {
   private verbose: boolean;
 
   constructor(verbose: boolean = false) {
     this.verbose = verbose;
+  }
+
+  /**
+   * Streaming response handler with Spotify context support (stub for now)
+   */
+  async handleStreamingResponseWithContext(
+    openai: OpenAI,
+    params: ResponseCreateParams,
+    startTime: number,
+    input: string,
+    sessionData: SessionData,
+    saveSessionFn: () => Promise<void>,
+    functionContext?: FunctionContext,
+    onChunk?: (chunk: string) => void
+  ): Promise<void> {
+    // For now, just call the regular streaming handler
+    // TODO: Implement proper context passing for function calls
+    console.log(chalk.yellow('Note: Streaming with Spotify context - using basic implementation'));
+    return this.handleStreamingResponse(openai, params, startTime, sessionData, saveSessionFn);
   }
 
   /**

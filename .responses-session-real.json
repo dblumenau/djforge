@@ -1,46 +1,95 @@
 {
-  "lastResponseId": "resp_68978f1719f881a2a78eeecd1502e18007be5edf9abfa4bb",
+  "lastResponseId": "resp_689793b11224819e8fd1bd51ab8ee1f7066f53a3c504ca52",
   "conversationHistory": [
     {
-      "responseId": "resp_68978ef63c6081a2b214fa90e12c7ce507be5edf9abfa4bb",
+      "responseId": "resp_6897938a0108819e88bfd73cdb3b3060066f53a3c504ca52",
       "input": "Hello! My name is David and I love jazz music.",
       "output": "",
-      "timestamp": "2025-08-09T18:09:59.765Z",
+      "timestamp": "2025-08-09T18:29:30.833Z",
       "model": "gpt-5-nano"
     },
     {
-      "responseId": "resp_68978efa252081a2a4f5ce5953da5e6f07be5edf9abfa4bb",
+      "responseId": "resp_6897938d565c819eb7474a8b485b3480066f53a3c504ca52",
       "input": "Tell me about Miles Davis.",
       "output": "",
-      "timestamp": "2025-08-09T18:10:04.842Z",
+      "timestamp": "2025-08-09T18:29:35.717Z",
       "model": "gpt-5-nano"
     },
     {
-      "responseId": "resp_68978f04b23c81a2a15f5d8f1e7418bd07be5edf9abfa4bb",
+      "responseId": "resp_689793a21990819ebeb12ea7d73f1cbd066f53a3c504ca52",
       "input": "I don't like that song, play something else please",
       "output": "",
-      "timestamp": "2025-08-09T18:10:15.493Z",
+      "timestamp": "2025-08-09T18:29:56.397Z",
       "model": "gpt-5-nano"
     },
     {
-      "responseId": "resp_68978f09dcf081a29a065d81eb91c20007be5edf9abfa4bb",
+      "responseId": "resp_689793a6f508819ea5eb0260a1aea525066f53a3c504ca52",
       "input": "What was I asking about before?",
       "output": "",
-      "timestamp": "2025-08-09T18:10:19.217Z",
+      "timestamp": "2025-08-09T18:30:00.647Z",
       "model": "gpt-5-nano"
     },
     {
-      "responseId": "resp_68978f13029481a2a49653e9200b766507be5edf9abfa4bb",
+      "responseId": "resp_689793ad9a88819eb523826a2154e5f4066f53a3c504ca52",
       "input": "Actually, different music please",
       "output": "",
-      "timestamp": "2025-08-09T18:10:28.833Z",
+      "timestamp": "2025-08-09T18:30:06.747Z",
       "model": "gpt-5-nano"
     },
     {
-      "responseId": "resp_68978f1719f881a2a78eeecd1502e18007be5edf9abfa4bb",
+      "responseId": "resp_689793b11224819e8fd1bd51ab8ee1f7066f53a3c504ca52",
       "input": "You were telling me about that jazz musician?",
       "output": "",
-      "timestamp": "2025-08-09T18:10:40.261Z",
+      "timestamp": "2025-08-09T18:30:10.692Z",
+      "model": "gpt-5-nano"
+    },
+    {
+      "responseId": "resp_68979d42cf8481a0934d83dbcdfdc4ea0a154291ecd54ffd",
+      "input": "Hello! My name is David and I love Taylor Swift!",
+      "output": "",
+      "timestamp": "2025-08-09T19:11:00.771Z",
+      "model": "gpt-5-nano"
+    },
+    {
+      "responseId": "resp_68979d470b6c81a0807435afa89550740a154291ecd54ffd",
+      "input": "What is her latest album?",
+      "output": "",
+      "timestamp": "2025-08-09T19:11:05.613Z",
+      "model": "gpt-5-nano"
+    },
+    {
+      "responseId": "resp_68979d4be42081a0bd9c4410302d95b00a154291ecd54ffd",
+      "input": "Play a song from that album please",
+      "output": "",
+      "timestamp": "2025-08-09T19:11:10.254Z",
+      "model": "gpt-5-nano"
+    },
+    {
+      "responseId": "resp_68979d54dd0081a09fac587f46cad7b30a154291ecd54ffd",
+      "input": "Actually, I don't like this one. Play something else please",
+      "output": "",
+      "timestamp": "2025-08-09T19:11:21.946Z",
+      "model": "gpt-5-nano"
+    },
+    {
+      "responseId": "resp_68979d5c763c81a0abf12a765e5900600a154291ecd54ffd",
+      "input": "What album were we talking about earlier?",
+      "output": "",
+      "timestamp": "2025-08-09T19:11:25.972Z",
+      "model": "gpt-5-nano"
+    },
+    {
+      "responseId": "resp_68979d647f1481a081407a04d33e804a0a154291ecd54ffd",
+      "input": "Actually, I want something completely different from Taylor Swift",
+      "output": "",
+      "timestamp": "2025-08-09T19:11:35.118Z",
+      "model": "gpt-5-nano"
+    },
+    {
+      "responseId": "resp_68979d6992c881a09a0ff6231be6802e0a154291ecd54ffd",
+      "input": "Can you remind me what we discussed at the beginning of our chat?",
+      "output": "",
+      "timestamp": "2025-08-09T19:11:40.177Z",
       "model": "gpt-5-nano"
     }
   ],

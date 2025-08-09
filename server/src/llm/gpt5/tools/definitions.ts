@@ -1,6 +1,6 @@
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import { Tool } from '../types';
-import { MusicAlternativesSchema } from './schemas';
+import { MusicAlternativesSchema, PlaySpecificSongSchema } from './schemas';
 
 /**
  * Build tools array for GPT-5 Responses API
@@ -86,8 +86,24 @@ export function buildTools(): Tool[] {
     // },
     {
       type: "function",
+      name: "play_specific_song",
+      description: "Play a specific song immediately on Spotify. Use this when the user requests a specific track by name and artist. This will search for the track and start playback, replacing the current queue. IMPORTANT: Always provide both artist and track name for accurate results. If unsure, you can provide alternatives that will be tried if the primary search fails.",
+      strict: true,
+      parameters: (() => {
+        const schema = zodToJsonSchema(PlaySpecificSongSchema, {
+          $refStrategy: "none",
+          errorMessages: false,
+          markdownDescription: false,
+          target: "openAi"
+        });
+        const { $schema, ...cleanSchema } = schema as any;
+        return cleanSchema;
+      })()
+    },
+    {
+      type: "function",
       name: "provide_music_alternatives",
-      description: "When user rejects a song or says 'play something else', provide alternative music directions with emoji labels",
+      description: "When user rejects a song or says 'play something else', provide alternative music directions with emoji labels. IMPORTANT: Call this function ONCE per user rejection to provide a comprehensive set of alternatives. After receiving the alternatives, present them to the user and await their selection. Only call this function again if the user makes a NEW rejection request. You may still call OTHER functions as needed for complex workflows.",
       strict: true,
       parameters: (() => {
         const schema = zodToJsonSchema(MusicAlternativesSchema, {
@@ -101,10 +117,8 @@ export function buildTools(): Tool[] {
         const { $schema, ...cleanSchema } = schema as any;
         return cleanSchema;
       })()
-    }
-    // Built-in tools - commented out for now as they may not be supported
-    // { type: "web_search" },
-    // { type: "code_interpreter" },
-    // { type: "file_search" }
+    },
+    // Built-in tools
+    { type: "web_search_preview" } as Tool
   ] as Tool[];
 }
