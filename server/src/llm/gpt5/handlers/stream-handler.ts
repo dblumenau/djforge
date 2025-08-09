@@ -90,6 +90,22 @@ export class StreamHandler {
     // Update session for streaming
     if (responseId) {
       sessionData.lastResponseId = responseId;
+      
+      // Add to conversation history
+      if (!sessionData.conversationHistory) {
+        sessionData.conversationHistory = [];
+      }
+      
+      sessionData.conversationHistory.push({
+        responseId: responseId,
+        input: '', // We don't have input here, would need to pass it in
+        output: fullText || '',
+        timestamp: new Date().toISOString(),
+        model: 'gpt-5', // Would need to get from params
+        usage: undefined, // Not available in streaming
+        hadFunctionCall: false  // Hardcoded for testing
+      });
+      
       await saveSessionFn();
     }
   }

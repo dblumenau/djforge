@@ -14,7 +14,8 @@ const SessionDataSchema = z.object({
     output: z.string(),
     timestamp: z.string(),
     model: z.string(),
-    usage: z.any().optional() // ResponseUsage type is complex, using any for now
+    usage: z.any().optional(), // ResponseUsage type is complex, using any for now
+    hadFunctionCall: z.boolean().optional() // Track if response had function calls
   })),
   metadata: z.record(z.any())
 });

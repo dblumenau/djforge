@@ -51,7 +51,8 @@ export class ResponseHandler {
       output: response.output_text || '',
       timestamp: new Date().toISOString(),
       model: response.model,
-      usage: response.usage
+      usage: response.usage,
+      hadFunctionCall: false  // Hardcoded for testing
     });
     
     await saveSessionFn();
